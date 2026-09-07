@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Shared form normalization only. Layout and colors live in Vue Tailwind classes. */
+@layer components {
+  :where(.zb-app) :where(button) { @apply cursor-pointer; }
+  :where(.zb-app) :where(button:disabled, fieldset:disabled) { @apply cursor-default opacity-40; }
+  :where(.zb-app) :where(button, a):focus-visible { @apply outline outline-[2px] outline-offset-2 outline-zaux-accent; }
+  :where(.zb-app) :where(input:not([type=file]):not([type=checkbox]):not([type=color]), select, textarea) {
+    @apply min-w-0 w-full rounded-xxs border-slim border-zaux-light-grey bg-zaux-white px-1.5 py-1 font-main text-[12px] leading-[1.4] text-zaux-dark;
+  }
+  :where(.zb-app) :where(input, select, textarea):focus { @apply outline outline-[2px] outline-zaux-accent/20 border-zaux-accent; }
+  :where(.zb-app) textarea { @apply resize-y; }
+  :where(.zb-app) fieldset { @apply min-w-0 p-0 m-0 border-none; }
+  :where(.zb-app) details { @apply py-2 border-t-slim border-zaux-light-grey; }
+  :where(.zb-app) summary { @apply mb-1.5 cursor-pointer text-[11px] text-zaux-dark-grey; }
+  :where(.zb-app) summary code { @apply ml-0.75 text-[9px] text-zaux-dark-grey; }
+  body.zb-preview-body { @apply m-0 overflow-x-hidden bg-zaux-white; }
+}
+
+  :where(.zb-app) .zb-resize-handle { touch-action: none; }
+  body.zb-resizing { cursor: col-resize !important; user-select: none; }
+  @media (max-width: 900px) { :where(.zb-app) .zb-resize-handle { display: none; } }

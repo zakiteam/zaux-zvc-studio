@@ -1,0 +1,73 @@
+# Architecture
+
+## File ownership
+
+| Path | Responsibility |
+| --- | --- |
+| app/components/builder | Editor panels, dialogs and controls |
+| app/composables/useBuilder.js | Editor selection, mutations, undo/redo, save lifecycle |
+| app/composables/useTranslation.js | Minimal reactive Italian/English localization |
+| app/services | Browser storage, downloads, catalog and preview sanitization |
+| app/zvc | Hand-written native ZVC modules, metadata and defaults |
+| app/data/catalog/palette.js | Explicit drag-and-drop whitelist and insertion presets |
+| app/data/icons.js | Editor action names mapped to actual Zaux symbols |
+| app/data/locale | UI dictionaries |
+| app/pages/preview.vue | Actual Zaux rendering in a separate browser viewport |
+| app/assets/styles | Studio chrome and Zaux stylesheet entry |
+| domain | Pure JSON model, tree operations, validation and export generation |
+| integrations/zaux | Read-only dependency adapter and generated files |
+| scripts/zaux | Generate registries and stylesheet imports outside Zaux |
+| server/api/preview-css.post.js | Compile Tailwind classes authored at runtime |
+| vendor/zaux | Read-only Git submodule |
+| tests | Domain and browser behavior checks |
+| docs/ai | Decisions, knowledge index and resumable session state |
+| .agents/skills | Discoverable project skill |
+
+## Zaux study
+
+Studied the original checkout at `C:/xampp/htdocs/zaki/zaux`, including:
+- `core/storybook/apps/builder/ZVCBuilder.vue`, its context and CRUD, layouts, storage, import/export, BYO, field and tab-session composables.
+- `core/common/helpers/zvc.helper.js`, `templates.helper.js`, `components.helper.js`, translations and UI settings.
+- `project/components/virtual/fancysection/FancySection.zvc.js`, metadata/defaults, and `project/templates/home/Home.tpl.js`.
+- `core/setup.js`, project setup, component registries, Zsection, ComponentsRenderer, IntroText and button contracts.
+- Vite/Storybook startup, Tailwind tokens/plugins, generated SCSS and component registration scripts.
+
+The prior builder primarily composes registered definitions and edits fields; BYO accepts serialized node snapshots. A snapshot does not retain the code or data bindings which produced it. Studio stores the editable definition separately, including explicit binding markers.
+
+## Integration
+
+The submodule is pinned to `a495ac536ee7932b2875f341c1106375dacc590f`. The source checkout contained uncommitted work; the submodule uses the committed version.
+
+Nuxt initializes the original Zaux core/project setup in a client plugin. A preparation script mirrors the upstream component registration convention while writing indexes, stylesheet imports, attribute metadata and resolved Tailwind data under `integrations/zaux/generated`. Aliases redirect upstream imports of generated files there.
+
+Zaux public assets are served through Nitro. Fonts/icons keep the original URLs. The bridge uses Tailwind 3 with Zaux design tokens; Studio's CSS is scoped to its chrome.
+
+Nuxt runs in client-rendered mode because this editor operates on browser-local documents. Its server is used only for runtime Tailwind compilation. API/database synchronization is deliberately not configured.
+
+## Editing and rendering
+
+The library contains reusable definitions. Inserting one creates an instance with its own deep copy, independent node IDs and data overrides. Visual definitions are never linked for live propagation. Source-backed definitions retain independent configuration and use the trusted JavaScript implementation identified by sourceKey; changing that source implementation affects its consumers. See code-components.md.
+
+Studio has a single mutable workspace. Mutations go through `commit`, which validates the resulting document, records undo history and schedules persistence. UI selection and dialogs are separate transient state.
+
+The preview is an iframe at `/preview`. It receives serialized state over same-origin messages and returns selection/drop intents. The parent checks the sender and origin. The iframe's width is the real responsive viewport. Zaux components render through the original ComponentsRenderer; editor IDs are added only to preview props.
+
+Custom CSS is limited to the preview document. Property values are sanitized there before rendering HTML; no imported JavaScript is evaluated. Preview is a trusted local authoring tool, not a hardened multi-tenant sandbox.
+
+## Runtime Tailwind
+
+Static scanning cannot discover arbitrary classes typed after deployment. The small Nuxt endpoint compiles the document's authored classes with Zaux's Tailwind config, caches recent results, and passes the CSS into the iframe. Keep the application source/config alongside the production output when running this endpoint. A future standalone/static deployment needs a bundled config or external compiler.
+
+## Local persistence
+
+The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unload, and surfaced in a status indicator. Invalid previous data is preserved for recovery, and autosave stays paused until the user elects to replace it. Changes in another browser tab prompt a choice before overwriting. Undo/redo has a bounded session-only history.
+
+## Current scope
+
+- Visual placement, nesting, selection and reordering of whitelisted Zaux/HTML nodes. Duplicate/delete actions are available on outline rows.
+- Per-instance content, field definitions, nested JSON properties and explicit bindings.
+- Editable JSON, generated JS, CSS, browser persistence and recovery.
+- Imports support Studio's versioned JSON envelopes.
+- Native .zvc.js modules under app/zvc load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
+- Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
+- Database, authentication, team sharing, asset uploads and a browser JavaScript editor are not included. Hand-written code is maintained in project files.

@@ -1,0 +1,9 @@
+node_modules/
+.nuxt/
+.output/
+.cache/
+coverage/
+test-results/
+*.log
+.env
+integrations/zaux/generated/

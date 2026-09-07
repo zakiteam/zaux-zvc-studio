@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zaux Studio"
+  short_description: "Build and maintain the visual ZVC editor"
+  default_prompt: "Use $zaux-builder-work to continue this Zaux Studio project, starting from its session state."
