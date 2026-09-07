@@ -42,7 +42,7 @@ Nuxt initializes the original Zaux core/project setup in a client plugin. A prep
 
 Zaux public assets are served through Nitro. Fonts/icons keep the original URLs. The bridge uses Tailwind 3 with Zaux design tokens; Studio's CSS is scoped to its chrome.
 
-Nuxt runs in client-rendered mode because this editor operates on browser-local documents. Its server is used only for runtime Tailwind compilation. API/database synchronization is deliberately not configured.
+Nuxt runs in client-rendered mode because the editor operates in the browser. Its server is used for runtime Tailwind compilation. Optional authentication and remote project persistence use Supabase directly from the client with a publishable key and database-enforced RLS permissions.
 
 ## Editing and rendering
 
@@ -70,4 +70,4 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Imports support Studio's versioned JSON envelopes.
 - Native .zvc.js modules under app/zvc load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
-- Database, authentication, team sharing, asset uploads and a browser JavaScript editor are not included. Hand-written code is maintained in project files.
+- Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI, asset uploads, and a browser JavaScript editor are not included. Hand-written code is maintained in project files.

@@ -2,7 +2,7 @@
   <img src="./app-logo.png" alt="Zaux Studio logo" width="120" />
 </p>
 
-<h2 align="center" style="border-bottom:none;">Zaux Studio</h2>
+<p align="center"><strong>Zaux Studio</strong></p>
 
 <p align="center">
   A visual workspace for building, configuring, and exporting Zaux Virtual Components and Templates.

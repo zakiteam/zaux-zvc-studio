@@ -49,7 +49,7 @@ Native definitions additionally store sourceKey (relative to app/zvc) and defaul
 }
 ```
 
-This is ready to POST as application/json. A future database adapter should use the same envelope and run the shared validation server-side. Store the document ID and schema version; add authentication, ownership, server revision/ETag and conflict handling in the actual integration. No arbitrary server or credentials are assumed.
+This is ready to POST as application/json. Supabase remote projects store the workspace document and schema version as JSON, with authentication, ownership, revisions, and conflict handling enforced by the project integration and database RLS policies. No arbitrary server or credentials are assumed.
 
 `parseDocument` validates imports before changing state. A workspace replaces the session after a UI confirmation; a component/template is added with fresh IDs. The editable format is distinct from a rendered node snapshot.
 

@@ -1,8 +1,8 @@
-# ZVC scritti in codice
+# Code-backed ZVCs
 
-## Aggiungere una base
+## Adding a base definition
 
-Crea una cartella in `app/zvc/`. Il riferimento completo incluso nel progetto è:
+Create a folder under `app/zvc/`. The complete example included in the project is:
 
 ```text
 app/zvc/starterhero/
@@ -12,9 +12,9 @@ app/zvc/starterhero/
     StarterHero.defaults.js
 ```
 
-Il caricamento è automatico: ogni `**/*.zvc.js` viene importato da Vite. Non serve un indice manuale. Ricarica la pagina dopo aver cambiato i sorgenti; in produzione ricostruisci l'applicazione. Le basi vengono aggiunte anche ai progetti già presenti nel localStorage.
+Loading is automatic: Vite imports every `**/*.zvc.js` file. No manual index is required. Reload the page after changing source files; rebuild the application for production. Base definitions are also added to projects already present in localStorage.
 
-Usa la stessa sintassi di Zaux:
+Use the same Zaux syntax:
 
 ```js
 import ZVCHelper from '@zx_core/common/helpers/zvc.helper';
@@ -51,55 +51,57 @@ export default {
 };
 ```
 
-Il modulo deve esportare `ZVCName` e `buildNode`. `label` è il nome visualizzato; `fields` descrive i controlli. `builder: false` esclude una base dalla libreria. Il caricatore riconosce i default nella posizione `data/Nome.defaults.js`; per percorsi personalizzati, esponi i valori attraverso `fields[].default`.
+The module must export `ZVCName` and `buildNode`. `label` is the displayed name; `fields` describes the controls. `builder: false` excludes a base definition from the library. The loader recognizes defaults at `data/Name.defaults.js`; for custom paths, expose values through `fields[].default`.
 
-Si esegue la funzione del modulo importato, incluse condizioni, composizioni e chiamate agli helper. Non viene interpretato o ricostruito il suo sorgente. Per annidare moduli locali puoi importarli e chiamarne `buildNode`; il registry originale di Zaux continua a contenere i componenti del submodule.
+The imported module function is executed as-is, including conditions, composition, and helper calls. Its source is never interpreted or reconstructed. To nest local modules, import them and call their `buildNode`; the original Zaux registry still contains components from the submodule.
 
-## Campi e valori
+## Fields and values
 
-Sono disponibili i tipi Zaux `text`, `textarea`, `number`, `switch`, `select`, `json`, `html`, `css-editor`, `button`, `buttongroup`, `component`. Gli ultimi tre usano un editor JSON essenziale; HTML e CSS usano un'area di testo. Gli oggetti delle opzioni select mantengono il tipo del valore.
+The available Zaux types are `text`, `textarea`, `number`, `switch`, `select`, `json`, `html`, `css-editor`, `button`, `buttongroup`, and `component`. The last three use a small JSON editor; HTML and CSS use a text area. Select option objects preserve the value type.
 
-`showIf` accetta una condizione o un array di condizioni, tutte necessarie. Operatori: `eq`, `neq`, `gt`, `lt`, `in`, `contains`, `notEmpty`, come nel builder Zaux. Nascondere un controllo conserva il valore, così riattivarlo non cancella il lavoro.
+`showIf` accepts one condition or an array of conditions; all conditions must match. Supported operators are `eq`, `neq`, `gt`, `lt`, `in`, `contains`, and `notEmpty`, matching the Zaux builder. Hiding a control preserves its value, so enabling it again does not discard work.
 
-La base su file mostra i default in sola lettura. Puoi:
-- inserire una copia nel template e modificarne i contenuti;
-- creare una copia configurabile nella libreria;
-- modificare i file della base direttamente nel progetto.
+A file-backed base displays defaults as read-only. You can:
 
-Le copie mantengono dati, default e metadati indipendenti. La funzione JavaScript rimane condivisa attraverso `sourceKey`: cambiare il codice del modulo cambia il comportamento delle copie che lo usano. Modificare i contenuti di una copia non cambia le altre.
+- insert a copy into a template and edit its content;
+- create a configurable copy in the library;
+- edit the base files directly in the project.
 
-## Passare alla modifica visuale
+Copies keep independent data, defaults, and metadata. The JavaScript function remains shared through `sourceKey`: changing module code changes the behavior of copies that use it. Changing one copy's content does not change the others.
 
-`Converti in visuale` conserva la struttura renderizzata con i valori attuali. Rimuove il collegamento al modulo e i campi dinamici; condizioni e rami inattivi del codice non fanno parte del risultato. Da quel momento puoi trascinare, duplicare, eliminare e configurare i singoli nodi.
+## Converting to visual editing
 
-Se parti dalla base su file, viene creata una nuova voce nella libreria. Se parti da una copia, si converte quella copia. L'operazione è annullabile.
+`Convert to visual` keeps the rendered structure with its current values. It removes the module link and dynamic fields; conditions and inactive code branches are not included in the result. From then on, you can drag, duplicate, delete, and configure individual nodes.
 
-Il risultato deve essere JSON compatibile: nomi dei componenti, proprietà e figli. Callback, oggetti Vue e nodi DOM non appartengono al formato persistito. Zsection con `content.type: 'component'` viene rappresentata con un figlio nello slot predefinito, mantenendo lo stesso ordine di rendering. Proprietà di contenuto speciali degli altri componenti rimangono configurabili come JSON.
+When starting from a file-backed base, the operation creates a new library entry. When starting from a copy, it converts that copy. The operation is undoable.
 
-## Export e spostamento fra macchine
+The result must be JSON-compatible: component names, properties, and children. Callbacks, Vue objects, and DOM nodes do not belong to the persisted format. `Zsection` with `content.type: 'component'` is represented with a child in the default slot, preserving the same rendering order. Other components' specialized content properties remain configurable as JSON.
 
-Per un ZVC da codice, il pacchetto JS contiene i file originali della sua cartella. Le condizioni restano nel sorgente. Il file convenzionale dei default viene aggiornato con la configurazione esportata; `instance-data.json` contiene tutti i valori, anche quando sono usati percorsi personalizzati. Il CSS scritto nell'editor è aggiunto in `style/Studio.css`.
+## Exporting and moving between machines
 
-Mantieni le dipendenze locali necessarie nella cartella del componente; import esterni a quella cartella restano dipendenze del progetto di destinazione. Gli alias `@zx_core` e `@zx_project` hanno il significato originale di Zaux.
+For a code-backed ZVC, the JavaScript package contains the original files in its source folder. Conditions remain in the source. The conventional defaults file is updated with the exported configuration; `instance-data.json` contains all values, including values from custom paths. CSS authored in the editor is added to `style/Studio.css`.
 
-Il JSON Studio salva il percorso relativo `sourceKey`, i dati e l'ultimo albero renderizzato, senza codice eseguibile. Per continuare a modificare un componente nativo su un'altra installazione, porta anche i suoi file in `app/zvc/`. Se mancano, l'app mostra l'ultimo risultato e permette di convertirlo in visuale.
+Keep required local dependencies in the component folder; imports outside that folder remain dependencies of the destination project. The `@zx_core` and `@zx_project` aliases retain their original Zaux meaning.
 
-L'export `JSON Zaux` produce nodi pronti per il rendering con i valori risolti. Il `JSON modificabile` conserva invece il documento da reimportare in Studio.
+Studio JSON stores the relative `sourceKey`, data, and the last rendered tree, without executable code. To continue editing a native component on another installation, also bring its files to `app/zvc/`. If they are missing, the app displays the last result and lets you convert it to a visual definition.
 
-## Whitelist drag and drop
+`Zaux JSON` export produces render-ready nodes with resolved values. `Editable JSON` instead preserves the document for reimporting into Studio.
 
-Modifica `app/data/catalog/palette.js`. L'ordine nell'array è l'ordine nella palette.
+## Drag-and-drop whitelist
 
-Ogni voce contiene:
-- `name`: nome registrato del componente;
-- `props`: configurazione iniziale per ogni inserimento;
-- `container: true`: consente l'inserimento visuale nello slot predefinito;
-- `html: true`: identifica un elemento HTML.
+Edit `app/data/catalog/palette.js`. Array order is the palette order.
 
-La whitelist limita la creazione dalla palette. Un componente non elencato può ancora essere usato da un modulo ZVC o trovarsi in un documento salvato. Non aggiungere `container: true` a un componente che non espone uno slot predefinito.
+Each entry contains:
 
-Il catalogo registra i componenti Zaux comuni e condivisi del core. Per estenderlo a componenti Vue specifici del progetto, importa il loro registry in `app/services/catalog.js` e registrali anche nel plugin Zaux.
+- `name`: registered component name;
+- `props`: initial configuration for each insertion;
+- `container: true`: allows visual insertion into the default slot;
+- `html: true`: identifies an HTML element.
 
-## Riferimenti
+The whitelist limits creation from the palette. A component not listed can still be used by a ZVC module or be present in a saved document. Do not add `container: true` to a component that does not expose a default slot.
 
-Sintassi verificata rispetto a `vendor/zaux/project/components/virtual/fancysection/FancySection.zvc.js`, `core/common/helpers/zvc.helper.js` e ai campi del builder originale. Il caricamento automatico usa gli [import glob di Vite](https://vite.dev/guide/features.html#glob-import).
+The catalog registers common and shared core Zaux components. To extend it with project-specific Vue components, import their registry in `app/services/catalog.js` and register them in the Zaux plugin as well.
+
+## References
+
+Syntax was checked against `vendor/zaux/project/components/virtual/fancysection/FancySection.zvc.js`, `core/common/helpers/zvc.helper.js`, and the original builder fields. Automatic loading uses [Vite glob imports](https://vite.dev/guide/features.html#glob-import).
