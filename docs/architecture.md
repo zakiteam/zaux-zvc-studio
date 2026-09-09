@@ -56,7 +56,7 @@ Custom CSS is limited to the preview document. Property values are sanitized the
 
 ## Runtime Tailwind
 
-Static scanning cannot discover arbitrary classes typed after deployment. The small Nuxt endpoint compiles the document's authored classes with Zaux's Tailwind config, caches recent results, and passes the CSS into the iframe. Keep the application source/config alongside the production output when running this endpoint. A future standalone/static deployment needs a bundled config or external compiler.
+Static scanning cannot discover arbitrary classes typed after deployment. The small Nuxt endpoint compiles the document's authored classes with Zaux's Tailwind config, caches recent results, and passes the CSS into the iframe. The endpoint statically imports the project Tailwind configuration so Nitro can include its tokens and plugins in the server build, without loading source files relative to the process working directory at runtime. Preflight stays disabled because this endpoint emits utilities only. Static hosting still needs an external compiler. Production runtime behavior remains subject to manual verification.
 
 ## Local persistence
 
@@ -71,3 +71,17 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Native .zvc.js modules under app/zvc load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
 - Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI, asset uploads, and a browser JavaScript editor are not included. Hand-written code is maintained in project files.
+
+## Shared builder dropdown
+
+`app/components/builder/BuilderDropdown.vue` wraps the Zaux `Popover` and uses `BuilderButton` for its trigger and menu actions. Pass a translated `label` and an `items` array (`id`, `label`, optional `icon`, `disabled`, `hidden`, `active`, `danger`, `separator`, `heading`). The `select` event returns the selected item; application actions belong to the parent. An optional `header` slot adds contextual information; `align` accepts `start` or `end`. The wrapper handles arrow/Home/End navigation, Escape, Tab, outside click and focus restoration.
+
+The workspace project menu uses this control for switching projects, creating, saving, renaming and deleting. It displays the current project and persistence status, retaining the existing role restrictions and delete confirmation.
+
+## Builder header
+
+`BuilderWorkspace.vue` owns the workspace provider and panel layout. `BuilderHeader.vue` consumes that provider and owns the header UI: `#zb-top-bar` places the logo on the left and project, template and account menus on the right. The second row contains the current editing context, save status and work tools (undo, redo, styles, import and export). Template selection and management moved out of the sidebar. The account dropdown displays the signed-in email and currently exposes only logout. `BuilderDropdown` supports optional `icon` and `iconOnly` trigger props while retaining its accessible label.
+
+## Builder typography
+
+Studio UI uses the project-owned Tailwind `font-builder` family (Inter from Google Fonts, normal and italic). The Zaux `font-main` utility and `--zx-font-*` tokens remain unchanged for authored content. The project font stylesheet is loaded by `app/pages/preview.vue` only, rather than the global application head. Builder controls, login, loading UI and preview editing overlays explicitly use `font-builder`; code editors keep their monospace family. Editing Zaux typography tokens therefore does not change the Studio UI family.

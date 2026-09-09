@@ -28,3 +28,15 @@ export async function saveRemoteProject(project, document) {
   if (error) throw error;
   return data;
 }
+
+export async function renameRemoteProject(project, name) {
+  const { data, error } = await useSupabaseClient().from('projects').update({ name }).eq('id', project.id).eq('revision', project.revision).select('id, name, owner_id, revision, updated_at').maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRemoteProject(project) {
+  const { data, error } = await useSupabaseClient().from('projects').delete().eq('id', project.id).eq('revision', project.revision).select('id').maybeSingle();
+  if (error) throw error;
+  return data;
+}

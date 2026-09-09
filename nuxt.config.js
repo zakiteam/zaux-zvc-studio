@@ -18,7 +18,7 @@ export default defineNuxtConfig({
       supabasePublishableKey: process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     }
   },
-  devtools: { enabled: false },
+  devtools: { enabled: true },
   alias: {
     ...aliases,
     '@zx_core/storybook/data/_generated/attributes-hooks.json': path('./integrations/zaux/generated/attributes-hooks.json'),
@@ -33,7 +33,13 @@ export default defineNuxtConfig({
     '@domain': path('./domain'),
     '@integration': path('./integrations/zaux')
   },
-  css: ['swiper/css', 'swiper/css/grid', 'swiper/css/effect-fade', '~/assets/styles/zaux.scss', '~/assets/styles/editor.css'],
+  css: [
+    'swiper/css',
+    'swiper/css/grid',
+    'swiper/css/effect-fade',
+    '~/assets/styles/zaux.scss',
+    '~/assets/styles/editor.css'
+  ],
   postcss: { plugins: { tailwindcss: { config: path('./integrations/zaux/tailwind.config.js') } } },
   vite: {
     plugins: [AutoImport({ include: [/vendor[\\/]zaux[\\/].*\.[jt]s$/, /vendor[\\/]zaux[\\/].*\.vue/, /vendor[\\/]zaux[\\/].*\.vue\?vue/], imports: ['vue'], dts: false })],
@@ -42,5 +48,9 @@ export default defineNuxtConfig({
     resolve: { dedupe: ['vue', 'pinia'] }
   },
   nitro: { publicAssets: [{ dir: path('./vendor/zaux/public'), baseURL: '/' }] },
-  app: { head: { title: 'Zaux Studio — Virtual Component Builder', htmlAttrs: { lang: 'it' }, link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] } }
+  app: { head: { title: 'Zaux Studio — Virtual Component Builder', htmlAttrs: { lang: 'it' }, link: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap' }
+  ] } }
 });

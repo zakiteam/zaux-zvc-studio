@@ -4,6 +4,15 @@ import { validateDefinition, validateWorkspace, parseJson } from './validation.j
 export function documentEnvelope(kind, data) {
   return { format: 'zaux-builder', schemaVersion: 1, kind, exportedAt: new Date().toISOString(), data: clone(data) };
 }
+export function parseComponentDocument(text) {
+  const value = parseJson(text);
+  if (value?.format === 'zaux-builder') {
+    const payload = parseDocument(text);
+    if (payload.kind !== 'component') throw new Error('zx_builder_invalid_document');
+    return payload;
+  }
+  return { kind: 'component', data: validateDefinition(value) };
+}
 export function parseDocument(text) {
   const payload = parseJson(text);
   if (payload.format === 'zaux-builder') {

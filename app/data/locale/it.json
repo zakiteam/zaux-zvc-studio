@@ -1,6 +1,6 @@
 {
   "zx_builder_templates": "Template",
-  "zx_builder_library": "Libreria ZVC",
+  "zx_builder_library": "Libreria",
   "zx_builder_elements": "Elementi",
   "zx_builder_outline": "Struttura",
   "zx_builder_new_template": "Nuovo template",
@@ -193,5 +193,14 @@
   "zx_builder_remote_error_detail": "Dettaglio tecnico: {detail}",
   "zx_builder_remote_saving": "Salvataggio cloud",
   "zx_builder_login": "Accedi",
-  "zx_builder_project_readonly": "Questo progetto è in sola lettura."
+  "zx_builder_project_readonly": "Questo progetto è in sola lettura.",
+  "zx_builder_clear_json": "Svuota JSON",
+  "zx_builder_new_component_json": "ZVC da JSON",
+  "zx_builder_component_json_hint": "Modifica l'esempio o incolla una definizione ZVC di Studio (anche esportata come componente JSON). Aggiungi crea una nuova copia nella libreria. Per gli snapshot runtime usa il formato della definizione descritto nella documentazione.",
+  "zx_builder_rename_project": "Rinomina progetto",
+  "zx_builder_delete_project": "Elimina progetto",
+  "zx_builder_delete_project_confirm": "Eliminare il progetto \"{name}\" dal server? Verranno rimossi anche gli accessi condivisi. Questa operazione non si annulla. Il lavoro aperto resta disponibile come copia locale.",
+  "zx_builder_project_changed": "Il progetto risulta modificato, eliminato o non più accessibile. Ricarica il progetto o aggiorna la pagina prima di riprovare.",
+  "zx_builder_current_project": "Progetto corrente",
+  "zx_builder_account": "Account"
 }

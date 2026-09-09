@@ -43,7 +43,7 @@
         <details class="mt-2 border-t-slim border-zaux-light-grey pt-2">
           <summary class="cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_style_json') }}</summary>
           <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_style_json_hint') }}</p>
-          <textarea v-model="draft" rows="16" class="zb-code-input !bg-zaux-light !font-mono !text-[11px] !leading-[1.7] whitespace-pre [tab-size:2]" :aria-label="translate('zx_builder_style_json')" spellcheck="false" />
+          <BuilderCodeEditor v-model="draft" rows="16" :label="translate('zx_builder_style_json')" />
           <BuilderButton :label="translate('zx_builder_apply')" @click="applyDraft" />
         </details>
       </div>
@@ -60,9 +60,10 @@ import { getValue, clone } from '../../../domain/nodes.js';
 import { parseJson } from '../../../domain/validation.js';
 import { downloadText } from '../../services/files.js';
 import BuilderButton from './BuilderButton.vue';
+import BuilderCodeEditor from './BuilderCodeEditor.vue';
 import BuilderInput from './BuilderInput.vue';
 export default defineComponent({
-  components: { BuilderButton, BuilderInput },
+  components: { BuilderCodeEditor, BuilderButton, BuilderInput },
   props: { width: { default: 360 } },
   setup() {
     const builder = useBuilder();

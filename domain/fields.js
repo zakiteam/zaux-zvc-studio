@@ -1,6 +1,6 @@
 import { getValue } from './nodes.js';
 export function fieldInputType(field) {
-  if (['html', 'css-editor'].includes(field.type)) return 'textarea';
+  if (field.type === 'html') return 'textarea';
   if (['button', 'buttongroup', 'component'].includes(field.type)) return 'json';
   return field.type;
 }

@@ -8,7 +8,7 @@
   :where(.zb-app) :where(button:disabled, fieldset:disabled) { @apply cursor-default opacity-40; }
   :where(.zb-app) :where(button, a):focus-visible { @apply outline outline-[2px] outline-offset-2 outline-zaux-accent; }
   :where(.zb-app) :where(input:not([type=file]):not([type=checkbox]):not([type=color]), select, textarea) {
-    @apply min-w-0 w-full rounded-xxs border-slim border-zaux-light-grey bg-zaux-white px-1.5 py-1 font-main text-[12px] leading-[1.4] text-zaux-dark;
+    @apply min-w-0 w-full rounded-xxs border-slim border-zaux-light-grey bg-zaux-white px-1.5 py-1 font-builder text-[12px] leading-[1.4] text-zaux-dark;
   }
   :where(.zb-app) :where(input, select, textarea):focus { @apply outline outline-[2px] outline-zaux-accent/20 border-zaux-accent; }
   :where(.zb-app) textarea { @apply resize-y; }

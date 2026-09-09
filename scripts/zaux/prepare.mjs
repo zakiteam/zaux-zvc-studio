@@ -46,7 +46,7 @@ const tailwindPath = resolve(source, 'style/tailwind.config.js');
 const tailwind = readFileSync(tailwindPath, 'utf8').replace(/from\s+(["'])(\.[^"']+)\1/g, (match, quote, specifier) => {
   const path = specifier.includes('_local/tailwind') ? resolve(root, 'integrations/zaux/safelist.js') : resolve(dirname(tailwindPath), specifier);
   return `from ${JSON.stringify(toImport(path))}`;
-});
+}).replace(/from\s+(["'])tailwindcss\/plugin\1/g, 'from "tailwindcss/plugin.js"');
 write('tailwind.source.js', tailwind);
 const { default: loadConfig } = await import('tailwindcss/loadConfig.js');
 const { default: resolveConfig } = await import('tailwindcss/resolveConfig.js');

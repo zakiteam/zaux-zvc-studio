@@ -193,5 +193,14 @@
   "zx_builder_remote_error_detail": "Technical detail: {detail}",
   "zx_builder_remote_saving": "Saving to cloud",
   "zx_builder_login": "Sign in",
-  "zx_builder_project_readonly": "This project is read-only."
+  "zx_builder_project_readonly": "This project is read-only.",
+  "zx_builder_clear_json": "Clear JSON",
+  "zx_builder_new_component_json": "ZVC from JSON",
+  "zx_builder_component_json_hint": "Edit the example or paste a Studio ZVC definition (including an exported component JSON envelope). Add creates a new library copy. For runtime snapshots, use the definition format described in the documentation.",
+  "zx_builder_rename_project": "Rename project",
+  "zx_builder_delete_project": "Delete project",
+  "zx_builder_delete_project_confirm": "Delete project \"{name}\" from the server? Shared access will also be removed. This cannot be undone. The open workspace remains available as a local copy.",
+  "zx_builder_project_changed": "The project has changed, was deleted or is no longer accessible. Reload the project or refresh the page before trying again.",
+  "zx_builder_current_project": "Current project",
+  "zx_builder_account": "Account"
 }

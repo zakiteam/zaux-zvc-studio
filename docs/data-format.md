@@ -78,3 +78,9 @@ The component export dialog offers JSON Zaux for a runtime snapshot, alongside e
 - No functions, eval or executable expressions inside JSON.
 - Empty strings, false and zero are valid values.
 - Changing this format requires a versioned migration, not a silent reset.
+
+## Add a ZVC from JSON
+
+In the Library, **ZVC from JSON** opens an editable definition example. Paste either a complete Studio definition (`id`, `name`, `exportName`, `fields`, `tree`, `css`) or a version 1 component envelope. The definition is validated before insertion; imports create independent IDs and copies through the standard library import path. Workspace/template envelopes and runtime snapshots are not accepted by this component-only action. Invalid drafts remain in the dialog for correction.
+
+CodeMirror provides the shared JSON, CSS and JavaScript editor, including read-only export snippets. `BuilderCodeEditor` accepts `modelValue`, `language`, `label`, `rows`, `readonly` and `disabled`; it emits draft updates and commits on blur. JSON edits still use the existing parse/apply flow. Clear JSON writes `{}` for objects, `[]` for arrays and `null` for scalar JSON values; advanced node properties clear to `{}`. CSS fields use the CSS language mode.
