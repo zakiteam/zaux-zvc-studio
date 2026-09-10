@@ -1,7 +1,7 @@
 <template>
   <div class="zb-canvas-area flex min-h-0 flex-1 flex-col items-center overflow-auto bg-zaux-light px-4 pb-4 pt-2 max-[1200px]:p-2">
-    <div class="zb-canvas-ruler h-[22px] w-full shrink-0 text-center [&>span]:font-mono [&>span]:text-[9px] [&>span]:tracking-[1px] [&>span]:text-zaux-dark-grey"><span>{{ viewport === 'desktop' ? 'AUTO' : viewport === 'tablet' ? '768 PX' : '390 PX' }}</span></div>
-    <div class="zb-preview-frame min-h-[450px] w-full flex-1 overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep transition-[width] [&.zb-preview-frame--tablet]:box-content [&.zb-preview-frame--tablet]:w-[768px] [&.zb-preview-frame--tablet]:shrink-0 [&.zb-preview-frame--mobile]:box-content [&.zb-preview-frame--mobile]:w-[390px] [&.zb-preview-frame--mobile]:shrink-0 [&>iframe]:block [&>iframe]:h-full [&>iframe]:min-h-[450px] [&>iframe]:w-full [&>iframe]:border-none [&>iframe]:bg-zaux-white" :class="`zb-preview-frame--${viewport}`">
+    <div class="zb-canvas-ruler h-[22px] w-full shrink-0 text-center [&>span]:font-mono [&>span]:text-[9px] [&>span]:tracking-[1px] [&>span]:text-zaux-dark-grey"><span>{{ viewportLabel }}</span></div>
+    <div class="zb-preview-frame min-h-[450px] w-full flex-1 overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep transition-[width] [&>iframe]:block [&>iframe]:h-full [&>iframe]:min-h-[450px] [&>iframe]:w-full [&>iframe]:border-none [&>iframe]:bg-zaux-white" :style="viewportWidth === null ? {} : { width: `${viewportWidth}px`, minWidth: `${viewportWidth}px`, boxSizing: 'content-box', alignSelf: 'flex-start', marginInline: 'auto' }">
       <iframe ref="frame" src="/preview" :title="translate('zx_builder_preview_title')" @load="sendState" />
     </div>
   </div>

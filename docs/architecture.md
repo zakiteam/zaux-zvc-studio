@@ -56,7 +56,7 @@ Custom CSS is limited to the preview document. Property values are sanitized the
 
 ## Runtime Tailwind
 
-Static scanning cannot discover arbitrary classes typed after deployment. The small Nuxt endpoint compiles the document's authored classes with Zaux's Tailwind config, caches recent results, and passes the CSS into the iframe. The endpoint statically imports the project Tailwind configuration so Nitro can include its tokens and plugins in the server build, without loading source files relative to the process working directory at runtime. Preflight stays disabled because this endpoint emits utilities only. Static hosting still needs an external compiler. Production runtime behavior remains subject to manual verification.
+Static scanning cannot discover arbitrary classes typed after deployment. The small Nuxt endpoint compiles the document's authored classes with Zaux's Tailwind config, caches recent results, and passes the CSS into the iframe. The endpoint statically imports the project Tailwind configuration so Nitro can include its tokens and plugins in the server build, without loading source files relative to the process working directory at runtime. Nitro explicitly inlines imported modules under `integrations/zaux/` and `vendor/zaux/` in development and production, preventing local Tailwind dependencies from becoming external imports with incorrect Windows paths in the dev bundle. This only bundles modules reached by server imports; it does not modify the submodule. Preflight stays disabled because this endpoint emits utilities only. Static hosting still needs an external compiler. Development and production runtime behavior remain subject to manual verification.
 
 ## Local persistence
 
@@ -85,3 +85,9 @@ The workspace project menu uses this control for switching projects, creating, s
 ## Builder typography
 
 Studio UI uses the project-owned Tailwind `font-builder` family (Inter from Google Fonts, normal and italic). The Zaux `font-main` utility and `--zx-font-*` tokens remain unchanged for authored content. The project font stylesheet is loaded by `app/pages/preview.vue` only, rather than the global application head. Builder controls, login, loading UI and preview editing overlays explicitly use `font-builder`; code editors keep their monospace family. Editing Zaux typography tokens therefore does not change the Studio UI family.
+
+## Property inspector descriptors
+
+`integrations/zaux/property-descriptors.js` combines Vue prop descriptors with selected upstream metadata and builder definitions. Size and theme options for Zsection, IntroText and ZButton come from their metadata. Paragraph and Separator lack option arrays; the adapter supplies small lists traced to their Vue templates and styles. Zimg and HTML nodes retain inferred controls. Extend this adapter when adding component-specific controls; keep the inspector independent of component names.
+
+`app/services/catalog.js` exposes the merged descriptors. `domain/properties.js` chooses fallback editors from the actual JSON value and descriptor, preserving value types. `BuilderProperty` renders enumerated values as selects with a custom-value editor and retains field bindings. Selecting custom mode does not mutate the property; unlisted existing values remain editable. Descriptors stay outside persisted workspace data. Runtime behavior is pending manual browser verification; no tests or builds were run.

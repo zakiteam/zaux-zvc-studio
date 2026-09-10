@@ -1,5 +1,26 @@
-import { clone, isBinding, runtimeRoot } from './nodes.js';
+import { clone, createNode, isBinding, runtimeRoot } from './nodes.js';
 import { validateDefinition, validateWorkspace, parseJson } from './validation.js';
+import { createDefinition } from './workspace.js';
+
+const isNodeDocument = value => value && typeof value === 'object' && !Array.isArray(value)
+  && Object.hasOwn(value, 'props') && !Object.hasOwn(value, 'tree') && !Object.hasOwn(value, 'schemaVersion');
+
+function definitionFromNode(value) {
+  let count = 0;
+  function node(input, depth = 0) {
+    if (!input || typeof input !== 'object' || Array.isArray(input) || depth >= 30 || ++count > 2000
+      || typeof input.name !== 'string' || !input.name.trim()
+      || !input.props || typeof input.props !== 'object' || Array.isArray(input.props)
+      || (input.children !== undefined && !Array.isArray(input.children))) {
+      throw new Error('zx_builder_invalid_document');
+    }
+    return createNode(input.name, input.props, (input.children ?? []).map(child => node(child, depth + 1)));
+  }
+  const root = node(value);
+  const definition = createDefinition(root.name);
+  definition.tree = [root];
+  return validateDefinition(definition);
+}
 
 export function documentEnvelope(kind, data) {
   return { format: 'zaux-builder', schemaVersion: 1, kind, exportedAt: new Date().toISOString(), data: clone(data) };
@@ -11,11 +32,11 @@ export function parseComponentDocument(text) {
     if (payload.kind !== 'component') throw new Error('zx_builder_invalid_document');
     return payload;
   }
-  return { kind: 'component', data: validateDefinition(value) };
+  return { kind: 'component', data: isNodeDocument(value) ? definitionFromNode(value) : validateDefinition(value) };
 }
 export function parseDocument(text) {
   const payload = parseJson(text);
-  if (payload.format === 'zaux-builder') {
+  if (payload?.format === 'zaux-builder') {
     if (payload.schemaVersion !== 1) throw new Error('zx_builder_unsupported_version');
     if (payload.kind === 'workspace') return { kind: payload.kind, data: validateWorkspace(payload.data) };
     if (payload.kind === 'component') return { kind: payload.kind, data: validateDefinition(payload.data) };
@@ -25,6 +46,7 @@ export function parseDocument(text) {
     }
     throw new Error('zx_builder_invalid_document');
   }
+  if (isNodeDocument(payload)) return { kind: 'component', data: definitionFromNode(payload) };
   return { kind: 'workspace', data: validateWorkspace(payload) };
 }
 

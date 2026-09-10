@@ -47,7 +47,11 @@ export default defineNuxtConfig({
     vue: { template: { compilerOptions: { isCustomElement: tag => tag.startsWith('swiper-') } } },
     resolve: { dedupe: ['vue', 'pinia'] }
   },
-  nitro: { publicAssets: [{ dir: path('./vendor/zaux/public'), baseURL: '/' }] },
+  nitro: {
+    // Bundle local Tailwind config, tokens and plugins in dev as well as production.
+    externals: { inline: [path('./integrations/zaux/'), path('./vendor/zaux/')] },
+    publicAssets: [{ dir: path('./vendor/zaux/public'), baseURL: '/' }]
+  },
   app: { head: { title: 'Zaux Studio — Virtual Component Builder', htmlAttrs: { lang: 'it' }, link: [
     { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
     { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },

@@ -2,6 +2,7 @@ import * as shared from '@integration/generated/core-shared.js';
 import * as common from '@integration/generated/core-common.js';
 import { createNode, clone } from '../../domain/nodes.js';
 import palette from '../data/catalog/palette.js';
+import { propertyDescriptors } from '../../integrations/zaux/property-descriptors.js';
 
 const registry = { ...shared, ...common };
 export const containers = palette.filter(entry => entry.container).map(entry => entry.name);
@@ -18,5 +19,5 @@ export function catalogNode(name) {
 }
 export function propertyInfo(name) {
   // Existing/sourced components remain editable even when absent from the palette.
-  return registry[name]?.props ?? { textContent: { default: '' } };
+  return propertyDescriptors(name, registry[name]?.props ?? { textContent: { default: '' } });
 }
