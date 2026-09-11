@@ -71,7 +71,17 @@
 							mode === "library" ? activeDefinition?.name : activeTemplate.name
 						}}</strong>
 					</div>
-					<div class="flex min-w-0 gap-0.5 items-stretch">
+					<div class="flex items-stretch min-w-0 gap-1">
+						<BuilderInput
+							type="select"
+							v-model="viewportMode"
+							:label="translate('zx_builder_viewport_mode')"
+							:options="[
+								{ value: 'simple', label: translate('zx_builder_viewport_simple') },
+								{ value: 'zaux', label: translate('zx_builder_viewport_zaux') },
+							]"
+							class="min-w-0 text-[10px] h-full [&_*]:h-full"
+						/>
 						<div
 							v-if="viewportMode === 'simple'"
 							class="zb-device-switch flex rounded-xs border-slim border-zaux-light-grey bg-zaux-light p-0.5 [&>button]:rounded-xxs [&>button]:px-1.5 [&>button]:py-0.5 [&>button]:text-[10px] [&>button]:text-zaux-dark-grey [&>button.active]:bg-zaux-white [&>button.active]:text-zaux-accent [&>button.active]:shadow-closer max-[1200px]:[&>button]:px-1"
@@ -95,16 +105,6 @@
 							:options="viewportOptions"
 							:label="translate('zx_builder_viewport')"
 							class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
-						/>
-            <BuilderInput
-							type="select"
-							v-model="viewportMode"
-							:label="translate('zx_builder_viewport_mode')"
-							:options="[
-								{ value: 'simple', label: translate('zx_builder_viewport_simple') },
-								{ value: 'zaux', label: translate('zx_builder_viewport_zaux') },
-							]"
-							class="min-w-0 text-[10px] h-full [&_*]:h-full"
 						/>
 					</div>
 					<BuilderButton
@@ -181,7 +181,7 @@ export default defineComponent({
 	},
 	setup() {
 		const builder = createBuilder();
-		const leftWidth = ref(254);
+		const leftWidth = ref(400);
 		const rightWidth = ref(600);
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;

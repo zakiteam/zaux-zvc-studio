@@ -12,7 +12,8 @@
 		<template #trigger>
 			<div ref="trigger" @keydown="triggerKeydown" @keyup.stop>
 				<BuilderButton
-					:theme="btnTheme ?? 'primary'"
+					:size="btnSize ?? 's'"
+					:variant="btnTheme ?? 'primary'"
 					:label="label"
 					:title="label"
 					:icon="icon"
@@ -22,6 +23,7 @@
 					aria-haspopup="menu"
 					:aria-controls="menuId"
 					class="!max-w-[220px] max-[600px]:!max-w-[145px] [&_*]:truncate"
+					v-bind="extraTriggerProps"
 				/>
 			</div>
 		</template>
@@ -31,7 +33,7 @@
 				ref="menu"
 				role="menu"
 				:aria-label="label"
-				class="mt-1 w-[280px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark shadow-deeper"
+				class="mt-1 w-[280px] pb-2 max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark shadow-deeper"
 				@keydown="menuKeydown"
 				@keyup.stop
 				@focusout="focusOut"
@@ -39,11 +41,11 @@
 				<div
 					v-if="$slots.header"
 					role="presentation"
-					class="border-b-slim border-zaux-light-grey px-2.5 py-2"
+					class="px-2 py-2 mb-2 border-b-slim border-zaux-light-grey"
 				>
 					<slot name="header" />
 				</div>
-				<div class="max-h-[min(60dvh,420px)] overflow-y-auto p-1">
+				<div class="max-h-[min(60dvh,420px)] overflow-y-auto px-2 flex flex-col gap-1">
 					<template v-for="item in visibleItems" :key="item.id">
 						<div
 							v-if="item.separator"
@@ -53,26 +55,32 @@
 						<p
 							v-if="item.heading"
 							role="presentation"
-							class="px-1.5 pb-1 pt-1.5 text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey"
+							class="px-0 pb-1 pt-1.5 text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey"
 						>
 							{{ item.heading }}
 						</p>
 						<BuilderButton
 							role="menuitem"
+							variant="alt1"
 							tabindex="-1"
 							:label="item.label"
 							:title="item.label"
 							:icon="item.icon"
+							:extraProps="{
+								inheritedUIFlags : {
+									'HOVER' : item.active
+								}
+							}"
 							:disabled="disabled || item.disabled"
 							:aria-current="item.active ? 'true' : undefined"
-							class="!flex !w-full !justify-start !whitespace-normal !text-left [&_*]:!text-left hover:!bg-zaux-light focus:!bg-zaux-light"
-							:class="{
-								'[&.zb-button]:!bg-zaux-accent/10 [&.zb-button]:!text-zaux-accent':
-									item.active,
-								'[&.zb-button]:!text-utility-error': item.danger,
-							}"
+							class="!flex !w-full !justify-start !whitespace-normal"
+							:class="[
+								//item.active && 'pl-1 before:!h-full before:inline-block before:!w-2 before:!bg-zaux-accent',
+								item.danger && '[&.zb-button]:!text-utility-error',
+								item?.class
+							]"
 							@click="select(item)"
-              :theme="btnTheme"
+              				:theme="btnTheme"
 						/>
 					</template>
 				</div>
@@ -86,13 +94,15 @@ import BuilderButton from "./BuilderButton.vue";
 export default defineComponent({
 	components: { BuilderButton },
 	props: {
-    btnTheme : { default : 'secondary' },
-    label: { type: String, required: true },
+		btnTheme : { default : 'secondary' },
+		label: { type: String, required: true },
 		icon: { type: String, default: "dropdown-bottom" },
 		iconOnly: Boolean,
 		items: { type: Array, default: () => [] },
 		disabled: Boolean,
 		align: { default: "start" },
+		extraTriggerProps : { default : null },
+		btnSize : { default : 's' }
 	},
 	emits: ["select"],
 	setup(props, { emit }) {
