@@ -15,7 +15,10 @@ import { useAuth } from './useAuth.js';
 
 const key = Symbol('zaux-builder');
 export function useBuilder() { return inject(key); }
-export function createBuilder() {
+export function createBuilder({ projectId = null } = {}) {
+  const storageKey = projectId ? STORAGE_KEY + ':project:' + projectId : STORAGE_KEY;
+  const workspaceReady = ref(false);
+  let disposed = false;
   const i18n = useTranslation();
   const document = ref(createWorkspace());
   const mode = ref('template');
@@ -74,7 +77,7 @@ export function createBuilder() {
   function flushSave() {
     clearTimeout(timer);
     if (!pendingSave || recovery.value !== null || incoming.value) return;
-    try { saveWorkspace(document.value); pendingSave = false; saveStatus.value = 'saved'; }
+    try { saveWorkspace(document.value, storageKey); pendingSave = false; saveStatus.value = 'saved'; }
     catch { saveStatus.value = 'storage_error'; }
   }
   function setRemoteError(exception) {
@@ -84,9 +87,13 @@ export function createBuilder() {
     error.value = 'zx_builder_remote_error';
   }
   async function refreshRemoteProjects() {
-    if (!auth.user.value) return;
-    try { remoteProjects.value = await listRemoteProjects(auth.user.value.id); }
-    catch { error.value = 'zx_builder_remote_error'; }
+    if (!auth.user.value) return false;
+    try {
+      const projects = await listRemoteProjects(auth.user.value.id);
+      if (disposed) return false;
+      remoteProjects.value = projects;
+      return true;
+    } catch { error.value = 'zx_builder_hub_load_error'; return false; }
   }
   function applyRemoteProject(project) {
     const workspace = validateWorkspace(project.document);
@@ -94,16 +101,44 @@ export function createBuilder() {
     selectTemplate(document.value.templates[0].id); libraryId.value = document.value.library[0]?.id; nodeId.value = null;
     activeRemoteProject.value = { id: project.id, name: project.name, owner_id: project.owner_id, revision: project.revision, updated_at: project.updated_at, role: project.role ?? 'viewer' };
     remoteConflict.value = false; pendingRemoteSave = false; remoteSaveStatus.value = 'saved';
-    saveWorkspace(document.value);
+    clearTimeout(timer); clearTimeout(remoteTimer); pendingSave = false;
+    undoStack.value = []; redoStack.value = [];
+    if (recovery.value === null) {
+      try { saveWorkspace(document.value, storageKey); saveStatus.value = 'saved'; }
+      catch { saveStatus.value = 'storage_error'; }
+    }
   }
   async function openRemoteProject(id) {
-    if (remoteProjectBusy.value) return;
+    if (remoteProjectBusy.value) return false;
+    remoteProjectBusy.value = true;
     try {
-      await flushRemoteSave();
-      const project = await getRemoteProject(id); const listed = remoteProjects.value.find(item => item.id === project.id); applyRemoteProject({ ...project, role: listed?.role });
-      const index = remoteProjects.value.findIndex(item => item.id === project.id);
-      if (index >= 0) remoteProjects.value[index] = { ...remoteProjects.value[index], ...activeRemoteProject.value };
-    } catch { error.value = 'zx_builder_remote_error'; }
+      await flushRemoteSave(false, true);
+      if (id !== activeRemoteProject.value?.id && (remoteSaveStatus.value === 'error' || remoteConflict.value)) return false;
+      const listed = remoteProjects.value.find(item => item.id === id);
+      if (!listed) { error.value = 'zx_builder_hub_project_unavailable'; return false; }
+      const project = await getRemoteProject(id);
+      if (disposed) return false;
+      applyRemoteProject({ ...project, role: listed.role });
+      remoteProjects.value = remoteProjects.value.map(item => item.id === id ? { ...item, ...activeRemoteProject.value } : item);
+      error.value = '';
+      return true;
+    } catch (exception) {
+      setRemoteError(exception);
+      error.value = 'zx_builder_hub_project_unavailable';
+      return false;
+    } finally { remoteProjectBusy.value = false; }
+  }
+  async function prepareToLeave() {
+    if (!workspaceReady.value) return true;
+    if (remoteProjectBusy.value) return false;
+    flushSave();
+    await flushRemoteSave();
+    if (pendingRemoteSave && !remoteConflict.value && remoteSaveStatus.value !== 'error') await flushRemoteSave();
+    const saved = activeRemoteProject.value
+      ? !remoteConflict.value && remoteSaveStatus.value !== 'error' && !pendingRemoteSave
+      : saveStatus.value !== 'storage_error' && !pendingSave;
+    if (!saved) error.value ||= 'zx_builder_hub_leave_error';
+    return saved;
   }
   async function createRemoteProject(name) {
     if (!auth.user.value || remoteProjectBusy.value) return false;
@@ -162,6 +197,9 @@ export function createBuilder() {
       } else {
         clearTimeout(remoteTimer); pendingRemoteSave = false;
         remoteProjects.value = remoteProjects.value.filter(item => item.id !== id);
+        // Keep the open document available through the local editor after deletion.
+        try { saveWorkspace(document.value); }
+        catch { saveStatus.value = 'storage_error'; }
         activeRemoteProject.value = null; remoteConflict.value = false; remoteSaveStatus.value = 'local';
       }
       error.value = ''; remoteErrorDetail.value = '';
@@ -385,7 +423,7 @@ export function createBuilder() {
     incoming.value = null; scheduleSave();
   }
   function storageChanged(event) {
-    if (event.key !== STORAGE_KEY || !event.newValue || event.newValue === JSON.stringify(document.value)) return;
+    if (event.key !== storageKey || !event.newValue || event.newValue === JSON.stringify(document.value)) return;
     try { incoming.value = validateWorkspace(parseJson(event.newValue)); clearTimeout(timer); } catch { error.value = 'zx_builder_invalid_document'; }
   }
   function hotkey(event) {
@@ -394,19 +432,24 @@ export function createBuilder() {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); flushSave(); }
     if (event.key === 'Escape') { nodeId.value = null; previewOnly.value = false; }
   }
-  onMounted(() => {
-    const loaded = loadWorkspace();
+  onMounted(async () => {
+    const loaded = loadWorkspace(storageKey);
     if (loaded.data) { document.value = loaded.data; selectTemplate(document.value.templates[0].id); libraryId.value = document.value.library[0]?.id; }
     ensureStyles();
     watch(() => document.value.styles, value => styleBridge.apply(value), { immediate: true, deep: true });
     try { mergeSourceLibrary(document.value); refreshSourceSnapshots(document.value); validateWorkspace(document.value); } catch (exception) { error.value = exception.message; }
     if (loaded.error) { recovery.value = loaded.raw ?? ''; saveStatus.value = 'storage_error'; }
-    refreshRemoteProjects();
     try { i18n.setLanguage(localStorage.getItem('zx_builder_language') ?? 'it'); } catch { /* No preference when storage is unavailable. */ }
     window.addEventListener('beforeunload', flushSave); window.addEventListener('storage', storageChanged); window.addEventListener('keydown', hotkey);
+    if (projectId) {
+      if (await refreshRemoteProjects() && !disposed) workspaceReady.value = await openRemoteProject(projectId);
+    } else {
+      workspaceReady.value = true;
+      refreshRemoteProjects();
+    }
   });
-  onBeforeUnmount(() => { styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { ...i18n, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, dropElement, deleteNode, duplicateNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
+  const api = { ...i18n, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, dropElement, deleteNode, duplicateNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

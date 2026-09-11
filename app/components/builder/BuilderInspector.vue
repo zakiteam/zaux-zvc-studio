@@ -30,7 +30,7 @@
 			role="tablist"
 		>
 			<button
-				v-for="tab in ['properties', 'data', 'fields', 'code']"
+				v-for="tab in ['properties', 'style', 'data', 'fields', 'code']"
 				:key="tab"
 				role="tab"
 				:aria-selected="inspectorTab === tab"
@@ -136,28 +136,6 @@
 									@change="addProperty"
 								/>
 							</div>
-							<div
-								class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
-							>
-								<label>{{ translate("zx_builder_classes") }}</label
-								><BuilderValue
-									:modelValue="selectedNode.props.class ?? ''"
-									label="CSS class"
-									:type="
-										Array.isArray(selectedNode.props.class) ? 'json' : 'text'
-									"
-									@update:modelValue="setProperty('class', $event)"
-								/>
-							</div>
-							<details>
-								<summary>{{ translate("zx_builder_styles") }}</summary>
-								<BuilderValue
-									:modelValue="selectedNode.props.style ?? {}"
-									label="CSS style"
-									type="json"
-									@update:modelValue="setProperty('style', $event)"
-								/>
-							</details>
 							<details>
 								<summary>{{ translate("zx_builder_advanced") }}</summary>
 								<BuilderCodeEditor
@@ -210,6 +188,41 @@
 								"
 							/>
 						</div>
+					</template>
+					<template v-else-if="inspectorTab === 'style'">
+						<template v-if="selectedNode && !isSource">
+							<p class="mb-2 text-[12px] font-semibold">{{ selectedNode.name }}</p>
+							<BuilderNodeStyles
+								:modelValue="selectedNode.props.class"
+								:disabled="!canEditRemote"
+								@update:modelValue="setProperty('class', $event)"
+							/>
+							<div
+								class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
+							>
+								<label>{{ translate("zx_builder_classes") }}</label
+								><BuilderValue
+									:modelValue="selectedNode.props.class ?? ''"
+									label="CSS class"
+									:type="
+										Array.isArray(selectedNode.props.class) ? 'json' : 'text'
+									"
+									@update:modelValue="setProperty('class', $event)"
+								/>
+							</div>
+							<details>
+								<summary>{{ translate("zx_builder_styles") }}</summary>
+								<BuilderValue
+									:modelValue="selectedNode.props.style ?? {}"
+									label="CSS style"
+									type="json"
+									@update:modelValue="setProperty('style', $event)"
+								/>
+							</details>
+						</template>
+						<p v-else-if="!isSource" class="py-4 text-center text-[12px] text-zaux-dark-grey">
+							{{ translate('zx_builder_select_hint') }}
+						</p>
 					</template>
 					<template v-else-if="inspectorTab === 'data'">
 						<p
@@ -381,8 +394,10 @@ import BuilderValue from "./BuilderValue.vue";
 import BuilderFields from "./BuilderFields.vue";
 import BuilderSourceInfo from "./BuilderSourceInfo.vue";
 import BuilderInput from "./BuilderInput.vue";
+import BuilderNodeStyles from "./BuilderNodeStyles.vue";
 export default defineComponent({
 	components: {
+		BuilderNodeStyles,
 		BuilderCodeEditor,
 		BuilderButton,
 		BuilderProperty,

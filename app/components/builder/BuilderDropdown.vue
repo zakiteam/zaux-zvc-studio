@@ -15,6 +15,7 @@
 					:size="btnSize ?? 's'"
 					:variant="btnTheme ?? 'primary'"
 					:label="label"
+					:swatch="swatch"
 					:title="label"
 					:icon="icon"
 					:iconOnly="iconOnly"
@@ -22,7 +23,7 @@
 					:aria-expanded="open"
 					aria-haspopup="menu"
 					:aria-controls="menuId"
-					class="!max-w-[220px] max-[600px]:!max-w-[145px] [&_*]:truncate"
+					class="[&_*]:truncate"
 					v-bind="extraTriggerProps"
 				/>
 			</div>
@@ -64,6 +65,7 @@
 							variant="alt1"
 							tabindex="-1"
 							:label="item.label"
+							:swatch="item.swatch"
 							:title="item.label"
 							:icon="item.icon"
 							:extraProps="{
@@ -98,6 +100,7 @@ export default defineComponent({
 		label: { type: String, required: true },
 		icon: { type: String, default: "dropdown-bottom" },
 		iconOnly: Boolean,
+		swatch: String,
 		items: { type: Array, default: () => [] },
 		disabled: Boolean,
 		align: { default: "start" },

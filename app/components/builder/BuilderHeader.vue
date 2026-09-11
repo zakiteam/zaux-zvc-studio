@@ -4,14 +4,14 @@
 			id="zb-top-bar"
 			class="flex min-h-[60px] flex-wrap items-center justify-between gap-2 border-b-slim bg-zaux-dark border-zaux-light-grey px-3 py-2 max-[600px]:px-1.5"
 		>
-			<a
-				href="/"
+			<NuxtLink
+				to="/"
 				class="flex items-center gap-2 shrink-0 ext-set1-white"
 				aria-label="Zaux Studio"
 			>
 				<img class="w-4" :src="studioLogo" alt="" />
 				<span class="font-bold uppercase text-eyelet-s text-set1-white">Zaux studio</span>
-			</a>
+			</NuxtLink>
 
 			<div class="flex flex-wrap items-center justify-end gap-1 ml-auto">
 				<BuilderDropdown
@@ -146,7 +146,8 @@
 </template>
 <script>
 import studioLogo from "../../assets/images/logo-studio.svg?url";
-import { defineComponent, computed, ref } from "vue";
+import { defineComponent, computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { useAuth } from "../../composables/useAuth.js";
 import BuilderButton from "./BuilderButton.vue";
@@ -156,12 +157,20 @@ export default defineComponent({
 	components: { BuilderButton, BuilderDropdown },
 	setup() {
 		const builder = useBuilder();
+		const router = useRouter();
+		const route = useRoute();
+		// Creating or deleting from the editor changes its project identity.
+		watch(() => builder.activeRemoteProject.value?.id, id => {
+			const path = '/editor/' + (id ?? 'local');
+			if (route.path !== path) router.replace(path);
+		});
 		const auth = useAuth();
 		const projectOpening = ref(false);
 		const projectMenuItems = computed(() => {
 			const project = builder.activeRemoteProject.value;
 			const t = builder.translate;
 			return [
+				{ id: 'hub', label: t('zx_builder_hub_back'), icon: 'arrow-up-right' },
 				...builder.remoteProjects.value.map((item, index) => ({
 					id: "open:" + item.id,
 					projectId: item.id,
@@ -200,11 +209,15 @@ export default defineComponent({
 		});
 		async function projectAction(item) {
 			if (builder.remoteProjectBusy.value || projectOpening.value) return;
+			if (item.id === 'hub') {
+				await router.push('/');
+				return;
+			}
 			if (item.projectId) {
 				if (item.projectId === builder.activeRemoteProject.value?.id) return;
 				projectOpening.value = true;
 				try {
-					await builder.openRemoteProject(item.projectId);
+					await router.push('/editor/' + item.projectId);
 				} finally {
 					projectOpening.value = false;
 				}
@@ -282,8 +295,11 @@ export default defineComponent({
 				icon: "close",
 			},
 		]);
-		function accountAction(item) {
-			if (item.id === "logout") auth.signOut();
+		async function accountAction(item) {
+			if (item.id === "logout" && await builder.prepareToLeave()) {
+				await auth.signOut();
+				await router.push('/');
+			}
 		}
 		return {
 			studioLogo,

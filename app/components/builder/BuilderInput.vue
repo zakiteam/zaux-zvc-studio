@@ -1,6 +1,6 @@
 <template>
 	<select
-		class="px-2 py-1"
+		class="px-2 py-1 border-none bg-zaux-light"
 		v-if="type === 'select'"
 		:id="id"
 		:value="modelValue"
@@ -17,7 +17,7 @@
 		</option>
 	</select>
 	<input
-		class="px-2 py-1"
+		class="px-2 py-1 border-none bg-zaux-light"
 		v-else
 		:id="id"
 		:value="modelValue ?? ''"

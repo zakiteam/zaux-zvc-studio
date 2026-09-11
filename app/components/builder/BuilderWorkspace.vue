@@ -1,5 +1,6 @@
 <template>
 	<div
+		v-if="workspaceReady"
 		class="zb-app flex h-dvh flex-col overflow-hidden bg-zaux-light font-builder text-[13px] text-zaux-dark max-[900px]:h-auto max-[900px]:min-h-dvh max-[900px]:overflow-auto"
 		:class="{ 'zb-app--preview': previewOnly }"
 	>
@@ -153,9 +154,16 @@
 		</div>
 		<BuilderDialog v-if="modal" />
 	</div>
+  <main v-else class="grid min-h-dvh place-items-center bg-zaux-light p-4 font-builder text-zaux-dark">
+    <div class="text-center">
+      <p :role="error ? 'alert' : 'status'">{{ translate(error || 'zx_builder_loading') }}</p>
+      <NuxtLink to="/" class="mt-2 inline-block text-zaux-accent underline">{{ translate('zx_builder_hub_back') }}</NuxtLink>
+    </div>
+  </main>
 </template>
 <script>
 import { defineComponent, ref } from "vue";
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 import { createBuilder } from "../../composables/useBuilder.js";
 import { downloadText } from "../../services/files.js";
 import BuilderButton from "./BuilderButton.vue";
@@ -179,8 +187,11 @@ export default defineComponent({
 		BuilderResizeHandle,
 		BuilderHeader,
 	},
-	setup() {
-		const builder = createBuilder();
+	props: { projectId: { type: String, default: null } },
+	setup(props) {
+		const builder = createBuilder({ projectId: props.projectId });
+		onBeforeRouteLeave(builder.prepareToLeave);
+		onBeforeRouteUpdate(builder.prepareToLeave);
 		const leftWidth = ref(400);
 		const rightWidth = ref(600);
 		function resizePanel(side, delta) {
