@@ -8,6 +8,7 @@
       </div>
       <BuilderButton :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
     </header>
+    <BuilderInput v-model="search" type="search" :label="translate('zx_builder_hub_search')" :placeholder="translate('zx_builder_hub_search')" class="w-full mb-3 bg-zaux-white" />
     <p v-if="error" role="alert" class="p-2 mb-3 rounded-xs bg-utility-error/10 text-utility-error">{{ translate(error) }}</p>
     <p v-if="loading" role="status" class="py-6 text-zaux-dark-grey">{{ translate('zx_builder_loading') }}</p>
     <div v-else-if="!projects.length && !error" class="p-6 text-center rounded-s border-slim border-zaux-light-grey bg-zaux-white">
@@ -15,8 +16,9 @@
       <p class="mb-3 text-zaux-dark-grey">{{ translate('zx_builder_hub_empty_hint') }}</p>
       <NuxtLink to="/editor/local" class="underline text-zaux-accent">{{ translate('zx_builder_hub_local') }}</NuxtLink>
     </div>
+    <p v-else-if="projects.length && !filteredProjects.length" role="status" class="py-6 text-zaux-dark-grey">{{ translate('zx_builder_hub_empty_search') }}</p>
     <div v-else class="grid grid-cols-1 gap-3 min-[800px]:grid-cols-2 min-[1300px]:grid-cols-3">
-      <article v-for="project in projects" :key="project.id" class="flex flex-col min-w-0 p-3 rounded-s border-slim border-zaux-light-grey bg-zaux-white">
+      <article v-for="project in filteredProjects" :key="project.id" class="flex flex-col min-w-0 p-3 rounded-s bg-zaux-white">
         <NuxtLink :to="'/editor/' + project.id" class="flex-1 block mb-3 rounded-xxs focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent">
           <div class="mb-3 flex h-[100px] items-center justify-center rounded-xs bg-zaux-light" aria-hidden="true">
             <img :src="studioLogo" alt="" class="h-[40px] w-[40px] opacity-60" />
@@ -38,21 +40,29 @@
   </div>
 </template>
 <script>
-import { defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import { listRemoteProjects, renameRemoteProject, deleteRemoteProject } from '../services/projects.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import BuilderButton from '../components/builder/BuilderButton.vue';
+import BuilderInput from '../components/builder/BuilderInput.vue';
 import ProjectActionDialog from '../components/studio/ProjectActionDialog.vue';
 
 definePageMeta({ layout: 'hub' });
 export default defineComponent({
-  components: { BuilderButton, ProjectActionDialog },
+  components: { BuilderButton, BuilderInput, ProjectActionDialog },
   setup() {
     const { user } = useAuth();
     const { translate, language } = useTranslation();
     const projects = ref([]);
+    const search = ref('');
+    const filteredProjects = computed(() => {
+      const query = search.value.trim().toLocaleLowerCase(language.value);
+      return query
+        ? projects.value.filter(project => (project.name ?? '').toLocaleLowerCase(language.value).includes(query))
+        : projects.value;
+    });
     const loading = ref(true);
     const error = ref('');
     const action = ref(null);
@@ -103,7 +113,7 @@ export default defineComponent({
     }
     onMounted(loadProjects);
     onBeforeUnmount(() => { disposed = true; });
-    return { studioLogo, translate, projects, loading, error, action, actionError, busy, loadProjects, openAction, submitAction, formatDate };
+    return { studioLogo, translate, projects, search, filteredProjects, loading, error, action, actionError, busy, loadProjects, openAction, submitAction, formatDate };
   }
 });
 </script>

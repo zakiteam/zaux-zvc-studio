@@ -28,9 +28,19 @@
 			</div>
 			<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
 				<BuilderButton
+					:extraProps="{
+						customInnerClasses : 'justify-center flex w-full',
+						customInnerWrapperClasses : 'items-center justify-center w-full'
+					}"
+					icon="chevron-up"
 					:label="translate('zx_builder_move_up')"
 					@click="shiftNode(-1)"
 				/><BuilderButton
+					:extraProps="{
+						customInnerClasses : 'justify-center flex w-full',
+						customInnerWrapperClasses : 'flex justify-center items-center w-full'
+					}"
+					icon="chevron-down"
 					:label="translate('zx_builder_move_down')"
 					@click="shiftNode(1)"
 				/>
@@ -119,7 +129,7 @@
 			/>
 		</div>
 		<div
-			class="zb-context-card mt-3 rounded-xs border-slim border-zaux-light-grey bg-zaux-light/60 p-2 [&_p]:mb-1.5 [&_p]:mt-1 [&_p]:text-[11px] [&_p]:leading-[1.6] [&_p]:text-zaux-dark-grey"
+			class="zb-context-card mt-3 rounded-xs bg-zaux-light/60 p-2 [&_p]:mb-1.5 [&_p]:mt-1 [&_p]:text-[11px] [&_p]:leading-[1.6] [&_p]:text-zaux-dark-grey"
 		>
 			<span
 				class="zb-badge inline-block rounded-xxs bg-zaux-light px-0.75 py-0.25 font-mono text-[10px] tracking-[0.8px] text-zaux-dark-grey"

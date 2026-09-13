@@ -1,6 +1,6 @@
 <template>
 	<button
-		class="zb-resize-handle group relative z-10 w-1 shrink-0 cursor-col-resize border-0 bg-transparent p-0 hover:bg-zaux-accent/20 focus-visible:bg-zaux-accent/20"
+		class="relative z-10 w-1 p-0 bg-transparent border-0 dark:bg-zaux-white dark:hover:bg-zaux-accent/20 zb-resize-handle group shrink-0 cursor-col-resize hover:bg-zaux-accent/20 focus-visible:bg-zaux-accent/20"
 		type="button"
 		:aria-label="label"
 		@pointerdown="start"

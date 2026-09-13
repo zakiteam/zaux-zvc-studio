@@ -2,7 +2,7 @@
 	<header class="shrink-0 bg-zaux-white">
 		<div
 			id="zb-top-bar"
-			class="flex min-h-[60px] flex-wrap items-center justify-between gap-2 border-b-slim dark:bg-zaux-white bg-zaux-dark border-zaux-light-grey px-3 py-2 max-[600px]:px-1.5"
+			class="flex min-h-[60px] flex-wrap items-center justify-between gap-2 border-b-slim dark:bg-[#212121] bg-zaux-dark border-zaux-light-grey px-2 py-1 max-[600px]:px-1.5"
 		>
 			<NuxtLink
 				to="/"
@@ -15,12 +15,17 @@
 
 			<div class="flex flex-wrap items-center justify-end gap-3 ml-auto">
 				<BuilderDropdown
-					:label="activeRemoteProject?.name || translate('zx_builder_projects')"
+					:label="translate('zx_builder_project') + ': ' + activeRemoteProject?.name || translate('zx_builder_projects')"
 					:items="projectMenuItems"
 					:disabled="remoteProjectBusy || projectOpening"
 					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
         			btnSize="xs"
 					@select="projectAction"
+					:extraTriggerProps="{
+						iconName : 'apps',
+						hasIcon : true,
+						hasActionIcon : false
+					}"
 				>
 					<template #header>
 						<p
@@ -42,29 +47,14 @@
 						</p>
 					</template>
 				</BuilderDropdown>
-				<BuilderDropdown
-					:label="activeTemplate.name"
-					:items="templateMenuItems"
-					:disabled="remoteProjectBusy || projectOpening"
-					align="end"
-					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
-         			btnSize="xs"
-					@select="templateAction"
-				>
-					<template #header>
-						<p
-							class="text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey"
-						>
-							{{ translate("zx_builder_templates") }}
-						</p>
-						<p class="mt-0.5 truncate text-[13px] font-semibold">
-							{{ activeTemplate.name }}
-						</p>
-					</template>
-				</BuilderDropdown>
+
 				<BuilderDropdown
 					:label="translate('zx_builder_account')"
-					icon="user"
+					:extraTriggerProps="{
+						iconName : 'user',
+						hasIcon : true,
+						hasActionIcon : false
+					}"
 					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
 					align="end"
 					:items="accountMenuItems"
@@ -85,17 +75,8 @@
 		</div>
 
 		<div
-			class="zb-work-toolbar flex min-h-[56px] flex-wrap items-center justify-between gap-2 border-b-slim border-zaux-light-grey px-3 py-1.5 max-[600px]:px-1.5"
+			class="zb-work-toolbar flex min-h-[56px] flex-wrap items-center justify-between gap-1 dark:border-zaux-light-grey border-b-slim border-zaux-light-grey px-1.5 py-1.5 max-[600px]:px-1.5"
 		>
-			<div class="flex min-w-0 items-center gap-1.5 text-[12px]">
-				<strong class="max-w-[240px] truncate font-medium">{{
-					mode === "library" ? activeDefinition?.name : activeTemplate.name
-				}}</strong>
-				<span
-					class="rounded-xxs bg-zaux-light px-0.75 py-0.25 font-mono text-[10px] text-zaux-dark-grey"
-					>{{ mode === "library" ? "ZVC" : "ZVT" }}</span
-				>
-			</div>
 			<div class="flex flex-wrap items-center justify-end gap-1 ml-auto">
 				<span
 					class="mr-1.5 text-[11px] text-zaux-dark-grey max-[1200px]:hidden"
@@ -106,6 +87,7 @@
 				<BuilderButton
 					icon="undo"
 					iconOnly
+					size="xs"
 					:label="translate('zx_builder_undo')"
 					:disabled="!undoStack.length"
 					@click="undo"
@@ -113,6 +95,7 @@
 				<BuilderButton
 					icon="redo"
 					iconOnly
+					size="xs"
 					:label="translate('zx_builder_redo')"
 					:disabled="!redoStack.length"
 					@click="redo"
@@ -125,16 +108,19 @@
 					icon="customize"
 					:label="translate('zx_builder_style_settings')"
 					:aria-pressed="stylesOpen"
+					size="xs"
 					@click="
 						stylesOpen = !stylesOpen;
 						previewOnly = false;
 					"
 				/>
 				<BuilderButton
+					size="xs"
 					:label="translate('zx_builder_import')"
 					@click="modal = { type: 'import' }"
 				/>
 				<BuilderButton
+					size="xs"
 					variant="primary"
 					icon="arrow-up-right"
 					:label="translate('zx_builder_export')"
@@ -174,13 +160,6 @@ export default defineComponent({
 			const t = builder.translate;
 			return [
 				{ id: 'hub', label: t('zx_builder_hub_back'), icon: 'arrow-up-right' },
-				...builder.remoteProjects.value.map((item, index) => ({
-					id: "open:" + item.id,
-					projectId: item.id,
-					label: item.name,
-					active: item.id === project?.id,
-					heading: index === 0 ? t("zx_builder_projects") : undefined,
-				})),
 				{
 					id: "new",
 					label: t("zx_builder_new_project"),
@@ -238,59 +217,6 @@ export default defineComponent({
 			}
 		}
 
-		const templateMenuItems = computed(() => {
-			const t = builder.translate;
-			const disabled = !builder.canEditRemote.value;
-			return [
-				...builder.document.value.templates.map((template, index) => ({
-					id: "open:" + template.id,
-					templateId: template.id,
-					label: template.name,
-					active: template.id === builder.activeTemplate.value.id,
-					heading: index === 0 ? t("zx_builder_templates") : undefined,
-				})),
-				{
-					id: "new",
-					label: t("zx_builder_new_template"),
-					icon: "add",
-					separator: true,
-					disabled,
-				},
-				{ id: "rename", label: t("zx_builder_rename"), icon: "edit", disabled },
-				{
-					id: "duplicate",
-					label: t("zx_builder_duplicate"),
-					icon: "copy",
-					disabled,
-				},
-				{
-					id: "delete",
-					label: t("zx_builder_delete"),
-					icon: "delete",
-					separator: true,
-					danger: true,
-					disabled,
-				},
-			];
-		});
-		function templateAction(item) {
-			if (item.templateId) {
-				builder.selectTemplate(item.templateId);
-				return;
-			}
-			if (!builder.canEditRemote.value) return;
-			const template = builder.activeTemplate.value;
-			if (item.id === "new") builder.modal.value = { type: "new-template" };
-			else if (item.id === "duplicate")
-				builder.duplicate("template", template.id);
-			else
-				builder.modal.value = {
-					type: item.id,
-					kind: "template",
-					id: template.id,
-					name: template.name,
-				};
-		}
 		const accountMenuItems = computed(() => [
       {
         id: 'theme',
@@ -319,8 +245,6 @@ export default defineComponent({
 			projectOpening,
 			projectMenuItems,
 			projectAction,
-			templateMenuItems,
-			templateAction,
 			accountMenuItems,
 			accountAction,
 			isAppDarkTheme, 

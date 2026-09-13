@@ -50,6 +50,7 @@
 				>
 					<label for="dialog-name">{{ translate("zx_builder_name") }}</label
 					><input
+						class="px-2 py-1 border-none bg-zaux-light"
 						id="dialog-name"
 						v-model="name"
 						required
@@ -124,7 +125,7 @@
 					{{ translate("zx_builder_export_hint") }}
 				</p>
 				<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
-					<select v-model="scope" :aria-label="translate('zx_builder_export')">
+					<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
 						<option value="workspace">
 							{{ translate("zx_builder_workspace") }}
 						</option>
@@ -135,6 +136,7 @@
 							{{ translate("zx_builder_current_component") }}
 						</option></select
 					><select
+						class="px-2 py-1 border-none bg-zaux-light"
 						v-if="scope === 'component'"
 						v-model="format"
 						aria-label="Format"

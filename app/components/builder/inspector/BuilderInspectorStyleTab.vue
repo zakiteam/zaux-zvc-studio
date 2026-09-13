@@ -38,6 +38,7 @@
 				/>
 			</div>
 			<BuilderNodeStyles
+				:preferredScope="followViewportStyles ? viewportStyleScope : null"
 				@update:scope="styleScope = $event"
 				:nodeName="selectedNode.name"
 				:nodeId="selectedNode.id"

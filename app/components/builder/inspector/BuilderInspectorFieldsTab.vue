@@ -92,7 +92,7 @@
 			>
 				<label for="field-key">{{ translate("zx_builder_field_key") }}</label
 				><input
-					class="px-2 py-1"
+					class="px-2 py-1 border-none bg-zaux-light"
 					id="field-key"
 					v-model="newKey"
 					pattern="[A-Za-z_][A-Za-z0-9_.]*"
@@ -107,7 +107,7 @@
 					translate("zx_builder_field_label")
 				}}</label
 				><input
-					class="px-2 py-1"
+					class="px-2 py-1 border-none bg-zaux-light"
 					id="field-label"
 					v-model="newLabel"
 					required
@@ -117,7 +117,7 @@
 				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
 				<label>{{ translate("zx_builder_field_type") }}</label
-				><select v-model="newType">
+				><select class="px-2 py-1 border-none bg-zaux-light" v-model="newType">
 					<option v-for="type in types" :key="type" :value="type">
 						{{ translate(`zx_builder_${type}`) }}
 					</option>

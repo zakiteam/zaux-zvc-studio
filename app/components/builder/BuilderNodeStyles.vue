@@ -126,7 +126,7 @@ import BuilderStyleChoices from './BuilderStyleChoices.vue';
 
 export default defineComponent({
   components: { BuilderStyleField, BuilderImageStyles, BuilderInput, BuilderStyleSelect, BuilderStyleChoices },
-  props: { modelValue: { default: '' }, nodeName: String, nodeId: String, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
+  props: { modelValue: { default: '' }, nodeName: String, nodeId: String, preferredScope: { type: String, default: null }, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
   emits: ['update:modelValue', 'update:imgClasses', 'update:viewportStyles', 'viewport-chosen', 'update:scope'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
@@ -134,7 +134,11 @@ export default defineComponent({
     const visibility = computed(() => styleVisibility(scope.value));
     const filteredSections = computed(() => visibleStyleSections(nodeStyleSections, visibility.value));
     watch(scope, value => emit('update:scope', value), { immediate: true });
-    watch(() => props.nodeId, () => { scope.value = ''; });
+    // Following the preview only changes the editing scope, never authored classes.
+    watch([() => props.nodeId, () => props.preferredScope], ([nodeId, preferredScope], [previousNodeId] = []) => {
+      if (preferredScope !== null) scope.value = preferredScope;
+      else if (nodeId !== previousNodeId) scope.value = '';
+    }, { immediate: true });
     const granular = ref({ border: false, rounding: false, padding: false, margin: false });
     const imageTarget = computed(() => imageStyleTarget(props.nodeName));
     const editable = computed(() => literalClasses(props.modelValue) !== null);

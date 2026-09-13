@@ -3,8 +3,8 @@ import { createWorkspace, createDefinition, copyDefinition, createInstance, crea
 import { clone, uid, findNode, locateNode, copyNode, insertNode, moveNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
-import { catalogNode } from '../services/catalog.js';
-import { viewports } from '../../integrations/zaux/viewports.js';
+import { catalogNode, containers } from '../services/catalog.js';
+import { viewports, simpleViewports, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
 import { mergeSourceLibrary, refreshSourceSnapshots, visualSourceCopy, sourceAvailable } from '../services/source-zvc.js';
 import { setStyleVariable, setUIValue, validateStylePreset } from '../../domain/styles.js';
 import { createStyleBridge } from '../services/styles.js';
@@ -29,14 +29,20 @@ export function createBuilder({ projectId = null } = {}) {
   const leftTab = ref('library');
   const inspectorTab = ref('properties');
   const viewportMode = ref('simple');
-  const simpleViewport = ref('desktop');
+  const simpleViewport = ref('auto');
   const viewport = ref('auto');
+  const followViewportStyles = ref(true);
   const viewportWidth = computed(() => viewportMode.value === 'simple'
-    ? ({ desktop: null, tablet: 768, mobile: 390 }[simpleViewport.value] ?? null)
+    ? (simpleViewports.find(item => item.value === simpleViewport.value)?.width ?? null)
     : viewports.find(item => item.name === viewport.value)?.width ?? null);
+  const viewportStyleScope = computed(() => styleScopeForWidth(viewportWidth.value));
   const viewportLabel = computed(() => viewportWidth.value === null
     ? i18n.translate('zx_builder_viewport_auto')
     : `${viewportMode.value === 'simple' ? i18n.translate(`zx_builder_${simpleViewport.value}`) : viewport.value} - ${viewportWidth.value} PX`);
+  const simpleViewportOptions = computed(() => simpleViewports.map(item => ({
+    value: item.value,
+    label: i18n.translate(item.label) + (item.minWidth === undefined ? '' : ' (≥ ' + item.minWidth + ' px)')
+  })));
   const viewportOptions = computed(() => [
     { value: 'auto', label: i18n.translate('zx_builder_viewport_auto') },
     ...viewports.map(item => ({ value: item.name, label: `${item.name} (${item.width} px)` }))
@@ -258,13 +264,13 @@ export function createBuilder({ projectId = null } = {}) {
   function selectTemplate(id) { mode.value = 'template'; templateId.value = id; instanceId.value = activeTemplate.value.instances[0]?.id; nodeId.value = null; }
   function selectLibrary(id) { mode.value = 'library'; libraryId.value = id; nodeId.value = null; if (isSource.value) inspectorTab.value = 'data'; }
   function selectInstance(id, selectedId = null) { if (mode.value !== 'library') instanceId.value = id; nodeId.value = isSource.value ? null : selectedId; if (isSource.value) inspectorTab.value = 'data'; }
-  function insertInstance(definitionId, beforeId = null) {
+  function insertInstance(definitionId, beforeId = null, position = 'before') {
     const definition = document.value.library.find(item => item.id === definitionId);
     if (!definition) return;
     const instance = createInstance(definition);
     commit(() => {
       const index = activeTemplate.value.instances.findIndex(item => item.id === beforeId);
-      activeTemplate.value.instances.splice(index < 0 ? activeTemplate.value.instances.length : index, 0, instance);
+      activeTemplate.value.instances.splice(index < 0 ? activeTemplate.value.instances.length : index + (position === 'after' ? 1 : 0), 0, instance);
     });
     mode.value = 'template'; instanceId.value = instance.id; nodeId.value = null; if (isSource.value) inspectorTab.value = 'data';
   }
@@ -356,8 +362,25 @@ export function createBuilder({ projectId = null } = {}) {
     });
     nodeId.value = node.id;
   }
+  function canDropElement(payload, targetId, position, targetInstanceId) {
+    if (!canEditRemote.value || !payload || !['before', 'after', 'inside'].includes(position)) return false;
+    if (payload.kind === 'library') return document.value.library.some(item => item.id === payload.id);
+    if (payload.kind === 'instance') return mode.value === 'template' && payload.id !== targetInstanceId && activeTemplate.value.instances.some(item => item.id === payload.id);
+    if (!['node', 'catalog'].includes(payload.kind)) return false;
+    const definition = mode.value === 'library' ? activeDefinition.value : activeTemplate.value.instances.find(item => item.id === targetInstanceId)?.definition;
+    if (!definition) return payload.kind === 'catalog' && !targetId && !targetInstanceId && position !== 'inside';
+    if (definition.sourceKey) return false;
+    const target = targetId ? findNode(definition.tree, targetId) : null;
+    if (targetId && !target) return false;
+    if (position === 'inside' && (!target || !containers.includes(target.name))) return false;
+    if (payload.kind === 'catalog') return true;
+    if (payload.instanceId !== targetInstanceId) return false;
+    const source = findNode(definition.tree, payload.id);
+    return Boolean(source && payload.id !== targetId && !findNode(source.children, targetId));
+  }
   function dropElement(payload, targetId, position, targetInstanceId) {
-    if (payload.kind === 'library') { insertInstance(payload.id, targetInstanceId); return; }
+    if (!canDropElement(payload, targetId, position, targetInstanceId)) return;
+    if (payload.kind === 'library') { insertInstance(payload.id, targetInstanceId, position); return; }
     if (payload.kind === 'instance') { moveInstance(payload.id, targetInstanceId, position); return; }
     if (payload.kind === 'catalog') { addElement(payload.name, targetId, position, targetInstanceId); return; }
     if (payload.kind !== 'node') return;
@@ -449,7 +472,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
   });
   onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { ...i18n, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, dropElement, deleteNode, duplicateNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { ...i18n, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

@@ -57,7 +57,7 @@
             :key="definition.id"
             class="zb-library-card overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
             :class="{ active: mode === 'library' && libraryId === definition.id }"
-            draggable="true"
+            :draggable="canEditRemote"
             @dragstart="drag($event, { kind: 'library', id: definition.id })"
           >
             <button
@@ -162,7 +162,7 @@
 						<button
 							v-for="entry in filtered.filter((item) => item.group === group)"
 							:key="entry.name"
-							draggable="true"
+							:draggable="canEditRemote"
 							@dragstart="drag($event, { kind: 'catalog', name: entry.name })"
 							@click="addElement(entry.name)"
 						>
@@ -182,6 +182,7 @@
 				</p>
 			</div>
 			<div v-else class="zb-outline-panel px-2 py-2.5">
+				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">{{ translate("zx_builder_outline_drag_hint") }}</p>
 				<template v-if="mode === 'library'"
 					><h3
 						class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
@@ -203,15 +204,17 @@
 					><article
 						v-for="instance in activeTemplate.instances"
 						:key="instance.id"
-						class="zb-instance mb-2 rounded-xxs border-slim border-zaux-light-grey p-1 [&.active]:border-zaux-accent"
+						class="zb-instance relative mb-2 rounded-xxs border-slim border-zaux-light-grey p-1 [&.active]:border-zaux-accent"
 						:class="{ active: instanceId === instance.id }"
-						draggable="true"
+						:draggable="canEditRemote"
 						@dragstart.stop="
 							drag($event, { kind: 'instance', id: instance.id })
 						"
-						@dragover.prevent
-						@drop.stop.prevent="dropOnInstance($event, instance.id)"
+						@dragover="outlineDrag.over($event, null, instance.id, true)"
+						@dragleave="outlineDrag.leave"
+						@drop="outlineDrag.drop($event, null, instance.id, true)"
 					>
+						<span v-if="outlineDrag.position(null, instance.id, true)" aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-zaux-accent" :class="outlineDrag.position(null, instance.id, true) === 'before' ? 'top-0' : 'bottom-0'" />
 						<div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
 							<button
 								class="zb-instance-name flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
@@ -288,6 +291,7 @@
 import { defineComponent, computed, ref } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
+import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderTree from "./BuilderTree.vue";
 import BuilderInput from "./BuilderInput.vue";
@@ -296,31 +300,15 @@ export default defineComponent({
 	props: { width: { default: 254 } },
 	setup() {
 		const builder = useBuilder();
+		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
 		const filtered = computed(() =>
 			catalog.filter((entry) =>
 				entry.name.toLowerCase().includes(search.value.toLowerCase()),
 			),
 		);
-		function drag(event, payload) {
-			event.dataTransfer.setData(
-				"application/x-zaux-builder",
-				JSON.stringify(payload),
-			);
-			event.dataTransfer.effectAllowed =
-				payload.kind === "instance" ? "move" : "copyMove";
-		}
-		function dropOnInstance(event, id) {
-			try {
-				const payload = JSON.parse(
-					event.dataTransfer.getData("application/x-zaux-builder"),
-				);
-				builder.dropElement(payload, null, "before", id);
-			} catch {
-				/* Ignore external drags. */
-			}
-		}
-		return { ...builder, search, filtered, containers, drag, dropOnInstance };
+		const drag = outlineDrag.start;
+		return { ...builder, search, filtered, containers, drag, outlineDrag };
 	},
 });
 </script>

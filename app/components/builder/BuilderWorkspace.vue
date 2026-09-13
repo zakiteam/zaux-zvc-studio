@@ -56,57 +56,64 @@
 				<div
 					class="zb-canvas-toolbar flex h-[72px] min-h-[72px] items-center justify-between gap-1.5 border-b-slim border-zaux-light-grey bg-zaux-white px-3 max-[1200px]:px-2"
 				>
-					<div
-						class="zb-canvas-label min-w-[80px] [&>strong]:mt-0.75 [&>strong]:block [&>strong]:max-w-[200px] [&>strong]:truncate [&>strong]:text-[14px] [&>strong]:font-medium max-[900px]:hidden"
-					>
-						<span
-							class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
-							>{{
-								translate(
-									mode === "library"
-										? "zx_builder_library"
-										: "zx_builder_templates",
-								)
-							}}</span
-						><strong>{{
-							mode === "library" ? activeDefinition?.name : activeTemplate.name
-						}}</strong>
-					</div>
-					<div class="flex items-stretch min-w-0 gap-1">
-						<BuilderInput
-							type="select"
-							v-model="viewportMode"
-							:label="translate('zx_builder_viewport_mode')"
-							:options="[
-								{ value: 'simple', label: translate('zx_builder_viewport_simple') },
-								{ value: 'zaux', label: translate('zx_builder_viewport_zaux') },
-							]"
-							class="min-w-0 text-[10px] h-full [&_*]:h-full"
-						/>
-						<div
-							v-if="viewportMode === 'simple'"
-							class="zb-device-switch flex rounded-xs border-slim border-zaux-light-grey bg-zaux-light p-0.5 [&>button]:rounded-xxs [&>button]:px-1.5 [&>button]:py-0.5 [&>button]:text-[10px] [&>button]:text-zaux-dark-grey [&>button.active]:bg-zaux-white [&>button.active]:text-zaux-accent [&>button.active]:shadow-closer max-[1200px]:[&>button]:px-1"
-							role="group"
-							:aria-label="translate('zx_builder_viewport')"
-						>
-							<button
-								v-for="device in ['desktop', 'tablet', 'mobile']"
-								:key="device"
-								:class="{ active: simpleViewport === device }"
-								:aria-pressed="simpleViewport === device"
-								@click="simpleViewport = device"
-							>
-								{{ translate(`zx_builder_${device}`) }}
-							</button>
-						</div>
-						<BuilderInput
+					<div class="zb-canvas-label min-w-0 max-w-[240px]">
+						<span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
+							{{ translate(mode === 'library' ? 'zx_builder_library' : 'zx_builder_templates') }}
+						</span>
+						<strong v-if="mode === 'library'" class="mt-0.75 block truncate text-[14px] font-medium">
+							{{ activeDefinition?.name }}
+						</strong>
+						<BuilderDropdown
 							v-else
-							type="select"
-							v-model="viewport"
-							:options="viewportOptions"
-							:label="translate('zx_builder_viewport')"
-							class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
-						/>
+							:label="activeTemplate.name"
+							:items="templateMenuItems"
+							:disabled="remoteProjectBusy"
+							btnTheme="alt1"
+							btnSize="xs"
+							class="mt-0.75 min-w-0 [&_button]:max-w-full"
+							@select="templateAction"
+						>
+							<template #header>
+								<p class="text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey">
+									{{ translate('zx_builder_templates') }}
+								</p>
+								<p class="mt-0.5 truncate text-[13px] font-semibold">{{ activeTemplate.name }}</p>
+							</template>
+						</BuilderDropdown>
+					</div>
+					<div class="flex flex-col min-w-0 gap-1 py-2">
+						<div class="flex items-stretch min-w-0 gap-1">
+							<BuilderInput
+								type="select"
+								v-model="viewportMode"
+								:label="translate('zx_builder_viewport_mode')"
+								:options="[
+									{ value: 'simple', label: translate('zx_builder_viewport_simple') },
+									{ value: 'zaux', label: translate('zx_builder_viewport_zaux') },
+								]"
+								class="min-w-0 text-[10px] h-full [&_*]:h-full"
+							/>
+							<BuilderInput
+								v-if="viewportMode === 'simple'"
+								type="select"
+								v-model="simpleViewport"
+								:options="simpleViewportOptions"
+								:label="translate('zx_builder_viewport')"
+								class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
+							/>
+							<BuilderInput
+								v-else
+								type="select"
+								v-model="viewport"
+								:options="viewportOptions"
+								:label="translate('zx_builder_viewport')"
+								class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
+							/>
+						</div>
+						<label class="flex cursor-pointer items-center gap-1 text-[10px] text-zaux-dark-grey mx-auto">
+							<input v-model="followViewportStyles" type="checkbox" class="w-1.5 h-1.5 accent-zaux-accent" />
+							<span>{{ translate('zx_builder_follow_viewport_styles') }}</span>
+						</label>
 					</div>
 					<BuilderButton
 						:label="
@@ -164,7 +171,7 @@
   </main>
 </template>
 <script>
-import { defineComponent, ref } from "vue";
+import { computed, defineComponent, ref } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 import { createBuilder } from "../../composables/useBuilder.js";
 import { downloadText } from "../../services/files.js";
@@ -177,9 +184,11 @@ import BuilderStyles from "./BuilderStyles.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderHeader from "./BuilderHeader.vue";
 import BuilderInput from "./BuilderInput.vue";
+import BuilderDropdown from "./BuilderDropdown.vue";
 export default defineComponent({
 	components: {
 		BuilderInput,
+		BuilderDropdown,
 		BuilderButton,
 		BuilderSidebar,
 		BuilderCanvas,
@@ -192,6 +201,60 @@ export default defineComponent({
 	props: { projectId: { type: String, default: null } },
 	setup(props) {
 		const builder = createBuilder({ projectId: props.projectId });
+		const templateMenuItems = computed(() => {
+			const t = builder.translate;
+			const disabled = !builder.canEditRemote.value;
+			return [
+				...builder.document.value.templates.map((template, index) => ({
+					id: "open:" + template.id,
+					templateId: template.id,
+					label: template.name,
+					active: template.id === builder.activeTemplate.value.id,
+					heading: index === 0 ? t("zx_builder_templates") : undefined,
+				})),
+				{
+					id: "new",
+					label: t("zx_builder_new_template"),
+					icon: "add",
+					separator: true,
+					disabled,
+				},
+				{ id: "rename", label: t("zx_builder_rename"), icon: "edit", disabled },
+				{
+					id: "duplicate",
+					label: t("zx_builder_duplicate"),
+					icon: "copy",
+					disabled,
+				},
+				{
+					id: "delete",
+					label: t("zx_builder_delete"),
+					icon: "delete",
+					separator: true,
+					danger: true,
+					disabled,
+				},
+			];
+		});
+		function templateAction(item) {
+			if (builder.remoteProjectBusy.value) return;
+			if (item.templateId) {
+				builder.selectTemplate(item.templateId);
+				return;
+			}
+			if (!builder.canEditRemote.value) return;
+			const template = builder.activeTemplate.value;
+			if (item.id === "new") builder.modal.value = { type: "new-template" };
+			else if (item.id === "duplicate")
+				builder.duplicate("template", template.id);
+			else
+				builder.modal.value = {
+					type: item.id,
+					kind: "template",
+					id: template.id,
+					name: template.name,
+				};
+		}
 		onBeforeRouteLeave(builder.prepareToLeave);
 		onBeforeRouteUpdate(builder.prepareToLeave);
 		const leftWidth = ref(400);
@@ -205,6 +268,8 @@ export default defineComponent({
 		}
 		return {
 			...builder,
+			templateMenuItems,
+			templateAction,
 			leftWidth,
 			rightWidth,
 			resizePanel,

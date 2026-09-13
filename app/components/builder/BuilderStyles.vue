@@ -1,10 +1,10 @@
 <template>
   <aside class="flex min-h-0 w-[360px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white min-[1500px]:w-[390px] max-[900px]:h-[70dvh] max-[900px]:!w-full" :style="{ width: `${width}px` }">
-    <header class="flex items-start justify-between gap-1 border-b-slim border-zaux-light-grey p-2">
+    <header class="flex items-start justify-between gap-1 p-2 border-b-slim border-zaux-light-grey">
       <div><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ translate('zx_builder_workspace') }}</span><h2 class="mt-1 text-[18px] font-semibold">{{ translate('zx_builder_style_settings') }}</h2></div>
       <BuilderButton icon="close" iconOnly :label="translate('zx_builder_close')" @click="stylesOpen = false" />
     </header>
-    <ZOverflowContainer class="h-full min-h-0 flex-1" autoOverflow>
+    <ZOverflowContainer class="flex-1 h-full min-h-0" autoOverflow>
       <div class="p-2">
         <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_styles_hint') }}</p>
         <div class="flex flex-wrap gap-0.5">
@@ -18,8 +18,8 @@
         <p v-if="status" class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey" role="status">{{ translate(status) }}</p>
         <p v-if="localError" class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] leading-[1.6] text-utility-error" role="alert">{{ translate(localError) }}</p>
         <BuilderInput v-model="search" class="mt-2" type="search" :placeholder="translate('zx_builder_search_tokens')" :label="translate('zx_builder_search_tokens')" />
-        <details v-for="group in visibleGroups" :key="group.id" :open="group.id === 'components' || !!search" class="mt-2 border-t-slim border-zaux-light-grey pt-2">
-          <summary class="cursor-pointer text-[13px] font-semibold">{{ translate(group.label) }} <span class="text-zaux-dark-grey">({{ group.variables.length }})</span></summary>
+        <details v-for="group in visibleGroups" :key="group.id" :open="group.id === 'components' || !!search" class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
+          <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate(group.label) }} <span class="text-zaux-dark-grey">({{ group.variables.length }})</span></summary>
           <div v-for="variable in group.variables" :key="variable.name" class="mt-2">
             <div class="mb-0.5 flex items-center justify-between gap-1">
               <label :for="variable.name" class="break-all font-mono text-[10px] text-zaux-dark-grey">{{ variable.name }}</label>
@@ -31,8 +31,8 @@
             </div>
           </div>
         </details>
-        <details class="mt-2 border-t-slim border-zaux-light-grey pt-2">
-          <summary class="cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_ui_settings') }}</summary>
+        <details class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
+          <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_ui_settings') }}</summary>
           <label v-for="[path, label] in uiControls" :key="path" class="mt-1 flex cursor-pointer items-center justify-between gap-2 rounded-xxs bg-zaux-light p-1 text-[11px]">
             {{ translate(label) }}<input type="checkbox" class="!w-auto accent-zaux-accent" :checked="getValue(uiSettings, path)" @change="updateStyleUI(path, $event.target.checked)" />
           </label>
@@ -40,8 +40,8 @@
           <BuilderButton :label="translate('zx_builder_import_ui')" @click="uiFileInput.click()" />
           <input ref="uiFileInput" class="hidden" type="file" accept=".json,application/json" @change="importUI" />
         </details>
-        <details class="mt-2 border-t-slim border-zaux-light-grey pt-2">
-          <summary class="cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_style_json') }}</summary>
+        <details class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
+          <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_style_json') }}</summary>
           <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_style_json_hint') }}</p>
           <BuilderCodeEditor v-model="draft" rows="16" :label="translate('zx_builder_style_json')" />
           <BuilderButton :label="translate('zx_builder_apply')" @click="applyDraft" />
