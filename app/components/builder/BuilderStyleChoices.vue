@@ -1,32 +1,34 @@
 <template>
+  <legend class="mb-1 text-[10px] font-medium">{{ label }}</legend>
   <fieldset :disabled="disabled" class="min-w-0">
-    <legend class="mb-1 text-[11px] font-medium">{{ label }}</legend>
-    <div class="flex flex-wrap gap-0.5">
+    <div class="flex items-center gap-1">
+      <div class="grid min-w-0 flex-1 gap-0.5 rounded-xxs bg-zaux-light p-0.5" :style="{ gridTemplateColumns: `repeat(${columns || options.length}, minmax(0, 1fr))` }">
+        <button
+          v-for="option in options"
+          :key="option.value"
+          type="button"
+          :title="option.label"
+          :aria-label="option.label"
+          :aria-pressed="modelValue === option.value"
+          :disabled="disabled"
+          class="flex min-h-[30px] min-w-0 items-center justify-center gap-1 rounded-xxs border-slim px-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zaux-accent disabled:cursor-not-allowed disabled:opacity-50"
+          :class="modelValue === option.value ? 'border-zaux-accent bg-zaux-white text-zaux-accent' : 'border-transparent hover:bg-zaux-white'"
+          @click="$emit('update:modelValue', option.value)"
+        >
+          <img :src="option.icon" alt="" draggable="false" width="20" height="20" class="min-w-0 shrink" :class="iconClass" />
+          <span v-if="showLabels" class="truncate text-[10px]">{{ option.label }}</span>
+        </button>
+      </div>
       <button
-        v-for="option in options"
-        :key="option.value"
         type="button"
-        :title="option.label"
-        :aria-label="option.label"
-        :aria-pressed="modelValue === option.value"
-        :disabled="disabled"
-        class="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 rounded-xxs border-slim p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zaux-accent disabled:cursor-not-allowed disabled:opacity-50"
-        :class="[
-          modelValue === option.value ? 'border-zaux-accent bg-zaux-accent/10' : 'border-zaux-light-grey bg-zaux-white hover:bg-zaux-light',
-          showLabels && 'flex-1'
-        ]"
-        @click="$emit('update:modelValue', option.value)"
-      >
-        <img :src="option.icon" alt="" draggable="false" width="28" height="28" :class="iconClass" />
-        <span v-if="showLabels" class="text-[10px]">{{ option.label }}</span>
-      </button>
+        :disabled="disabled || !modelValue"
+        :title="translate('zx_builder_style_clear')"
+        :aria-label="translate('zx_builder_style_clear') + ': ' + label"
+        class="flex h-[30px] w-3 shrink-0 items-center justify-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent disabled:opacity-30"
+        @click="$emit('update:modelValue', '')"
+      ><span aria-hidden="true">&times;</span></button>
     </div>
-    <div class="mt-1 flex items-start justify-between gap-1 text-[10px] text-zaux-dark-grey">
-      <span>{{ currentLabel }}</span>
-      <button v-if="modelValue" type="button" :disabled="disabled" class="underline shrink-0 disabled:opacity-50" @click="$emit('update:modelValue', '')">
-        {{ translate('zx_builder_reset_value') }}
-      </button>
-    </div>
+    <p v-if="modelValue && !options.some(option => option.value === modelValue)" class="mt-1 break-words text-[10px] text-zaux-dark-grey">{{ currentLabel }}</p>
   </fieldset>
 </template>
 <script>
@@ -40,6 +42,7 @@ export default defineComponent({
     options: { type: Array, default: () => [] },
     disabled: Boolean,
     showLabels: Boolean,
+    columns: Number,
     iconClass: { type: String, default: '' }
   },
   emits: ['update:modelValue'],

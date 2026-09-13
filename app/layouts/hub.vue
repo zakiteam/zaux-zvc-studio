@@ -15,20 +15,34 @@
       </nav>
       <div class="mt-auto border-t-slim border-zaux-light-grey pt-2 max-[700px]:mt-3">
         <p class="mb-2 break-all text-[11px] text-zaux-dark-grey">{{ user?.email }}</p>
-        <BuilderButton :label="translate('zx_builder_logout')" icon="close" @click="signOut" />
+        <BuilderDropdown :label="translate('zx_builder_account')" icon="user" :items="accountMenuItems" @select="accountAction" />
       </div>
     </aside>
     <main class="min-w-0 flex-1 p-6 max-[700px]:p-3"><slot /></main>
   </div>
 </template>
 <script>
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import BuilderButton from '../components/builder/BuilderButton.vue';
+import BuilderDropdown from '../components/builder/BuilderDropdown.vue';
+import { useStudioTheme } from '../composables/useStudioTheme.js';
 export default defineComponent({
-  components: { BuilderButton },
-  setup() { return { studioLogo, ...useAuth(), ...useTranslation() }; }
+  components: { BuilderDropdown },
+  setup() {
+    const auth = useAuth();
+    const { translate } = useTranslation();
+    const { theme, toggleTheme } = useStudioTheme();
+    const accountMenuItems = computed(() => [
+      { id: 'theme', label: translate(theme.value === 'dark' ? 'zx_builder_theme_light' : 'zx_builder_theme_dark') },
+      { id: 'logout', label: translate('zx_builder_logout'), icon: 'close' }
+    ]);
+    function accountAction(item) {
+      if (item.id === 'theme') toggleTheme();
+      else if (item.id === 'logout') return auth.signOut();
+    }
+    return { studioLogo, user: auth.user, translate, accountMenuItems, accountAction };
+  }
 });
 </script>

@@ -44,18 +44,21 @@
 				:aria-label="translate('zx_builder_text_mode')"
 			>
 				<BuilderButton
+					size="xs"
 					:label="translate('zx_builder_text_source')"
 					:aria-pressed="textMode === 'text'"
 					:variant="textMode === 'text' ? 'primary' : 'secondary'"
 					@click="textMode = 'text'"
-				/>
-				<BuilderButton
+					/>
+					<BuilderButton
+					size="xs"
 					:label="translate('zx_builder_html_source')"
 					:aria-pressed="textMode === 'html'"
 					:variant="textMode === 'html' ? 'primary' : 'secondary'"
 					@click="textMode = 'html'"
-				/>
-				<BuilderButton
+					/>
+					<BuilderButton
+					size="xs"
 					:label="translate('zx_builder_richtext')"
 					:aria-pressed="textMode === 'rich'"
 					:variant="textMode === 'rich' ? 'primary' : 'secondary'"

@@ -1,5 +1,11 @@
 <template>
-	<div>
+	<p
+		v-if="isSource"
+		class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
+	>
+		{{ translate("zx_builder_source_fields") }}
+	</p>
+	<div v-else>
 		<p
 			class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
 		>
@@ -134,9 +140,9 @@
 </template>
 <script>
 import { defineComponent, ref } from "vue";
-import { useBuilder } from "../../composables/useBuilder.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderValue from "./BuilderValue.vue";
+import { useBuilder } from "../../../composables/useBuilder.js";
+import BuilderButton from "../BuilderButton.vue";
+import BuilderValue from "../BuilderValue.vue";
 export default defineComponent({
 	components: { BuilderButton, BuilderValue },
 	setup() {

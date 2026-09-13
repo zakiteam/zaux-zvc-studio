@@ -24,7 +24,12 @@
 					aria-haspopup="menu"
 					:aria-controls="menuId"
 					class="[&_*]:truncate"
-					v-bind="extraTriggerProps"
+					v-bind="{
+						actionIcon : true,
+						hasIcon : false,
+						actionIconName : icon,
+						...extraTriggerProps
+					}"
 				/>
 			</div>
 		</template>
@@ -34,7 +39,7 @@
 				ref="menu"
 				role="menu"
 				:aria-label="label"
-				class="mt-1 w-[280px] pb-2 max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark shadow-deeper"
+				class="zb-builder-dropdown-content mt-1 w-[280px] py-1 pb-2 max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark shadow-deeper"
 				@keydown="menuKeydown"
 				@keyup.stop
 				@focusout="focusOut"

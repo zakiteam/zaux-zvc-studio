@@ -9,6 +9,7 @@
 		:hasIcon="!!icon"
 		:iconName="resolvedIcon"
 		:iconOnly="iconOnly"
+		:actionIconFlip="false"
 		:title="title || label"
 		:aria-label="title || label"
 		:class="['zb-button', `zb-button--${variant}`]"
@@ -18,9 +19,9 @@
 			<span
 				aria-hidden="true"
 				class="relative mr-1 inline-block h-[16px] w-[16px] shrink-0 self-center overflow-hidden rounded-xxs border-slim border-zaux-light-grey"
-				style="background: repeating-conic-gradient(rgb(var(--zx-color-zaux-light-grey)) 0% 25%, rgb(var(--zx-color-zaux-white)) 0% 50%) 0 / 8px 8px"
+				style="background: repeating-conic-gradient(#c4c4c4 0% 25%, #fff 0% 50%) 0 / 8px 8px"
 			>
-				<span class="absolute inset-0" :style="{ backgroundColor: swatch }" />
+				<span class="absolute inset-0 zb-project-swatch" :style="{ backgroundColor: swatch }" />
 			</span>
 		</template>
 	</ZButton>

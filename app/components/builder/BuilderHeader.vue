@@ -2,24 +2,24 @@
 	<header class="shrink-0 bg-zaux-white">
 		<div
 			id="zb-top-bar"
-			class="flex min-h-[60px] flex-wrap items-center justify-between gap-2 border-b-slim bg-zaux-dark border-zaux-light-grey px-3 py-2 max-[600px]:px-1.5"
+			class="flex min-h-[60px] flex-wrap items-center justify-between gap-2 border-b-slim dark:bg-zaux-white bg-zaux-dark border-zaux-light-grey px-3 py-2 max-[600px]:px-1.5"
 		>
 			<NuxtLink
 				to="/"
-				class="flex items-center gap-2 shrink-0 ext-set1-white"
+				class="flex items-center gap-2 shrink-0 text-set1-white"
 				aria-label="Zaux Studio"
 			>
 				<img class="w-4" :src="studioLogo" alt="" />
-				<span class="font-bold uppercase text-eyelet-s text-set1-white">Zaux studio</span>
+				<span class="font-bold uppercase text-eyelet-s text-set1-white dark:text-set1-dark">Zaux studio</span>
 			</NuxtLink>
 
-			<div class="flex flex-wrap items-center justify-end gap-1 ml-auto">
+			<div class="flex flex-wrap items-center justify-end gap-3 ml-auto">
 				<BuilderDropdown
 					:label="activeRemoteProject?.name || translate('zx_builder_projects')"
 					:items="projectMenuItems"
 					:disabled="remoteProjectBusy || projectOpening"
-					btnTheme="dark2"
-          btnSize="xs"
+					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
+        			btnSize="xs"
 					@select="projectAction"
 				>
 					<template #header>
@@ -47,8 +47,8 @@
 					:items="templateMenuItems"
 					:disabled="remoteProjectBusy || projectOpening"
 					align="end"
-          btnTheme="dark2"
-          btnSize="xs"
+					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
+         			btnSize="xs"
 					@select="templateAction"
 				>
 					<template #header>
@@ -65,10 +65,10 @@
 				<BuilderDropdown
 					:label="translate('zx_builder_account')"
 					icon="user"
-          btnTheme="dark2"
+					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"
 					align="end"
 					:items="accountMenuItems"
-            btnSize="xs"
+            		btnSize="xs"
 					:disabled="remoteProjectBusy || projectOpening"
 					@select="accountAction"
 				>
@@ -150,6 +150,7 @@ import { defineComponent, computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { useAuth } from "../../composables/useAuth.js";
+import { useStudioTheme } from "../../composables/useStudioTheme.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
 
@@ -165,6 +166,8 @@ export default defineComponent({
 			if (route.path !== path) router.replace(path);
 		});
 		const auth = useAuth();
+		const { theme, toggleTheme } = useStudioTheme();
+		const isAppDarkTheme = computed(() => theme.value === 'dark');
 		const projectOpening = ref(false);
 		const projectMenuItems = computed(() => {
 			const project = builder.activeRemoteProject.value;
@@ -289,6 +292,10 @@ export default defineComponent({
 				};
 		}
 		const accountMenuItems = computed(() => [
+      {
+        id: 'theme',
+        label: builder.translate(theme.value === 'dark' ? 'zx_builder_theme_light' : 'zx_builder_theme_dark'),
+      },
 			{
 				id: "logout",
 				label: builder.translate("zx_builder_logout"),
@@ -296,6 +303,10 @@ export default defineComponent({
 			},
 		]);
 		async function accountAction(item) {
+      if (item.id === 'theme') {
+        toggleTheme();
+        return;
+      }
 			if (item.id === "logout" && await builder.prepareToLeave()) {
 				await auth.signOut();
 				await router.push('/');
@@ -312,6 +323,8 @@ export default defineComponent({
 			templateAction,
 			accountMenuItems,
 			accountAction,
+			isAppDarkTheme, 
+			toggleTheme
 		};
 	},
 });

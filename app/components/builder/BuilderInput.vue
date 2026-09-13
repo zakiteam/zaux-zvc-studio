@@ -1,6 +1,7 @@
 <template>
 	<select
-		class="px-2 py-1 border-none bg-zaux-light"
+		class="px-2 py-1 border-none"
+        :class="highlightWhenSet && modelValue !== '' && modelValue != null ? 'bg-zaux-light-accent/50 outline outline-1 outline-zaux-accent' : 'bg-zaux-light'"
 		v-if="type === 'select'"
 		:id="id"
 		:value="modelValue"
@@ -17,7 +18,8 @@
 		</option>
 	</select>
 	<input
-		class="px-2 py-1 border-none bg-zaux-light"
+		class="px-2 py-1 border-none"
+        :class="highlightWhenSet && modelValue !== '' && modelValue != null ? 'bg-zaux-light-accent/50 outline outline-1 outline-zaux-accent' : 'bg-zaux-light'"
 		v-else
 		:id="id"
 		:value="modelValue ?? ''"
@@ -43,6 +45,7 @@ export default defineComponent({
 		label: String,
 		placeholder: String,
 		options: { default: () => [] },
+		highlightWhenSet: Boolean,
 		disabled: Boolean,
 		readonly: Boolean,
 		required: Boolean,

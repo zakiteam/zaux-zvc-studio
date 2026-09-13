@@ -22,3 +22,54 @@
   :where(.zb-app) .zb-resize-handle { touch-action: none; }
   body.zb-resizing { cursor: col-resize !important; user-select: none; }
   @media (max-width: 900px) { :where(.zb-app) .zb-resize-handle { display: none; } }
+
+/* Studio owns both palettes in light and dark mode; /preview has no theme attribute. */
+html[data-studio-theme="light"] {
+  color-scheme: light;
+  --zx-color-zaux-black: 0 0 0;
+  --zx-color-zaux-white: 255 255 255;
+  --zx-color-zaux-light: 242 242 242;
+  --zx-color-zaux-light-grey: 196 196 196;
+  --zx-color-zaux-dark-grey: 116 116 116;
+  --zx-color-zaux-dark: 54 54 54;
+  --zx-color-zaux-accent: 205 45 69;
+  --zx-color-zaux-dark-accent: 116 48 59;
+  --zx-color-zaux-light-accent: 233 105 124;
+  --zx-color-zaux-bsod: 3 1 172;
+}
+
+html[data-studio-theme="light"],
+html[data-studio-theme="dark"] {
+  --zx-color-set1-black: var(--zx-color-zaux-black);
+  --zx-color-set1-white: var(--zx-color-zaux-white);
+  --zx-color-set1-light: var(--zx-color-zaux-light);
+  --zx-color-set1-light-grey: var(--zx-color-zaux-light-grey);
+  --zx-color-set1-dark-grey: var(--zx-color-zaux-dark-grey);
+  --zx-color-set1-dark: var(--zx-color-zaux-dark);
+  --zx-color-set1-accent: var(--zx-color-zaux-accent);
+  --zx-color-set1-dark-accent: var(--zx-color-zaux-dark-accent);
+  --zx-color-set1-light-accent: var(--zx-color-zaux-light-accent);
+  --zx-color-set1-grey: 152 154 165;
+}
+
+
+html[data-studio-theme="dark"] {
+  color-scheme: dark;
+  --zx-color-zaux-black: 232 232 237;
+  --zx-color-zaux-white: 48 48 48;
+  --zx-color-zaux-light: 64 64 68;
+  --zx-color-zaux-light-grey: 86 86 92;
+  --zx-color-zaux-dark-grey: 170 170 180;
+  --zx-color-zaux-dark: 232 232 237;
+  --zx-color-zaux-accent: 233 105 124;
+  --zx-color-zaux-dark-accent: 205 45 69;
+  --zx-color-zaux-light-accent: 255 151 166;
+  --zx-color-zaux-bsod: 137 135 255;
+  --zx-color-set1-grey: 128 128 140;
+}
+
+/* Native popup options need an opaque surface independent of the select trigger. */
+html[data-studio-theme] :where(select option, select optgroup) {
+  background-color: rgb(var(--zx-color-zaux-white));
+  color: rgb(var(--zx-color-zaux-dark));
+}

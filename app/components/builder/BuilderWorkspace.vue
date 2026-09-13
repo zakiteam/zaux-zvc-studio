@@ -128,8 +128,9 @@
 					</button>
 				</div>
 				<BuilderCanvas />
+				<!--
 				<footer
-					class="zb-canvas-footer flex items-center justify-between gap-3 border-t-slim border-zaux-light-grey bg-zaux-white px-3 py-1.5 text-[9px] leading-[1.5] text-zaux-dark-grey [&>span:last-child]:whitespace-nowrap max-[1200px]:[&>span:last-child]:hidden max-[900px]:hidden"
+					class="zb-canvas-footer hidden items-center justify-between gap-3 border-t-slim border-zaux-light-grey bg-zaux-white px-3 py-1.5 text-[9px] leading-[1.5] text-zaux-dark-grey [&>span:last-child]:whitespace-nowrap max-[1200px]:[&>span:last-child]:hidden max-[900px]:hidden"
 				>
 					<span>{{
 						previewOnly
@@ -138,6 +139,7 @@
 					}}</span
 					><span>{{ translate("zx_builder_readonly_source") }}</span>
 				</footer>
+				-->
 			</main>
 			<BuilderResizeHandle
 				v-if="!previewOnly"
@@ -154,10 +156,10 @@
 		</div>
 		<BuilderDialog v-if="modal" />
 	</div>
-  <main v-else class="grid min-h-dvh place-items-center bg-zaux-light p-4 font-builder text-zaux-dark">
+  <main v-else class="grid h-screen p-4 min-h-dvh place-items-center bg-zaux-light font-builder text-zaux-dark">
     <div class="text-center">
       <p :role="error ? 'alert' : 'status'">{{ translate(error || 'zx_builder_loading') }}</p>
-      <NuxtLink to="/" class="mt-2 inline-block text-zaux-accent underline">{{ translate('zx_builder_hub_back') }}</NuxtLink>
+      <NuxtLink to="/" class="inline-block mt-2 underline text-zaux-accent">{{ translate('zx_builder_hub_back') }}</NuxtLink>
     </div>
   </main>
 </template>

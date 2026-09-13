@@ -2,7 +2,6 @@
 
 ## 2026-09-06 - user-approved scope
 
-- New independent project in `C:/xampp/htdocs/zaki/zaux-builder`.
 - Nuxt 4, JavaScript only, Vue Composition API without script setup.
 - Visual page builder: drag and drop, plus selection directly in the preview.
 - Library of ZVC definitions; templates instantiate independent copies.
@@ -34,4 +33,8 @@
 
 - Until further notice, skip the testing phase; the user handles browser testing. Do not use automated tests, browser checks, validators, or production builds as verification.
 - Add a token-style editor matching Zaux ConfigStyles while preserving the read-only dependency.
-- Move Studio styling to Tailwind utilities and use a palette closer to Zaux instead of the earlier green theme.
+
+## 2026-09-07 - response length when blocked
+
+- If commands or tools cannot be used because of permissions or environment state, keep the reply to the minimum: state the block and what is needed, nothing else. No explanations, summaries or unused code until the block is resolved.
+- Preferred format: `Bloccato: <motivo in una riga>` / `Serve: <azione o permesso richiesto>`.

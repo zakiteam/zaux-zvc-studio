@@ -1,3 +1,4 @@
+import containers from '../../vendor/zaux/style/tokens/containers.json';
 import spacing from '../../vendor/zaux/style/tokens/spacing.json';
 import colors from '../../vendor/zaux/style/tokens/colors.json';
 import overlays from '../../vendor/zaux/style/tokens/overlays.json';
@@ -24,12 +25,25 @@ function colorSwatch(name) {
 function spacingLabel(key, value) {
   // Display the pixel equivalent at the standard 16px root size; keep the token class.
   const pixels = value.endsWith('rem') ? Number.parseFloat(value) * 16 : Number.parseFloat(value);
-  return `${key} \u00b7 ${pixels}px`;
+  return `${pixels}px \u00b7 ${key}`;
 }
-const semanticValues = new Set(["flex","grid","block","inline-block","inline","inline-flex","inline-grid","contents","hidden","flow-root","table","table-row","table-cell","list-item","flex-row","flex-col","flex-row-reverse","flex-col-reverse","flex-nowrap","flex-wrap","flex-wrap-reverse","items-start","items-center","items-end","items-stretch","items-baseline","justify-start","justify-center","justify-end","justify-between","justify-around","justify-evenly","justify-normal","justify-stretch","border-solid","border-dashed","border-dotted","border-double","border-hidden","bg-none","grid-cols-none"]);
+// Keep positive and negative tokens in separate, consistently ordered blocks.
+function spacingOptions(prefix, negative = false, depth = false) {
+  const entries = Object.entries(spacing.spaces).sort((a, b) => Number(a[0]) - Number(b[0]));
+  const option = (key, value, sign = '') => ({
+    value: depth ? `[translate:0_0_${sign}${value === '0' ? '0px' : value}]` : `${sign}${prefix}-${key}`,
+    label: spacingLabel(`${sign}${key}`, `${sign}${value}`)
+  });
+  return [
+    ...entries.map(([key, value]) => option(key, value)),
+    ...(negative ? entries.filter(([, value]) => Number.parseFloat(value) !== 0)
+      .map(([key, value]) => option(key, value, '-')) : [])
+  ];
+}
+const semanticValues = new Set(["flex","grid","block","inline-block","inline","inline-flex","inline-grid","contents","hidden","flow-root","table","table-row","table-cell","list-item","flex-row","flex-col","flex-row-reverse","flex-col-reverse","flex-nowrap","flex-wrap","flex-wrap-reverse","items-start","items-center","items-end","items-stretch","items-baseline","justify-start","justify-center","justify-end","justify-between","justify-around","justify-evenly","justify-normal","justify-stretch","col-span-full","order-first","order-last","order-none","border-solid","border-dashed","border-dotted","border-double","border-hidden","bg-none","grid-cols-none"]);
 const options = values => values.map(value => ({
   value,
-  label: semanticValues.has(value) ? 'zx_builder_style_value_' + value : value.replace(/^grid-cols-(\d+)$/, '$1')
+  label: semanticValues.has(value) ? 'zx_builder_style_value_' + value : value.replace(/^(?:grid-cols|col-span|order)-(\d+)$/, '$1')
 }));
 const prefixed = (prefix, values) => options(values.map(value => `${prefix}-${value}`));
 const control = (id, values, extra = {}) => ({ id, label: `zx_builder_style_${id}`, options: options(values), ...extra });
@@ -45,14 +59,53 @@ function illustratedControl(id, values, matchValues = values) {
 }
 const spaceControl = (prefix, id = prefix) => control(id, [], {
   spacing: true,
+  prefix,
+  length: !prefix.startsWith('gap'),
+  nonNegative: !prefix.startsWith('m'),
   family: prefix.startsWith('gap') ? 'gap' : prefix[0],
   pattern: new RegExp(`^-?${prefix}-.+$`),
   options: [
-    ...Object.entries(spacing.spaces).sort((a, b) => Number(a[0]) - Number(b[0]))
-      .map(([key, value]) => ({ value: `${prefix}-${key}`, label: spacingLabel(key, value) })),
+    ...spacingOptions(prefix, prefix.startsWith('m')),
     ...(prefix.startsWith('m') ? [{ value: `${prefix}-auto`, label: 'auto' }] : [])
   ]
 });
+function positionLengthControl(id, prefix = id) {
+  const depth = id === 'translate_z';
+  const offset = ['top', 'right', 'bottom', 'left'].includes(id);
+  const utility = value => depth ? `[translate:0_0_${value}]` : `${prefix}-[${value}]`;
+  return control(id, [], {
+    length: true, depth, prefix,
+    spacing: offset,
+    family: offset ? 'inset' : undefined,
+    pattern: depth ? /^\[translate:.+\]$/ : new RegExp(`^-?${prefix}-.+$`),
+    options: [
+      ...spacingOptions(prefix, true, depth),
+      ...(!depth ? ['25%', '50%', '75%', '100%', '-25%', '-50%', '-75%', '-100%'].map(value => ({ value: utility(value), label: value })) : []),
+      ...(offset ? [{ value: `${prefix}-auto`, label: 'auto' }] : [])
+    ]
+  });
+}
+function dimensionControl(id, prefix) {
+  const keywords = [
+    ...(['w', 'h', 'min-w'].includes(prefix) ? ['auto'] : []),
+    'full', 'min', 'max', 'fit',
+    ...(prefix.startsWith('max-') ? ['none'] : []),
+    ...(['w', 'h', 'min-h', 'max-h'].includes(prefix) ? ['screen'] : [])
+  ];
+  return control(id, [], {
+    length: true,
+    nonNegative: true,
+    prefix,
+    spacing: ['w', 'h'].includes(prefix),
+    family: 'size',
+    pattern: new RegExp(`^${prefix}-.+$`),
+    options: [
+      ...keywords.map(value => ({ value: `${prefix}-${value}`, label: `zx_builder_style_dimension_${value}` })),
+      ...Object.entries(spacing.spaces).sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([key, value]) => ({ value: `${prefix}-${key}`, label: spacingLabel(key, value) }))
+    ]
+  });
+}
 function colorControl(id, prefix) {
   return control(id, [], {
     color: true,
@@ -67,6 +120,44 @@ function colorControl(id, prefix) {
   });
 }
 
+
+function radiusControl(corner = '') {
+  const prefix = corner ? `rounded-${corner}` : 'rounded';
+  return control(corner ? `radius_${corner}` : 'radius', [], {
+    prefix, radius: !!corner, length: true, nonNegative: true,
+    pattern: corner ? new RegExp(`^rounded-${corner}(?:-.+)?$`) : undefined,
+    options: Object.entries(radius).map(([key, value]) => ({
+      value: `${prefix}-${key}`, label: `${key} · ${value}`
+    }))
+  });
+}
+const radiusCorners = ['tl', 'tr', 'bl', 'br'].map(radiusControl);
+const borderGlobals = [
+  control('border_width', [], { options: prefixed('border', Object.keys(borders.widths)), matchValues: [...Object.keys(borders.widths).map(key => 'border-' + key), 'border', 'border-0'] }),
+  control('border_style', ['border-solid', 'border-dashed', 'border-dotted', 'border-double', 'border-hidden']),
+  colorControl('border_color', 'border')
+];
+const sideNames = { t: 'top', r: 'right', b: 'bottom', l: 'left' };
+function borderSide(base, side) {
+  const style = base.id === 'border_style';
+  const convert = value => style
+    ? `[border-${sideNames[side]}-style:${value.slice(7)}]`
+    : value.replace(/^border/, `border-${side}`);
+  return {
+    ...base, id: `${base.id}_${side}`, sideLabel: `zx_builder_style_side_${side}`,
+    border: true, borderStyle: style, baseOptions: base.options,
+    baseMatchValues: base.matchValues,
+    options: base.options.map(option => ({ ...option, value: convert(option.value) })),
+    matchValues: base.matchValues?.map(convert)
+  };
+}
+const borderSides = Object.keys(sideNames).flatMap(side => borderGlobals.map(base => borderSide(base, side)));
+
+function spacingSection(id, prefix) {
+  const sides = ['t', 'r', 'b', 'l'].map(side => spaceControl(`${prefix}${side}`));
+  return { id, controls: sides, globalControls: [{ ...spaceControl(prefix, id), globalSides: sides }] };
+}
+
 export const styleBreakpoints = Object.entries(breakpoints).map(([name, min]) => ({ value: `${name}:`, label: `${name} ≥ ${min}` }));
 export const nodeStyleSections = [
   { id: 'layout', controls: [
@@ -74,22 +165,56 @@ export const nodeStyleSections = [
     illustratedControl('direction', ['flex-row', 'flex-col', 'flex-row-reverse', 'flex-col-reverse']),
     illustratedControl('wrap', ['flex-nowrap', 'flex-wrap', 'flex-wrap-reverse']),
     control('columns', [...Array.from({ length: 12 }, (_, index) => `grid-cols-${index + 1}`), 'grid-cols-none'], { pattern: /^grid-cols-.+$/ }),
+
     illustratedControl('align', ['items-start', 'items-center', 'items-end', 'items-stretch', 'items-baseline']),
     illustratedControl('justify', ['justify-start', 'justify-center', 'justify-end', 'justify-between', 'justify-around', 'justify-evenly', 'justify-normal', 'justify-stretch']),
-    spaceControl('gap-x', 'gap_x'), spaceControl('gap-y', 'gap_y')
+    spaceControl('gap-x', 'gap_x'), spaceControl('gap-y', 'gap_y'),
+    control('overflow', [], {
+      options: ['visible', 'hidden', 'clip', 'auto', 'scroll'].map(value => ({
+        value: `overflow-${value}`, label: `zx_builder_style_overflow_${value}`
+      }))
+    })
   ] },
-  { id: 'padding', controls: ['t', 'r', 'b', 'l'].map(side => spaceControl(`p${side}`)) },
-  { id: 'margin', controls: ['t', 'r', 'b', 'l'].map(side => spaceControl(`m${side}`)) },
+  { id: 'placement', controls: [
+    control('col_span', [...Array.from({ length: 12 }, (_, index) => `col-span-${index + 1}`), 'col-span-full'], { pattern: /^col-span-.+$/ }),
+    control('order', ['order-first', ...Array.from({ length: 12 }, (_, index) => `order-${index + 1}`), 'order-last', 'order-none'], { pattern: /^-?order-.+$/ })
+  ] },
+  { id: 'dimensions', controls: [
+    control('container', Object.keys(containers).map(selector => selector.slice(1)), { pattern: /^container(?:-.+)?$/ }),
+    dimensionControl('width', 'w'), dimensionControl('height', 'h'),
+    dimensionControl('min_width', 'min-w'), dimensionControl('min_height', 'min-h'),
+    dimensionControl('max_width', 'max-w'), dimensionControl('max_height', 'max-h')
+  ] },
+  { id: 'positioning', controls: [
+    control('position', ['static', 'relative', 'fixed', 'absolute'], { matchValues: ['static', 'relative', 'fixed', 'absolute', 'sticky'] }),
+    control('z_index', [], {
+      integer: true,
+      prefix: 'z',
+      pattern: /^-?z-.+$/,
+      options: ['auto', 0, 10, 20, 30, 40, 50].map(value => ({ value: `z-${value}`, label: String(value) }))
+    }),
+    ...['top', 'right', 'bottom', 'left'].map(side => positionLengthControl(side)),
+    positionLengthControl('translate_x', 'translate-x'),
+    positionLengthControl('translate_y', 'translate-y'),
+    positionLengthControl('translate_z')
+  ] },
+  spacingSection('padding', 'p'),
+  spacingSection('margin', 'm'),
+  { id: 'opacity', controls: [control('opacity', [], {
+    pattern: /^opacity-.+$/,
+    options: [0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100]
+      .map(value => ({ value: `opacity-${value}`, label: `${value}%` }))
+  })] },
   { id: 'text', controls: [colorControl('text_color', 'text')] },
   { id: 'fill', controls: [
     colorControl('background', 'bg'),
     control('gradient', ['bg-none', ...Object.keys(gradients).map(key => `bg-${key}`), ...['t', 'tr', 'r', 'br', 'b', 'bl', 'l', 'tl'].map(direction => `bg-gradient-to-${direction}`)], { pattern: /^bg-(?:none|gradient-.+)$/ }),
     colorControl('from', 'from'), colorControl('via', 'via'), colorControl('to', 'to')
   ] },
-  { id: 'border', controls: [
-    control('border_width', [], { options: prefixed('border', Object.keys(borders.widths)) }),
-    control('border_style', ['border-solid', 'border-dashed', 'border-dotted', 'border-double', 'border-hidden']),
-    colorControl('border_color', 'border'),
-    control('radius', [], { options: prefixed('rounded', Object.keys(radius)) })
+  { id: 'border', controls: borderSides, globalControls: borderGlobals.map(base => ({
+    ...base, globalSides: borderSides.filter(side => side.id.startsWith(base.id + '_'))
+  })) },
+  { id: 'rounding', controls: radiusCorners, globalControls: [
+    { ...radiusControl(), globalSides: radiusCorners }
   ] }
 ];

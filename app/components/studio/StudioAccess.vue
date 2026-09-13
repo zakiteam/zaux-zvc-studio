@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!ready" class="grid min-h-dvh place-items-center bg-zaux-light font-builder text-[12px] text-zaux-dark-grey">
+  <div v-if="!ready" class="grid min-h-dvh h-screen place-items-center bg-zaux-light font-builder text-[12px] text-zaux-dark-grey">
     {{ translate('zx_builder_loading') }}
   </div>
   <div v-else-if="signedIn" :key="user.id"><slot /></div>
