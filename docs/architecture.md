@@ -70,7 +70,15 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Imports support Studio's versioned JSON envelopes.
 - Native .zvc.js modules under app/zvc load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
-- Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI, asset uploads, and a browser JavaScript editor are not included. Hand-written code is maintained in project files.
+- Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI and a browser JavaScript editor are not included. Asset uploads use the project-owned filesystem media integration described in [Media library](media-library.md). Hand-written code is maintained in project files.
+
+## Media library
+
+`server/api/media/` validates the Supabase session and active profile and uses the caller's token for RLS. `server/utils/media.js` owns server authorization, persistent paths and upload limits. Sharp validates static JPEG/PNG/WebP and writes immutable WebP files and thumbnails outside the deployment directory. `server/routes/media/[file].get.js` serves public files; archived assets remain readable by URL.
+
+`app/services/media.js` owns browser IO. `BuilderMediaPicker.vue` provides one native modal dialog for project/global catalogs, search, upload, pagination and archiving; `BuilderImageInput.vue` retains manual URL entry. Project cover and library preview changes use explicit `useBuilder.js` mutations. Native source refresh preserves preview metadata; existing instance copies remain independent. The hub reads the project's cover from its existing JSON document. Personal global assets follow user ownership because the current ZVC library is workspace-local, not a shared organization catalog.
+
+See [media storage setup](media-library.md) for deployment, permissions and lifecycle. Runtime and hosting integration remain unverified.
 
 ## Shared builder dropdown
 

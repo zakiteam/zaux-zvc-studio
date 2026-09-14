@@ -15,6 +15,11 @@ export default [
   { name: 'Separator', props: {} },
   { name: 'div', container: true, html: true, props: {} },
   { name: 'section', container: true, html: true, props: {} },
+  { name: 'nav', container: true, html: true, props: {} },
+  { name: 'ul', container: true, html: true, props: {}, createChildren: t =>
+    [1, 2, 3].map(number => ({ name: 'li', props: { textContent: t('zx_builder_preset_list_item') + ' ' + number } }))
+  },
+  { name: 'li', html: true, createProps: t => ({ textContent: t('zx_builder_preset_list_item') }) },
   { name: 'h2', html: true, props: { textContent: 'Un nuovo titolo' } },
   { name: 'p', html: true, props: { textContent: 'Un nuovo paragrafo.' } },
   { name: 'span', html: true, props: { textContent: 'Testo' } }

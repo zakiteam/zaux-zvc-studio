@@ -128,6 +128,9 @@
 				/>
 			</div>
 		</div>
+    <BuilderMediaPicker v-if="mediaMode" :projectId="activeRemoteProject?.id" :canManageProject="canEditRemote"
+      :readonly="!canEditRemote" :manageOnly="mediaMode === 'library'" :scopeOnly="mediaMode === 'cover' ? 'project' : undefined"
+      :clearable="mediaMode === 'cover'" @close="mediaMode = ''" @select="selectMedia" />
 	</header>
 </template>
 <script>
@@ -139,9 +142,10 @@ import { useAuth } from "../../composables/useAuth.js";
 import { useStudioTheme } from "../../composables/useStudioTheme.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
+import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 
 export default defineComponent({
-	components: { BuilderButton, BuilderDropdown },
+	components: { BuilderButton, BuilderDropdown, BuilderMediaPicker },
 	setup() {
 		const builder = useBuilder();
 		const router = useRouter();
@@ -155,11 +159,18 @@ export default defineComponent({
 		const { theme, toggleTheme } = useStudioTheme();
 		const isAppDarkTheme = computed(() => theme.value === 'dark');
 		const projectOpening = ref(false);
+    const mediaMode = ref('');
+    function selectMedia(asset) {
+      if (mediaMode.value === 'cover') builder.updateProjectCover(asset?.url);
+      mediaMode.value = '';
+    }
 		const projectMenuItems = computed(() => {
 			const project = builder.activeRemoteProject.value;
 			const t = builder.translate;
 			return [
 				{ id: 'hub', label: t('zx_builder_hub_back'), icon: 'arrow-up-right' },
+        { id: 'media', label: t('zx_builder_media_library') },
+        { id: 'cover', label: t('zx_builder_media_cover'), hidden: !project || !builder.canEditRemote.value },
 				{
 					id: "new",
 					label: t("zx_builder_new_project"),
@@ -191,6 +202,7 @@ export default defineComponent({
 		});
 		async function projectAction(item) {
 			if (builder.remoteProjectBusy.value || projectOpening.value) return;
+			if (item.id === 'media' || item.id === 'cover') { mediaMode.value = item.id === 'cover' ? 'cover' : 'library'; return; }
 			if (item.id === 'hub') {
 				await router.push('/');
 				return;
@@ -242,7 +254,7 @@ export default defineComponent({
 			studioLogo,
 			...builder,
 			user: auth.user,
-			projectOpening,
+			projectOpening, mediaMode, selectMedia,
 			projectMenuItems,
 			projectAction,
 			accountMenuItems,

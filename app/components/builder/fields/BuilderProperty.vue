@@ -4,7 +4,7 @@
     <div v-if="isBinding(value)" class="zb-binding-pill rounded-xxs border-slim border-zaux-accent/20 bg-zaux-accent/5 p-1.5 font-mono text-[11px] text-zaux-accent">↗ {{ value.$bind }}</div>
     <template v-else>
       <BuilderInput v-if="options.length" type="select" :modelValue="selectedOption" :label="property" :options="selectOptions" @update:modelValue="selectOption" />
-      <BuilderValue v-if="!options.length || selectedOption === -1" :modelValue="value" :label="property" :type="valueType" @update:modelValue="$emit('change', $event)" />
+      <BuilderValue v-if="!options.length || selectedOption === -1" :modelValue="value" :label="property" :image="descriptor?.image && (value == null || typeof value === 'string')" :type="valueType" @update:modelValue="$emit('change', $event)" />
     </template>
   </div>
 </template>

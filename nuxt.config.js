@@ -13,6 +13,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-09-06',
   ssr: false,
   runtimeConfig: {
+    mediaStorageDir: '',
+    mediaPublicBaseUrl: '',
     public: {
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabasePublishableKey: process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY

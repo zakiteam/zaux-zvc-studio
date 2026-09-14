@@ -39,5 +39,9 @@ export function propertyDescriptors(name, props) {
   for (const [key, values] of Object.entries(componentSelects[name] ?? {})) {
     if (Object.hasOwn(descriptors, key)) descriptors[key] = { ...descriptors[key], control: 'select', options: optionsFor(values) };
   }
+  if (['Zimg', 'img'].includes(name)) {
+    for (const key of name === 'Zimg' ? ['src', 'fallbackSrc'] : ['src']) descriptors[key] = { ...descriptors[key], image: true };
+  }
+  if (name === 'video') descriptors.poster = { ...descriptors.poster, image: true };
   return descriptors;
 }

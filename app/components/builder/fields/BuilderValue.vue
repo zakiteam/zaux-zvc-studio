@@ -1,7 +1,8 @@
 <template>
 	<div class="zb-value">
+		<BuilderImageInput v-if="image" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
 		<BuilderInput
-			v-if="type === 'switch'"
+			v-else-if="type === 'switch'"
 			type="select"
 			:modelValue="String(modelValue)"
 			:label="label"
@@ -138,11 +139,13 @@ import {
 import { parseJson } from "../../../../domain/validation.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
 import BuilderInput from "./BuilderInput.vue";
+import BuilderImageInput from "./BuilderImageInput.vue";
 import BuilderCodeEditor from "./BuilderCodeEditor.vue";
 import BuilderButton from "../BuilderButton.vue";
 export default defineComponent({
 	components: {
 		BuilderInput,
+		BuilderImageInput,
 		BuilderCodeEditor,
 		BuilderButton,
 		BuilderRichTextEditor: defineAsyncComponent(
@@ -151,6 +154,7 @@ export default defineComponent({
 	},
 	props: {
 		disabled: Boolean,
+		image: Boolean,
 		modelValue: { default: null },
 		type: { default: "text" },
 		label: String,

@@ -41,6 +41,7 @@
     "pinia": "2.1.4",
     "postcss": "^8.5.26",
     "prettier": "3.9.6",
+    "sharp": "^0.35.4",
     "swiper": "12.1.2",
     "tailwind-merge": "2.6.0",
     "universal-cookie": "7.2.2",

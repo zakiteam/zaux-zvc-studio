@@ -23,7 +23,11 @@ export function mergeSourceLibrary(workspace) {
   for (const definition of registeredSourceDefinitions()) {
     const index = workspace.library.findIndex(item => item.id === definition.id);
     if (index < 0) workspace.library.push(definition);
-    else workspace.library[index] = definition;
+    else {
+      // Preview is Studio metadata, independent of the source implementation.
+      if (workspace.library[index].previewImage !== undefined) definition.previewImage = workspace.library[index].previewImage;
+      workspace.library[index] = definition;
+    }
   }
 }
 export function sourceAvailable(definition) { return !!registry[definition?.sourceKey]; }

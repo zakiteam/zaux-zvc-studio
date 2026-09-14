@@ -61,30 +61,42 @@
             @dragstart="drag($event, { kind: 'library', id: definition.id })"
           >
             <button
-              class="zb-library-thumb relative grid h-[112px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
+              class="zb-library-thumb relative grid group h-[112px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
               :class="`zb-library-thumb--${index % 3}`"
               :aria-label="`${translate('zx_builder_edit_library')}: ${definition.name}`"
               @click="selectLibrary(definition.id)"
             >
-              <span
-                class="zb-mini-layout relative h-[78px] w-[140px] -rotate-3 rounded-xxs bg-zaux-white px-1.5 py-2 shadow-closer [&>i]:my-0.75 [&>i]:block [&>i]:h-[5px] [&>i]:w-[55px] [&>i]:rounded-[1px] [&>i]:bg-zaux-light-grey [&>i:nth-child(2)]:w-[38px] [&>i:nth-child(3)]:h-[9px] [&>i:nth-child(3)]:w-[22px] [&>i:nth-child(3)]:bg-zaux-accent [&>b]:absolute [&>b]:right-1.5 [&>b]:top-2 [&>b]:h-[50px] [&>b]:w-[47px] [&>b]:rounded-t-l [&>b]:rounded-b-xxs [&>b]:bg-zaux-light-accent/30"
-                ><i></i><i></i><i></i><b></b></span
-              ><span
-                class="zb-card-type absolute right-1 top-1 rounded-xxs bg-zaux-white/70 px-0.5 py-0.25 font-mono text-[8px] text-zaux-dark-grey"
-                >{{
-                  definition.sourceKey ? translate("zx_builder_from_code") : "ZVC"
-                }}</span
-              >
+				<BuilderButton
+					class="absolute z-10 hidden top-1 left-1 group-hover:block"
+					variant="light1"
+					icon="media"
+					iconOnly
+					:label="translate('zx_builder_media_preview')" size="xs" :disabled="!canEditRemote"
+					@click="previewId = definition.id"
+				/>
+				<img v-if="definition.previewImage" :src="definition.previewImage" alt="" loading="lazy" class="absolute inset-0 object-cover w-full h-full" />
+				<span v-else
+					class="zb-mini-layout relative h-[78px] w-[140px] -rotate-3 rounded-xxs bg-zaux-white px-1.5 py-2 shadow-closer [&>i]:my-0.75 [&>i]:block [&>i]:h-[5px] [&>i]:w-[55px] [&>i]:rounded-[1px] [&>i]:bg-zaux-light-grey [&>i:nth-child(2)]:w-[38px] [&>i:nth-child(3)]:h-[9px] [&>i:nth-child(3)]:w-[22px] [&>i:nth-child(3)]:bg-zaux-accent [&>b]:absolute [&>b]:right-1.5 [&>b]:top-2 [&>b]:h-[50px] [&>b]:w-[47px] [&>b]:rounded-t-l [&>b]:rounded-b-xxs [&>b]:bg-zaux-light-accent/30"
+					><i></i><i></i><i></i><b></b></span
+				><span
+					class="zb-card-type absolute right-1 top-1 rounded-xxs bg-zaux-white/70 px-0.5 py-0.25 font-mono text-[8px] text-zaux-dark-grey"
+					>{{
+					definition.sourceKey ? translate("zx_builder_from_code") : "ZVC"
+					}}</span
+				>
             </button>
             <div
               class="zb-card-body px-1.5 pb-1 pt-1.5 [&>small]:mt-0.5 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
             >
-              <button
-                class="zb-card-name block w-full text-left text-[12px] font-semibold"
-                @click="selectLibrary(definition.id)"
-              >
-                {{ definition.name }}</button
-              ><small>{{ definition.exportName }}</small>
+			  	<div>
+					<button
+						class="zb-card-name block w-full text-left text-[12px] font-semibold"
+						@click="selectLibrary(definition.id)"
+					>
+						{{ definition.name }}</button
+					>
+					<small class="block mb-2">{{ definition.exportName }}</small>
+				</div>
               <div
                 class="zb-card-actions mt-1.5 flex items-center gap-0.5 border-t-slim border-zaux-light pt-0.75 [&>.zb-button]:flex-1 [&>.zb-button]:!px-0.25 [&>.zb-button]:!text-[10px]"
               >
@@ -319,9 +331,12 @@
 				@update:modelValue="setLanguage"
 			/>
 		</div>
+    <BuilderMediaPicker v-if="previewId" scopeOnly="global" clearable
+      @close="previewId = null" @select="setPreview" />
 	</aside>
 </template>
 <script>
+import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 import { defineComponent, computed, ref } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
@@ -331,19 +346,24 @@ import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 import BuilderTree from "./BuilderTree.vue";
 import BuilderInput from "./fields/BuilderInput.vue";
 export default defineComponent({
-	components: { BuilderCodeEditor, BuilderButton, BuilderTree, BuilderInput },
+	components: { BuilderCodeEditor, BuilderButton, BuilderTree, BuilderInput, BuilderMediaPicker },
 	props: { width: { default: 254 } },
 	setup() {
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
+    const previewId = ref(null);
+    function setPreview(asset) {
+      builder.updateLibraryPreview(previewId.value, asset?.url);
+      previewId.value = null;
+    }
 		const filtered = computed(() =>
 			catalog.filter((entry) =>
 				entry.name.toLowerCase().includes(search.value.toLowerCase()),
 			),
 		);
 		const drag = outlineDrag.start;
-		return { ...builder, search, filtered, containers, drag, outlineDrag };
+		return { ...builder, search, filtered, containers, drag, outlineDrag, previewId, setPreview };
 	},
 });
 </script>

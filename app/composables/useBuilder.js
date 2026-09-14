@@ -431,6 +431,16 @@ export function createBuilder({ projectId = null } = {}) {
   function updateStyleUI(path, value) { commit(() => setUIValue(document.value.styles, path, value)); }
   function replaceStyles(preset) { validateStylePreset(preset); commit(() => { document.value.styles = { ...clone(preset), uiSettings: clone(preset.uiSettings ?? {}) }; }); }
   function resetStyles() { replaceStyles(stylePreset); }
+  function updateProjectCover(url) {
+    if (!activeRemoteProject.value) return;
+    commit(workspace => { workspace.coverImage = url ?? ''; });
+  }
+  function updateLibraryPreview(id, url) {
+    commit(workspace => {
+      const definition = workspace.library.find(item => item.id === id);
+      if (definition) definition.previewImage = url ?? '';
+    });
+  }
   function updateDefinition(change) {
     if (isSourceBase.value) { error.value = 'zx_builder_source_base_notice'; return; }
     if (activeDefinition.value) commit(() => change(activeDefinition.value));
@@ -493,7 +503,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
   });
   onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { ...i18n, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { ...i18n, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

@@ -15,6 +15,7 @@ export function validateDefinition(definition) {
   requireValue(Array.isArray(definition.fields) && definition.fields.length <= 200 && typeof definition.css === 'string');
   if (definition.sourceKey !== undefined) requireValue(typeof definition.sourceKey === 'string' && definition.sourceKey.endsWith('.zvc.js') && !definition.sourceKey.split('/').includes('..'));
   if (definition.defaults !== undefined) requireValue(object(definition.defaults));
+  if (definition.previewImage !== undefined) requireValue(typeof definition.previewImage === 'string');
   const keys = new Set();
   for (const field of definition.fields) {
     requireValue(object(field) && /^[A-Za-z_][\w.]*$/.test(field.key) && !keys.has(field.key));
@@ -43,6 +44,7 @@ export function validateWorkspace(workspace) {
   requireValue(Array.isArray(workspace.library) && Array.isArray(workspace.templates) && workspace.templates.length > 0);
   requireValue(workspace.library.length <= 500 && workspace.templates.length <= 100);
   if (workspace.styles !== undefined) validateStylePreset(workspace.styles);
+  if (workspace.coverImage !== undefined) requireValue(typeof workspace.coverImage === 'string');
   const ids = new Set();
   const unique = id => { requireValue(typeof id === 'string' && !ids.has(id)); ids.add(id); };
   for (const definition of workspace.library) { unique(definition.id); validateDefinition(definition); }

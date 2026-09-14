@@ -45,6 +45,10 @@ Run the SQL migrations in `supabase/migrations/` through the Supabase SQL Editor
 
 Without a configured Supabase instance, workspace data remains in the current browser and origin.
 
+## Media library
+
+Store uploaded images on the Nuxt/Plesk host, with project-scoped and personal global catalogs in Supabase. Use the shared picker for project covers, image fields and ZVC previews. See [media storage setup](docs/media-library.md) for the required SQL migration, persistent directory and public URL configuration.
+
 ## Using the editor
 
 1. Select a template or create a new one.

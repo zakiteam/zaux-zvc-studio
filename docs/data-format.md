@@ -35,6 +35,10 @@ An instance contains `id`, `sourceId` (provenance only), `name`, a full independ
 
 Native definitions additionally store sourceKey (relative to app/zvc) and defaults. Their tree is a cached result of buildNode, refreshed from the installed module and current instance data. Source functions are never stored in JSON. Missing modules retain their saved tree and require restoring the module or converting to visual before editing content.
 
+## Image references
+
+Optional `workspace.coverImage` and `definition.previewImage` strings store absolute public image URLs. Empty strings clear previews. Existing version-1 documents remain valid without these optional fields. Preview metadata survives editable JSON export/import and independent definition copies; source-library refresh preserves its own preview. Component image properties keep ordinary strings, with no binary data or media service objects in workspace JSON. Runtime/JS exports keep image URLs and do not bundle files.
+
 ## Transport envelope
 
 `documentEnvelope(kind, data)` from `domain/export.js` returns:

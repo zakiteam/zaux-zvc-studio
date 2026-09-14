@@ -6,6 +6,7 @@ import gradients from '../../vendor/zaux/style/tokens/gradients.json';
 import borders from '../../vendor/zaux/style/tokens/borders.json';
 import radius from '../../vendor/zaux/style/tokens/radius.json';
 import breakpoints from '../../vendor/zaux/style/tokens/breakpoints.json';
+import typography from '../../vendor/zaux/style/tokens/typography.json';
 
 function leaves(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {
@@ -217,7 +218,10 @@ export const nodeStyleSections = [
     options: [0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100]
       .map(value => ({ value: `opacity-${value}`, label: `${value}%` }))
   })] },
-  { id: 'text', controls: [colorControl('text_color', 'text')] },
+  { id: 'text', controls: [
+    control('typography', Object.keys(typography.styles).map(name => `text-${name}`)),
+    colorControl('text_color', 'text')
+  ] },
   { id: 'fill', controls: [
     colorControl('background', 'bg'),
     control('gradient', ['bg-none', ...Object.keys(gradients).map(key => `bg-${key}`), ...['t', 'tr', 'r', 'br', 'b', 'bl', 'l', 'tl'].map(direction => `bg-gradient-to-${direction}`)], { pattern: /^bg-(?:none|gradient-.+)$/ }),

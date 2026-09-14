@@ -30,6 +30,7 @@
 						!canEditRemote || isSourceBase || (isSource && !hasSource)
 					"
 					:label="field.label"
+          :image="isImageField(field.key, fieldValue(field))"
 					:type="fieldInputType(field)"
 					:options="field.options"
 					:modelValue="fieldValue(field)"
@@ -49,6 +50,7 @@
 	</template>
 </template>
 <script>
+import { isImageField } from "../../../../domain/media.js";
 import { defineComponent, computed } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { fieldInputType, isFieldVisible } from "../../../../domain/fields.js";
@@ -87,7 +89,7 @@ export default defineComponent({
 						clone(value);
 				});
 		}
-		return { ...builder, visibleFields, fieldInputType, fieldValue, setFieldValue };
+		return { ...builder, isImageField, visibleFields, fieldInputType, fieldValue, setFieldValue };
 	},
 });
 </script>

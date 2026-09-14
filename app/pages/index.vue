@@ -21,7 +21,8 @@
       <article v-for="project in filteredProjects" :key="project.id" class="flex flex-col min-w-0 p-3 rounded-s bg-zaux-white">
         <NuxtLink :to="'/editor/' + project.id" class="flex-1 block mb-3 rounded-xxs focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent">
           <div class="mb-3 flex h-[100px] items-center justify-center rounded-xs bg-zaux-light" aria-hidden="true">
-            <img :src="studioLogo" alt="" class="h-[40px] w-[40px] opacity-60" />
+            <img v-if="project.cover_image" :src="project.cover_image" alt="" loading="lazy" class="h-full w-full rounded-xs object-cover" />
+            <img v-else :src="studioLogo" alt="" class="h-[40px] w-[40px] opacity-60" />
           </div>
           <h2 class="break-words text-[18px] font-medium">{{ project.name }}</h2>
           <p class="mt-1 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_hub_role_' + project.role) }}</p>

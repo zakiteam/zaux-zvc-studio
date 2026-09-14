@@ -3,7 +3,7 @@ import { useSupabaseClient } from './supabase.js';
 export async function listRemoteProjects(userId) {
   const supabase = useSupabaseClient();
   const [{ data: projects, error }, { data: memberships, error: membershipError }] = await Promise.all([
-    supabase.from('projects').select('id, name, owner_id, revision, updated_at').order('updated_at', { ascending: false }),
+    supabase.from('projects').select('id, name, owner_id, revision, updated_at, cover_image:document->>coverImage').order('updated_at', { ascending: false }),
     supabase.from('project_members').select('project_id, role').eq('user_id', userId)
   ]);
   if (error || membershipError) throw error ?? membershipError;
