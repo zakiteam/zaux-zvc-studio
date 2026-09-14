@@ -36,9 +36,9 @@
 </template>
 <script>
 import { computed, defineComponent } from 'vue';
-import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderInput from './BuilderInput.vue';
-import BuilderDropdown from './BuilderDropdown.vue';
+import { useTranslation } from '../../../../composables/useTranslation.js';
+import BuilderInput from '../BuilderInput.vue';
+import BuilderDropdown from '../../BuilderDropdown.vue';
 
 export default defineComponent({
   components: { BuilderInput, BuilderDropdown },

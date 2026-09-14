@@ -1,6 +1,12 @@
+import formComponents from './form-components.js';
+import contentComponents from './content-components.js';
+import { sliderControls } from '../../../integrations/zaux/slider-controls.js';
 // Order and membership of the drag-and-drop palette.
 // This does not limit components rendered by hand-written ZVCs or saved JSON.
 export default [
+  ...contentComponents,
+  ...formComponents,
+  ...Object.entries(sliderControls).map(([name, config]) => ({ name, props: { ...config.props, slides: [] } })),
   { name: 'Zsection', container: true, props: { size: 'm', contained: true } },
   { name: 'IntroText', props: { title: 'Titolo della sezione', excerpt: 'Un nuovo spazio per i tuoi contenuti.', size: 'm' } },
   { name: 'ZButton', props: { label: 'Scopri di più', theme: 'primary', tag: 'a', href: '#', size: 's' } },

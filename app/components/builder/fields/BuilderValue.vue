@@ -135,11 +135,11 @@ import {
 	watch,
 	onBeforeUnmount,
 } from "vue";
-import { parseJson } from "../../../domain/validation.js";
-import { useTranslation } from "../../composables/useTranslation.js";
+import { parseJson } from "../../../../domain/validation.js";
+import { useTranslation } from "../../../composables/useTranslation.js";
 import BuilderInput from "./BuilderInput.vue";
 import BuilderCodeEditor from "./BuilderCodeEditor.vue";
-import BuilderButton from "./BuilderButton.vue";
+import BuilderButton from "../BuilderButton.vue";
 export default defineComponent({
 	components: {
 		BuilderInput,

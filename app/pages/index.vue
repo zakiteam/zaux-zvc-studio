@@ -46,7 +46,7 @@ import { useTranslation } from '../composables/useTranslation.js';
 import { listRemoteProjects, renameRemoteProject, deleteRemoteProject } from '../services/projects.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import BuilderButton from '../components/builder/BuilderButton.vue';
-import BuilderInput from '../components/builder/BuilderInput.vue';
+import BuilderInput from '../components/builder/fields/BuilderInput.vue';
 import ProjectActionDialog from '../components/studio/ProjectActionDialog.vue';
 
 definePageMeta({ layout: 'hub' });

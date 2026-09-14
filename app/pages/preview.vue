@@ -18,9 +18,10 @@ import { previewNodes } from '../services/preview.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
+import ComponentsRenderer from '../../integrations/zaux/slot-renderer.js';
 import PreviewBoundary from '../components/builder/PreviewBoundary.vue';
 export default defineComponent({
-  components: { PreviewBoundary },
+  components: { PreviewBoundary, ComponentsRenderer },
   setup() {
     useHead({ link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] });
     const translation = useTranslation();

@@ -16,9 +16,9 @@ import { defineComponent, shallowRef, ref, onMounted, onBeforeUnmount, watch } f
 import { Editor, EditorContent } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
-import { richTextContent, sanitizeRichText } from '../../services/richtext.js';
-import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderButton from './BuilderButton.vue';
+import { richTextContent, sanitizeRichText } from '../../../services/richtext.js';
+import { useTranslation } from '../../../composables/useTranslation.js';
+import BuilderButton from '../BuilderButton.vue';
 
 export default defineComponent({
   components: { EditorContent, BuilderButton },

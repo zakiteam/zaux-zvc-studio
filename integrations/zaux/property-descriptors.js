@@ -1,3 +1,4 @@
+import { componentVariants, componentSelects } from './component-options.js';
 import section from '../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
 import intro from '../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
 import button from '../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
@@ -30,10 +31,13 @@ export function propertyDescriptors(name, props) {
       descriptors[field.name].options = optionsFor(field.value);
     }
   }
-  const meta = metadata[name] ?? supplements[name];
+  const meta = componentVariants[name] ?? metadata[name] ?? supplements[name];
   for (const [key, values] of [['size', meta?.sizes], ['theme', meta?.themes]]) {
     if (!Object.hasOwn(descriptors, key) || !Array.isArray(values)) continue;
     descriptors[key] = { ...descriptors[key], control: 'select', options: optionsFor(values) };
+  }
+  for (const [key, values] of Object.entries(componentSelects[name] ?? {})) {
+    if (Object.hasOwn(descriptors, key)) descriptors[key] = { ...descriptors[key], control: 'select', options: optionsFor(values) };
   }
   return descriptors;
 }

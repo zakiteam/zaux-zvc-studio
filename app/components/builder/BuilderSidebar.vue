@@ -184,11 +184,22 @@
 			<div v-else class="zb-outline-panel px-2 py-2.5">
 				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">{{ translate("zx_builder_outline_drag_hint") }}</p>
 				<template v-if="mode === 'library'"
-					><h3
+					><div class="flex items-center gap-0.5">
+						<button
+							type="button"
+							class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							:aria-expanded="!collapsedOutline.has('definition:' + activeDefinition?.id)"
+							:aria-label="translate(collapsedOutline.has('definition:' + activeDefinition?.id) ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + activeDefinition?.name"
+							@click.stop="toggleOutline('definition:' + activeDefinition?.id)"
+							@dragstart.stop.prevent
+						><span aria-hidden="true">{{ collapsedOutline.has('definition:' + activeDefinition?.id) ? '▸' : '▾' }}</span></button>
+                    <h3
 						class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
 					>
 						{{ activeDefinition?.name }}
 					</h3>
+                    </div>
+                    <template v-if="!collapsedOutline.has('definition:' + activeDefinition?.id)">
 					<p
 						v-if="activeDefinition?.sourceKey"
 						class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
@@ -199,7 +210,8 @@
 						v-else-if="activeDefinition"
 						:nodes="activeDefinition.tree"
 						instance="library"
-				/></template>
+				/>
+                    </template></template>
 				<template v-else
 					><article
 						v-for="instance in activeTemplate.instances"
@@ -216,6 +228,14 @@
 					>
 						<span v-if="outlineDrag.position(null, instance.id, true)" aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-zaux-accent" :class="outlineDrag.position(null, instance.id, true) === 'before' ? 'top-0' : 'bottom-0'" />
 						<div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
+							<button
+								type="button"
+								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+								:aria-expanded="!collapsedOutline.has('instance:' + instance.id)"
+								:aria-label="translate(collapsedOutline.has('instance:' + instance.id) ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + instance.name"
+								@click.stop="toggleOutline('instance:' + instance.id)"
+								@dragstart.stop.prevent
+							><span aria-hidden="true">{{ collapsedOutline.has('instance:' + instance.id) ? '▸' : '▾' }}</span></button>
 							<button
 								class="zb-instance-name flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
 								@click="selectInstance(instance.id)"
@@ -238,6 +258,7 @@
 								/>
 							</div>
 						</div>
+                        <template v-if="!collapsedOutline.has('instance:' + instance.id)">
 						<div
 							v-if="instanceId === instance.id"
 							class="zb-instance-actions flex justify-between gap-0.5 pb-1.5 pt-0.5 text-[9px] text-zaux-dark-grey [&>button:hover]:text-zaux-accent"
@@ -255,6 +276,18 @@
 								{{ translate("zx_builder_rename") }}
 							</button>
 						</div>
+                        <div v-if="instanceId === instance.id" class="px-0.5 pb-1.5">
+                          <BuilderButton size="xs" class="w-full" :label="translate('zx_builder_restore_library')"
+                            :disabled="!canEditRemote || !instanceLibraryDefinition" @click="restoreActiveInstance" />
+                          <p class="mt-1 text-[10px] leading-relaxed text-zaux-dark-grey">
+                            {{ translate(instanceLibraryDefinition ? 'zx_builder_restore_library_hint' : 'zx_builder_restore_library_missing') }}
+                          </p>
+                          <details v-if="instance.unmappedProperties?.length" class="mt-1 mb-0 text-[10px]">
+                            <summary class="pb-0">{{ translate('zx_builder_restore_unmapped') }}</summary>
+                            <BuilderCodeEditor :modelValue="JSON.stringify(instance.unmappedProperties, null, 2)"
+                              :label="translate('zx_builder_restore_unmapped')" readonly rows="10" />
+                          </details>
+                        </div>
 						<button
 							v-if="instance.definition.sourceKey"
 							class="zb-source-outline px-1.5 py-1 text-left text-[10px] text-zaux-accent"
@@ -265,7 +298,8 @@
 							v-else
 							:nodes="instance.definition.tree"
 							:instance="instance.id"
-						/></article
+						/>
+                        </template></article
 				></template>
 			</div>
 		</div>
@@ -293,10 +327,11 @@ import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderButton from "./BuilderButton.vue";
+import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 import BuilderTree from "./BuilderTree.vue";
-import BuilderInput from "./BuilderInput.vue";
+import BuilderInput from "./fields/BuilderInput.vue";
 export default defineComponent({
-	components: { BuilderButton, BuilderTree, BuilderInput },
+	components: { BuilderCodeEditor, BuilderButton, BuilderTree, BuilderInput },
 	props: { width: { default: 254 } },
 	setup() {
 		const builder = useBuilder();

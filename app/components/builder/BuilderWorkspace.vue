@@ -54,7 +54,7 @@
 				class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
 			>
 				<div
-					class="zb-canvas-toolbar flex h-[72px] min-h-[72px] items-center justify-between gap-1.5 border-b-slim border-zaux-light-grey bg-zaux-white px-3 max-[1200px]:px-2"
+					class="zb-canvas-toolbar flex h-[72px] min-h-[72px] items-center justify-between gap-1.5 dark:border-b-none border-b-slim border-zaux-light-grey bg-zaux-white px-3 max-[1200px]:px-2"
 				>
 					<div class="zb-canvas-label min-w-0 max-w-[240px]">
 						<span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
@@ -116,6 +116,7 @@
 						</label>
 					</div>
 					<BuilderButton
+						size="xs"
 						:label="
 							translate(
 								previewOnly ? 'zx_builder_design' : 'zx_builder_preview',
@@ -183,7 +184,7 @@ import BuilderDialog from "./BuilderDialog.vue";
 import BuilderStyles from "./BuilderStyles.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderHeader from "./BuilderHeader.vue";
-import BuilderInput from "./BuilderInput.vue";
+import BuilderInput from "./fields/BuilderInput.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
 export default defineComponent({
 	components: {

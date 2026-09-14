@@ -10,11 +10,11 @@
 </template>
 <script>
 import { defineComponent, computed, ref, watch } from 'vue';
-import { isBinding, clone } from '../../../domain/nodes.js';
-import { useTranslation } from '../../composables/useTranslation.js';
+import { isBinding, clone } from '../../../../domain/nodes.js';
+import { useTranslation } from '../../../composables/useTranslation.js';
 import BuilderValue from './BuilderValue.vue';
 import BuilderInput from './BuilderInput.vue';
-import { propertyValueType } from '../../../domain/properties.js';
+import { propertyValueType } from '../../../../domain/properties.js';
 export default defineComponent({
   components: { BuilderValue, BuilderInput }, props: { property: String, value: { default: null }, fields: Array, descriptor: Object }, emits: ['change'],
   setup(props, { emit }) {

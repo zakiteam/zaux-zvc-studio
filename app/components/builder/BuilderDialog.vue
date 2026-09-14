@@ -329,7 +329,7 @@ import { filesForDefinition } from "../../services/source-zvc.js";
 import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
 import { downloadText, downloadZip } from "../../services/files.js";
 import BuilderButton from "./BuilderButton.vue";
-import BuilderCodeEditor from "./BuilderCodeEditor.vue";
+import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 export default defineComponent({
 	components: { BuilderCodeEditor, BuilderButton },
 	setup() {

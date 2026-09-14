@@ -142,7 +142,7 @@
 import { defineComponent, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import BuilderButton from "../BuilderButton.vue";
-import BuilderValue from "../BuilderValue.vue";
+import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
 	components: { BuilderButton, BuilderValue },
 	setup() {

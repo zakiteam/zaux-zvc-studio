@@ -12,7 +12,8 @@ export const simpleViewports = [
     ['tablet_l', 'lg'],
     ['tablet_s', 'md'],
     ['mobile_l', 'sm'],
-    ['mobile_s', 'xs']
+    ['mobile_s', 'xsm'],
+    ['mobile_xs', 'xs']
   ].map(([value, breakpoint]) => ({
     value,
     label: 'zx_builder_' + value,

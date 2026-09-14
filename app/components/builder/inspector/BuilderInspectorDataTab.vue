@@ -53,7 +53,7 @@ import { defineComponent, computed } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { fieldInputType, isFieldVisible } from "../../../../domain/fields.js";
 import { clone, dataFor, getValue } from "../../../../domain/nodes.js";
-import BuilderValue from "../BuilderValue.vue";
+import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
 	components: { BuilderValue },
 	props: { active: Boolean },

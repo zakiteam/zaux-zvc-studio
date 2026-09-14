@@ -161,3 +161,9 @@ Border, radius, padding and margin sections have independent UI-only global/indi
 `integrations/zaux/style-visibility.js` owns the inspector visibility policy. The `*` entry is the default; exact scope keys such as `''` or `md:` override it. `sections: null` includes all sections; a section map accepts `true` for an entire section or an array of control IDs. Global controls are shown only when their complete side set is allowed. `image` and `advanced` control the image panel and raw class/inline-style editors; `hint` selects localized guidance.
 
 Base and explicit breakpoints currently use the default policy and expose the full editor. Scope-specific restrictions can be restored through the visibility configuration. The inspector quickpad uses the same policy and follows the selected style scope. Filtering leaves authored data and the initial viewport-transfer behavior intact. Runtime verification remains manual.
+
+### Field component folders
+
+Shared inputs and property editors live in `app/components/builder/fields/`: BuilderInput, BuilderValue, BuilderProperty, BuilderCodeEditor and BuilderRichTextEditor. Slider controls live in `fields/slides/`: BuilderSlider, BuilderSliderFields and BuilderSliderSlides. Node/image style controls live in `fields/styles/`: BuilderNodeStyles, BuilderImageStyles, BuilderStyleField, BuilderStyleSelect and BuilderStyleChoices. Panel components remain alongside BuilderWorkspace or under inspector. Consumers use explicit imports.
+
+`domain/restore-instance.js` owns restoration and property preservation. `useBuilder.js` owns the explicit commit and selection update; BuilderSidebar presents restoration and unmatched property recovery.

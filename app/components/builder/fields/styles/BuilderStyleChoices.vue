@@ -33,7 +33,7 @@
 </template>
 <script>
 import { computed, defineComponent } from 'vue';
-import { useTranslation } from '../../composables/useTranslation.js';
+import { useTranslation } from '../../../../composables/useTranslation.js';
 
 export default defineComponent({
   props: {

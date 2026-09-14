@@ -161,7 +161,19 @@ function spacingSection(id, prefix) {
 export const styleBreakpoints = Object.entries(breakpoints).map(([name, min]) => ({ value: `${name}:`, label: `${name} ≥ ${min}` }));
 export const nodeStyleSections = [
   { id: 'layout', controls: [
-    illustratedControl('display', ['block', 'flex', 'grid'], ['block', 'inline-block', 'inline', 'flex', 'inline-flex', 'grid', 'inline-grid', 'contents', 'hidden', 'flow-root', 'table', 'table-row', 'table-cell', 'list-item']),
+    illustratedControl('display', ['block', 'flex', 'grid', 'hidden'], ['block', 'inline-block', 'inline', 'flex', 'inline-flex', 'grid', 'inline-grid', 'contents', 'hidden', 'flow-root', 'table', 'table-row', 'table-cell', 'list-item']),
+    control('visibility', [], {
+      options: [
+        { value: 'visible', label: 'zx_builder_style_visibility_visible' },
+        { value: 'invisible', label: 'zx_builder_style_visibility_hidden' }
+      ]
+    }),
+    control('screen_reader', [], {
+      options: [
+        { value: 'sr-only', label: 'zx_builder_style_screen_reader_only' },
+        { value: 'not-sr-only', label: 'zx_builder_style_screen_reader_restore' }
+      ]
+    }),
     illustratedControl('direction', ['flex-row', 'flex-col', 'flex-row-reverse', 'flex-col-reverse']),
     illustratedControl('wrap', ['flex-nowrap', 'flex-wrap', 'flex-wrap-reverse']),
     control('columns', [...Array.from({ length: 12 }, (_, index) => `grid-cols-${index + 1}`), 'grid-cols-none'], { pattern: /^grid-cols-.+$/ }),

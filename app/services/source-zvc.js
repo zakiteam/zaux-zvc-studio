@@ -1,5 +1,6 @@
 import { clone, dataFor } from '../../domain/nodes.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
+import slotRendererSource from '../../integrations/zaux/slot-renderer.js?raw';
 import { componentFiles } from '../../domain/export.js';
 
 const modules = import.meta.glob('../zvc/**/*.zvc.js', { eager: true, import: 'default' });
@@ -45,7 +46,17 @@ export function visualSourceCopy(definition, data = {}) {
   return result;
 }
 export function filesForDefinition(definition) {
-  if (!definition.sourceKey) return componentFiles(definition);
+  if (!definition.sourceKey) {
+    const files = componentFiles(definition);
+    function needsSlots(nodes) {
+      return nodes.some(node => ['OffCanvasTrigger', 'ZModalTrigger', 'Accordion', 'OffCanvas', 'ZModal'].includes(node.name) || needsSlots(node.children));
+    }
+    if (needsSlots(definition.tree)) {
+      files['StudioComponentsRenderer.js'] = slotRendererSource;
+      files['README.md'] = '# Zaux slot integration\n\nThis component uses direct trigger children or named content slots. Register the included renderer after Zaux setup, before mounting the app:\n\n```js\nimport StudioComponentsRenderer from "./StudioComponentsRenderer.js";\napp.component("ComponentsRenderer", StudioComponentsRenderer);\n```\n\nThe adapter uses your registered Zaux components. It is also required when consuming the runtime JSON tree. No Studio services are needed.\n';
+    }
+    return files;
+  }
   if (!sourceAvailable(definition)) throw new Error('zx_builder_source_missing');
   const directory = prefix + definition.sourceKey.slice(0, definition.sourceKey.lastIndexOf('/') + 1);
   const files = Object.fromEntries(Object.entries(rawFiles).filter(([path]) => path.startsWith(directory)).sort(([a], [b]) => Number(b.endsWith('.zvc.js')) - Number(a.endsWith('.zvc.js')) || a.localeCompare(b)).map(([path, text]) => [path.slice(directory.length), text]));

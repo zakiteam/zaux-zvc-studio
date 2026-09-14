@@ -12,13 +12,15 @@
 					<strong>{{ selectedNode.name }}</strong
 					><small>{{ translate("zx_builder_properties") }}</small>
 				</div>
-				<div class="zb-node-actions ml-auto flex [&>.zb-button]:!p-0.5">
+				<div class="zb-node-actions ml-auto flex [&>.zb-button]:!p-0.5 gap-1">
 					<BuilderButton
+						variant="light"
 						icon="copy"
 						iconOnly
 						:label="translate('zx_builder_duplicate')"
 						@click="duplicateNode"
 					/><BuilderButton
+						variant="light"
 						icon="delete"
 						iconOnly
 						:label="translate('zx_builder_delete')"
@@ -32,10 +34,12 @@
 						customInnerClasses : 'justify-center flex w-full',
 						customInnerWrapperClasses : 'items-center justify-center w-full'
 					}"
+					size="xs"
 					icon="chevron-up"
 					:label="translate('zx_builder_move_up')"
 					@click="shiftNode(-1)"
 				/><BuilderButton
+					size="xs"
 					:extraProps="{
 						customInnerClasses : 'justify-center flex w-full',
 						customInnerWrapperClasses : 'flex justify-center items-center w-full'
@@ -71,11 +75,13 @@
 					@change="changeType"
 				/>
 			</div>
+      <p v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_overlay_trigger_hint') }}</p>
+			<BuilderSlider v-if="sliderConfig" :key="selectedNode.id + selectedNode.name" :node="selectedNode" />
 			<BuilderProperty
 				v-for="property in visibleProperties"
 				:key="`${selectedNode.id}-${selectedNode.name}-${property}`"
 				:property="property"
-				:value="selectedNode.props[property]"
+				:value="propertyValue(property)"
 				:fields="activeDefinition.fields"
 				:descriptor="descriptors[property]"
 				@change="setProperty(property, $event)"
@@ -105,15 +111,18 @@
 					v-model="propsDraft"
 					rows="14"
 					:label="translate('zx_builder_advanced')"
-				/><BuilderButton
-					:label="translate('zx_builder_apply')"
-					@click="applyProps"
-				/><BuilderButton
-					icon="delete"
-					iconOnly
-					:label="translate('zx_builder_clear_json')"
-					@click="clearProps"
 				/>
+				<div class="flex flex-wrap gap-1">
+					<BuilderButton
+						:label="translate('zx_builder_apply')"
+						@click="applyProps"
+					/><BuilderButton
+						icon="delete"
+						iconOnly
+						:label="translate('zx_builder_clear_json')"
+						@click="clearProps"
+					/>
+				</div>
 			</details>
 		</template>
 		<div
@@ -145,6 +154,7 @@
 				}}
 			</p>
 			<BuilderButton
+				size="xs"
 				v-if="mode === 'template'"
 				:label="translate('zx_builder_save_library')"
 				@click="
@@ -159,24 +169,51 @@ import { defineComponent, computed, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { catalog, propertyInfo } from "../../../services/catalog.js";
 import { parseJson } from "../../../../domain/validation.js";
-import { clone } from "../../../../domain/nodes.js";
+import { clone, isBinding } from "../../../../domain/nodes.js";
+import BuilderSlider from "../fields/slides/BuilderSlider.vue";
+import { sliderControls } from "../../../../integrations/zaux/slider-controls.js";
+import { isPlainRecord } from "../../../../domain/slider.js";
 import BuilderButton from "../BuilderButton.vue";
-import BuilderInput from "../BuilderInput.vue";
-import BuilderProperty from "../BuilderProperty.vue";
-import BuilderCodeEditor from "../BuilderCodeEditor.vue";
+import BuilderInput from "../fields/BuilderInput.vue";
+import BuilderProperty from "../fields/BuilderProperty.vue";
+import BuilderCodeEditor from "../fields/BuilderCodeEditor.vue";
 export default defineComponent({
-	components: { BuilderButton, BuilderInput, BuilderProperty, BuilderCodeEditor },
+	components: { BuilderSlider, BuilderButton, BuilderInput, BuilderProperty, BuilderCodeEditor },
 	props: { active: Boolean },
 	emits: ["error"],
 	setup(_props, { emit }) {
 		const builder = useBuilder();
 		const propsDraft = ref("");
-		const descriptors = computed(() =>
-			propertyInfo(builder.selectedNode.value?.name),
-		);
+    const sliderConfig = computed(() => sliderControls[builder.selectedNode.value?.name]);
+    function specializedProperty(key) {
+      if (!sliderConfig.value) return false;
+      const props = builder.selectedNode.value.props;
+      if (key === 'slides') return Array.isArray(props.slides);
+      if (key === 'customSliderParams') return isPlainRecord(props.customSliderParams);
+      return sliderConfig.value.fields.some(field => field.path === key) && !isBinding(props[key]);
+    }
+    const descriptors = computed(() => {
+      const node = builder.selectedNode.value;
+      const result = propertyInfo(node?.name);
+      const target = node?.name === 'OffCanvasTrigger' ? ['OffCanvas', 'offCanvasId'] : node?.name === 'ZModalTrigger' ? ['ZModal', 'modalId'] : null;
+      if (target) {
+        const trees = builder.mode.value === 'library' ? [builder.activeDefinition.value.tree] : builder.activeTemplate.value.instances.map(instance => instance.definition.tree);
+        const options = [];
+        function collect(nodes) {
+          for (const item of nodes) {
+            const id = item.props[target[1]];
+            if (item.name === target[0] && typeof id === 'string' && id) options.push({ value: id, label: (item.props.title || item.name) + ' (' + id + ')' });
+            collect(item.children);
+          }
+        }
+        trees.forEach(collect);
+        result[target[1]] = { ...result[target[1]], options };
+      }
+      return result;
+    });
 		const visibleProperties = computed(() =>
 			Object.keys(builder.selectedNode.value?.props ?? {}).filter(
-				(key) => !["class", "style"].includes(key),
+				(key) => !["class", "style"].includes(key) && !specializedProperty(key),
 			),
 		);
 		const extraProperties = computed(() =>
@@ -195,9 +232,17 @@ export default defineComponent({
 			},
 			{ deep: true, immediate: true },
 		);
-		function setProperty(key, value) {
-			builder.updateNode({ ...builder.selectedNode.value.props, [key]: value });
-		}
+    function propertyValue(key) {
+      const node = builder.selectedNode.value;
+      return node.name === 'ButtonBlock' && key === 'size' && isPlainRecord(node.props.content) && !isBinding(node.props.content)
+        ? node.props.content.size ?? node.props.size : node.props[key];
+    }
+    function setProperty(key, value) {
+      const node = builder.selectedNode.value;
+      const props = { ...node.props, [key]: value };
+      if (node.name === 'ButtonBlock' && key === 'size' && isPlainRecord(props.content) && !isBinding(props.content)) props.content = { ...props.content, size: value };
+      builder.updateNode(props);
+    }
 		function addProperty(event) {
 			const key = event.target.value;
 			if (!key) return;
@@ -233,7 +278,7 @@ export default defineComponent({
 				emit("error", "zx_builder_invalid_json");
 			}
 		}
-		return { ...builder, catalog, descriptors, visibleProperties, extraProperties, propsDraft, setProperty, addProperty, changeType, clearProps, applyProps };
+		return { ...builder, sliderConfig, catalog, descriptors, visibleProperties, extraProperties, propsDraft, propertyValue, setProperty, addProperty, changeType, clearProps, applyProps };
 	},
 });
 </script>

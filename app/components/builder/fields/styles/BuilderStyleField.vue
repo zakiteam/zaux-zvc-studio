@@ -15,7 +15,7 @@
 </template>
 <script>
 import { defineComponent } from 'vue';
-import { useTranslation } from '../../composables/useTranslation.js';
+import { useTranslation } from '../../../../composables/useTranslation.js';
 
 export default defineComponent({
   props: { value: { default: '' }, important: Boolean, disabled: Boolean, label: String },

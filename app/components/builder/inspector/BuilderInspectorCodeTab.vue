@@ -80,8 +80,8 @@ import { defineComponent, computed, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { parseJson, validateDefinition } from "../../../../domain/validation.js";
 import { sourceCode } from "../../../services/source-zvc.js";
-import BuilderInput from "../BuilderInput.vue";
-import BuilderCodeEditor from "../BuilderCodeEditor.vue";
+import BuilderInput from "../fields/BuilderInput.vue";
+import BuilderCodeEditor from "../fields/BuilderCodeEditor.vue";
 import BuilderButton from "../BuilderButton.vue";
 export default defineComponent({
 	components: { BuilderInput, BuilderCodeEditor, BuilderButton },

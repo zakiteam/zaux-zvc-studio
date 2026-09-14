@@ -26,21 +26,23 @@
     />
     <fieldset :disabled="!editable || disabled">
       <details v-for="section in filteredSections" :key="section.id" :data-style-section="section.id" open class="py-2 border-t-slim border-zaux-light-grey">
-        <summary class="cursor-pointer text-[12px] mb-0 font-semibold">
-          {{ translate(`zx_builder_style_${section.id}`) }}
-          <button
-            v-if="section.globalControls"
-            type="button"
-            class="ml-2 inline-flex items-center gap-1 rounded-xxs bg-zaux-light px-1 py-0.5 align-middle text-[10px]"
-            :disabled="disabled || !editable"
-            :aria-pressed="!!granular[section.id]"
-            :aria-label="translate(granular[section.id] ? 'zx_builder_style_use_global' : 'zx_builder_style_use_granular') + ': ' + translate(`zx_builder_style_${section.id}`)"
-            :title="translate(granular[section.id] ? 'zx_builder_style_use_global' : 'zx_builder_style_use_granular')"
-            @click.stop.prevent="granular[section.id] = !granular[section.id]"
-          >
-            <img :src="granular[section.id] ? '/assets/builder/style-granular.svg' : '/assets/builder/style-global.svg'" width="16" height="16" alt="" class="dark:invert" />
-            {{ translate(granular[section.id] ? 'zx_builder_style_granular' : 'zx_builder_style_global') }}
-          </button>
+        <summary class="cursor-pointer text-[12px] mb-0 font-semibold flex justify-between">
+          <span>
+            {{ translate(`zx_builder_style_${section.id}`) }}
+            </span>
+            <button
+              v-if="section.globalControls"
+              type="button"
+              class="ml-2 inline-flex items-center gap-1 rounded-xxs bg-zaux-light px-1 py-0.5 align-middle text-[10px]"
+              :disabled="disabled || !editable"
+              :aria-pressed="!!granular[section.id]"
+              :aria-label="translate(granular[section.id] ? 'zx_builder_style_use_global' : 'zx_builder_style_use_granular') + ': ' + translate(`zx_builder_style_${section.id}`)"
+              :title="translate(granular[section.id] ? 'zx_builder_style_use_global' : 'zx_builder_style_use_granular')"
+              @click.stop.prevent="granular[section.id] = !granular[section.id]"
+            >
+              <img :src="granular[section.id] ? '/assets/builder/style-granular.svg' : '/assets/builder/style-global.svg'" width="16" height="16" alt="" class="dark:invert" />
+              {{ translate(granular[section.id] ? 'zx_builder_style_granular' : 'zx_builder_style_global') }}
+            </button>
         </summary>
         <div class="grid grid-cols-2 py-2 gap-x-2 gap-y-3">
           <div v-for="control in visibleControls(section)" :key="control.id" class="min-w-0" :class="{ 'col-span-2': control.illustrated }">
@@ -113,13 +115,13 @@
 </template>
 <script>
 import { computed, defineComponent, ref, watch } from 'vue';
-import { useTranslation } from '../../composables/useTranslation.js';
-import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses, readStyleClass, readStyleImportant, setStyleImportant, replaceStyleClass, positionValueClass, readPositionValue } from '../../../domain/node-styles.js';
-import { styleVisibility, visibleStyleSections } from '../../../integrations/zaux/style-visibility.js';
-import { nodeStyleSections, styleBreakpoints } from '../../../integrations/zaux/node-style-controls.js';
-import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../integrations/zaux/image-style-controls.js';
+import { useTranslation } from '../../../../composables/useTranslation.js';
+import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses, readStyleClass, readStyleImportant, setStyleImportant, replaceStyleClass, positionValueClass, readPositionValue } from '../../../../../domain/node-styles.js';
+import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
+import { nodeStyleSections, styleBreakpoints } from '../../../../../integrations/zaux/node-style-controls.js';
+import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/image-style-controls.js';
 import BuilderImageStyles from './BuilderImageStyles.vue';
-import BuilderInput from './BuilderInput.vue';
+import BuilderInput from '../BuilderInput.vue';
 import BuilderStyleField from './BuilderStyleField.vue';
 import BuilderStyleSelect from './BuilderStyleSelect.vue';
 import BuilderStyleChoices from './BuilderStyleChoices.vue';

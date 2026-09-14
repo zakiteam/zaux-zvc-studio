@@ -94,3 +94,11 @@ Textarea fields (including native HTML fields) offer **Text / HTML** and **Rich 
 Dependencies follow the [official Tiptap Vue integration](https://tiptap.dev/docs/editor/getting-started/install/vue3). Runtime behavior is pending manual browser verification; no automated tests or production builds were run for this change.
 
 The additional **HTML** mode uses CodeMirror syntax highlighting and indentation while editing. **Format HTML** explicitly formats and commits the source using lazily loaded Prettier with strict whitespace sensitivity. Switching views never auto-formats the saved value. Invalid HTML stays editable, and stale formatting results are discarded when the field or view changes.
+
+## Restore an instance from the library
+
+The selected instance in Structure exposes **Restore from library**. Its `sourceId` selects the original library definition; a missing source disables the action. The replacement is independent and goes through normal undo, validation and persistence.
+
+Restoration retains effective data values and visual node properties, including false, zero, empty strings, null and obsolete data keys. Library structure and CSS replace the instance structure and CSS. Class/style properties (including nested class/style settings and CSS-editor fields) use library values. Arrays retain authored content and use library styling at corresponding positions. New fields use library defaults. Native instances regenerate from their preserved data; generated nodes are not patched.
+
+Copied visual nodes carry optional `sourceNodeId` provenance. Matching requires a unique source identity and the same component name. Older copies without provenance match only component names unique in both trees. Unmatched properties are kept as optional instance `unmappedProperties` records with component name, previous path and properties; Structure exposes this JSON for manual recovery. These optional JSON metadata fields do not change the version 1 envelope and never establish live propagation. Runtime verification remains with the user.

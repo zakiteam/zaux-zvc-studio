@@ -15,7 +15,7 @@
 
 			<div class="flex flex-wrap items-center justify-end gap-3 ml-auto">
 				<BuilderDropdown
-					:label="translate('zx_builder_project') + ': ' + activeRemoteProject?.name || translate('zx_builder_projects')"
+					:label="translate('zx_builder_project') + ': ' + (activeRemoteProject?.name || translate('zx_builder_local')) || translate('zx_builder_projects')"
 					:items="projectMenuItems"
 					:disabled="remoteProjectBusy || projectOpening"
 					:btnTheme="isAppDarkTheme ? 'alt1' : 'alt2'"

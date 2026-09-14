@@ -25,7 +25,7 @@ import studioLogo from '../../assets/images/logo-studio.svg?url';
 import { defineComponent, ref } from 'vue';
 import { useAuth } from '../../composables/useAuth.js';
 import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderInput from './BuilderInput.vue';
+import BuilderInput from './fields/BuilderInput.vue';
 export default defineComponent({
   components: { BuilderInput },
   setup() {

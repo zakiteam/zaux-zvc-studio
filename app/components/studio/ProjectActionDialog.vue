@@ -22,7 +22,7 @@
 <script>
 import { defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderInput from '../builder/BuilderInput.vue';
+import BuilderInput from '../builder/fields/BuilderInput.vue';
 import BuilderButton from '../builder/BuilderButton.vue';
 export default defineComponent({
   components: { BuilderInput, BuilderButton },

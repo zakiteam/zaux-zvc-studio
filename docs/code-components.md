@@ -105,3 +105,16 @@ The catalog registers common and shared core Zaux components. To extend it with 
 ## References
 
 Syntax was checked against `vendor/zaux/project/components/virtual/fancysection/FancySection.zvc.js`, `core/common/helpers/zvc.helper.js`, and the original builder fields. Automatic loading uses [Vite glob imports](https://vite.dev/guide/features.html#glob-import).
+## Content, form and overlay palette presets
+
+The palette includes the registered `Snippetlabel` (SnippetLabel), ButtonBlock, Accordion, all eleven public Input components, ZForm, OffCanvasTrigger, OffCanvas, ZModal (Modal) and ZModalTrigger. Content presets live in `app/data/catalog/content-components.js`; form presets live in `form-components.js`. Preset factories materialize localized strings and plain JSON only when inserting a node. New input names and panel IDs are unique; panel IDs remain editable. Copying existing nodes retains their authored properties, so duplicated panels may need distinct IDs and corresponding trigger references.
+
+The shared property adapter exposes the actual size/theme sets from Vue templates, SCSS and metadata through `integrations/zaux/component-options.js`. Custom values remain editable. InputText also exposes native HTML input types. ZForm has method, sendMethod and spinnerTheme selects; ZForm and the trigger components have no theme/size props of their own. ButtonBlock's size control reads and updates `content.size`, which drives its layout in this Zaux version, while also updating its declared size prop.
+
+ZForm accepts children in its default slot. Accordion, OffCanvas and ZModal accept children in the content slot. OffCanvas must use `contentType: default` to display those children; other content modes remain available. Both triggers accept dropped children and start with a real ZButton. Select a trigger's offCanvasId/modalId from the panels present in the template (or enter a custom ID), then use Preview for interaction. Editing mode captures clicks for selection. Closed and teleported panel content can be selected and edited from Structure.
+
+`integrations/zaux/slot-renderer.js` adapts the saved JSON tree to those slots and passes direct child VNodes to native trigger components. Multiple trigger children are grouped under one inline wrapper, and an empty trigger remains a drop target in editing mode. The bridge uses registered Zaux components and does not alter vendor code. The preview imports it locally; ordinary Zaux registrations are unchanged.
+
+Visual JavaScript ZIP exports that use these components include StudioComponentsRenderer.js and registration instructions. Register that adapter after Zaux setup in the destination app, including when rendering their runtime JSON exports. It depends only on Vue and registered Zaux components, not Studio services. The persisted workspace schema remains unchanged.
+
+Source and diffs were reviewed only. No automated tests, browser checks, validators or production builds were run; runtime verification remains with the user.

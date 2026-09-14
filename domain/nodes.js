@@ -33,7 +33,14 @@ export function locateNode(nodes, id) {
   return null;
 }
 export function copyNode(node) {
-  return { ...clone(node), id: uid(), children: node.children.map(copyNode) };
+  return { ...clone(node), id: uid(), sourceNodeId: node.sourceNodeId ?? node.id, children: node.children.map(copyNode) };
+}
+export function wrapNode(nodes, id) {
+  const location = locateNode(nodes, id);
+  if (!location) throw new Error('zx_builder_missing_node');
+  const wrapper = createNode('div', {}, [location.list[location.index]]);
+  location.list.splice(location.index, 1, wrapper);
+  return wrapper;
 }
 export function insertNode(nodes, node, targetId = null, position = 'after') {
   if (!targetId) { nodes.push(node); return; }

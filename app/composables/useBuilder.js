@@ -1,6 +1,7 @@
+import { restoreInstance } from '../../domain/restore-instance.js';
 import { computed, inject, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { createWorkspace, createDefinition, copyDefinition, createInstance, createTemplate, exportName } from '../../domain/workspace.js';
-import { clone, uid, findNode, locateNode, copyNode, insertNode, moveNode } from '../../domain/nodes.js';
+import { clone, uid, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
 import { catalogNode, containers } from '../services/catalog.js';
@@ -26,6 +27,11 @@ export function createBuilder({ projectId = null } = {}) {
   const libraryId = ref(document.value.library[0]?.id);
   const instanceId = ref(document.value.templates[0].instances[0]?.id);
   const nodeId = ref(null);
+  const collapsedOutline = ref(new Set());
+  function toggleOutline(key) {
+    if (collapsedOutline.value.has(key)) collapsedOutline.value.delete(key);
+    else collapsedOutline.value.add(key);
+  }
   const leftTab = ref('library');
   const inspectorTab = ref('properties');
   const viewportMode = ref('simple');
@@ -74,6 +80,7 @@ export function createBuilder({ projectId = null } = {}) {
   const activeTemplate = computed(() => document.value.templates.find(item => item.id === templateId.value) ?? document.value.templates[0]);
   const activeInstance = computed(() => activeTemplate.value?.instances.find(item => item.id === instanceId.value));
   const activeDefinition = computed(() => mode.value === 'library' ? document.value.library.find(item => item.id === libraryId.value) : activeInstance.value?.definition);
+  const instanceLibraryDefinition = computed(() => mode.value === 'template' ? document.value.library.find(item => item.id === activeInstance.value?.sourceId) : null);
   const isSource = computed(() => !!activeDefinition.value?.sourceKey);
   const isSourceBase = computed(() => mode.value === 'library' && activeDefinition.value?.id === 'source:' + activeDefinition.value?.sourceKey);
   const hasSource = computed(() => sourceAvailable(activeDefinition.value));
@@ -264,6 +271,13 @@ export function createBuilder({ projectId = null } = {}) {
   function selectTemplate(id) { mode.value = 'template'; templateId.value = id; instanceId.value = activeTemplate.value.instances[0]?.id; nodeId.value = null; }
   function selectLibrary(id) { mode.value = 'library'; libraryId.value = id; nodeId.value = null; if (isSource.value) inspectorTab.value = 'data'; }
   function selectInstance(id, selectedId = null) { if (mode.value !== 'library') instanceId.value = id; nodeId.value = isSource.value ? null : selectedId; if (isSource.value) inspectorTab.value = 'data'; }
+  function restoreActiveInstance() {
+    if (!canEditRemote.value || !activeInstance.value || !instanceLibraryDefinition.value) return;
+    commit(() => {
+      Object.assign(activeInstance.value, restoreInstance(activeInstance.value, instanceLibraryDefinition.value));
+    });
+    if (!error.value) { nodeId.value = null; inspectorTab.value = 'data'; }
+  }
   function insertInstance(definitionId, beforeId = null, position = 'before') {
     const definition = document.value.library.find(item => item.id === definitionId);
     if (!definition) return;
@@ -345,6 +359,7 @@ export function createBuilder({ projectId = null } = {}) {
     commit(() => {
       selectedNode.value.name = replacement.name;
       selectedNode.value.props = replacement.props;
+      if (!selectedNode.value.children.length) selectedNode.value.children = replacement.children;
     });
   }
   function addElement(name, targetId = nodeId.value, position = 'after', targetInstanceId = instanceId.value) {
@@ -399,6 +414,12 @@ export function createBuilder({ projectId = null } = {}) {
     const node = copyNode(selectedNode.value);
     commit(() => insertNode(activeDefinition.value.tree, node, nodeId.value));
     nodeId.value = node.id;
+  }
+  function wrapNode() {
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
+    let wrapper;
+    commit(() => { wrapper = wrapTreeNode(activeDefinition.value.tree, nodeId.value); });
+    if (!error.value) nodeId.value = wrapper.id;
   }
   function shiftNode(direction) {
     if (!editableStructure() || !selectedNode.value) return;
@@ -472,7 +493,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
   });
   onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { ...i18n, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { ...i18n, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

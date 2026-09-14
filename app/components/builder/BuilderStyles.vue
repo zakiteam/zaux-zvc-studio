@@ -8,16 +8,16 @@
       <div class="p-2">
         <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_styles_hint') }}</p>
         <div class="flex flex-wrap gap-0.5">
-          <BuilderButton icon="upload" :label="translate('zx_builder_import_preset')" @click="fileInput.click()" />
-          <BuilderButton icon="download" :label="translate('zx_builder_export_preset')" @click="exportPreset" />
-          <BuilderButton icon="download" :label="translate('zx_builder_export_css')" @click="exportCss" />
-          <BuilderButton icon="copy" :label="translate('zx_builder_copy_css')" @click="copyCss" />
-          <BuilderButton icon="undo" :label="translate('zx_builder_reset_styles')" @click="resetStyles" />
+          <BuilderButton size="xs" icon="upload" :label="translate('zx_builder_import_preset')" @click="fileInput.click()" />
+          <BuilderButton size="xs" icon="download" :label="translate('zx_builder_export_preset')" @click="exportPreset" />
+          <BuilderButton size="xs" icon="download" :label="translate('zx_builder_export_css')" @click="exportCss" />
+          <BuilderButton size="xs" icon="copy" :label="translate('zx_builder_copy_css')" @click="copyCss" />
+          <BuilderButton size="xs" icon="undo" :label="translate('zx_builder_reset_styles')" @click="resetStyles" />
           <input ref="fileInput" class="hidden" type="file" accept=".json,application/json" @change="importPreset" />
         </div>
         <p v-if="status" class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey" role="status">{{ translate(status) }}</p>
         <p v-if="localError" class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] leading-[1.6] text-utility-error" role="alert">{{ translate(localError) }}</p>
-        <BuilderInput v-model="search" class="mt-2" type="search" :placeholder="translate('zx_builder_search_tokens')" :label="translate('zx_builder_search_tokens')" />
+        <BuilderInput v-model="search" class="my-2" type="search" :placeholder="translate('zx_builder_search_tokens')" :label="translate('zx_builder_search_tokens')" />
         <details v-for="group in visibleGroups" :key="group.id" :open="group.id === 'components' || !!search" class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
           <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate(group.label) }} <span class="text-zaux-dark-grey">({{ group.variables.length }})</span></summary>
           <div v-for="variable in group.variables" :key="variable.name" class="mt-2">
@@ -60,8 +60,8 @@ import { getValue, clone } from '../../../domain/nodes.js';
 import { parseJson } from '../../../domain/validation.js';
 import { downloadText } from '../../services/files.js';
 import BuilderButton from './BuilderButton.vue';
-import BuilderCodeEditor from './BuilderCodeEditor.vue';
-import BuilderInput from './BuilderInput.vue';
+import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
+import BuilderInput from './fields/BuilderInput.vue';
 export default defineComponent({
   components: { BuilderCodeEditor, BuilderButton, BuilderInput },
   props: { width: { default: 360 } },

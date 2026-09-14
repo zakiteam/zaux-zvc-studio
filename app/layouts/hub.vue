@@ -3,7 +3,7 @@
     <aside class="flex h-full w-[240px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white p-3 max-[700px]:w-full max-[700px]:border-b-slim">
       <NuxtLink to="/" class="mb-6 flex items-center gap-1.5 py-1" aria-label="Zaux Studio">
         <img :src="studioLogo" alt="" class="h-[32px] w-[32px]" />
-        <span class="font-semibold tracking-wide">ZAUX STUDIO</span>
+        <span class="font-semibold text-eyelet-s">ZAUX STUDIO</span>
       </NuxtLink>
       <nav :aria-label="translate('zx_builder_hub_navigation')" class="flex flex-col gap-1">
         <NuxtLink to="/" aria-current="page" class="rounded-xs bg-zaux-accent/10 px-2 py-1.5 font-semibold text-zaux-accent">
@@ -15,7 +15,7 @@
       </nav>
       <div class="mt-auto border-t-slim border-zaux-light-grey pt-2 max-[700px]:mt-3">
         <p class="mb-2 break-all text-[11px] text-zaux-dark-grey">{{ user?.email }}</p>
-        <BuilderDropdown :label="translate('zx_builder_account')" icon="user" :items="accountMenuItems" @select="accountAction" />
+        <BuilderDropdown contentClass="py-2 flex flex-col gap-2" :label="translate('zx_builder_account')" icon="user" :items="accountMenuItems" @select="accountAction" />
       </div>
     </aside>
     <main class="min-w-0 flex-1 p-6 max-[700px]:p-3"><slot /></main>
