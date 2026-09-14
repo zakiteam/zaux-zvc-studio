@@ -3,7 +3,7 @@
     <aside class="flex h-full w-[240px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white p-3 max-[700px]:w-full max-[700px]:border-b-slim">
       <NuxtLink to="/" class="mb-6 flex items-center gap-1.5 py-1" aria-label="Zaux Studio">
         <img :src="studioLogo" alt="" class="h-[32px] w-[32px]" />
-        <span class="font-semibold text-eyelet-s">ZAUX STUDIO</span>
+        <span class="font-semibold text-eyelet-s font-builder">ZAUX STUDIO</span>
       </NuxtLink>
       <nav :aria-label="translate('zx_builder_hub_navigation')" class="flex flex-col gap-1">
         <NuxtLink to="/" aria-current="page" class="rounded-xs bg-zaux-accent/10 px-2 py-1.5 font-semibold text-zaux-accent">

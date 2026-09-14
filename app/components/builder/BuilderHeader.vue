@@ -10,7 +10,7 @@
 				aria-label="Zaux Studio"
 			>
 				<img class="w-4" :src="studioLogo" alt="" />
-				<span class="font-bold uppercase text-eyelet-s text-set1-white dark:text-set1-dark">Zaux studio</span>
+				<span class="font-bold uppercase font-builder text-eyelet-s text-set1-white dark:text-set1-dark">Zaux studio</span>
 			</NuxtLink>
 
 			<div class="flex flex-wrap items-center justify-end gap-3 ml-auto">

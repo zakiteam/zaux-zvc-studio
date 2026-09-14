@@ -72,6 +72,8 @@
 					<span>◇</span>
 					<p>{{ translate("zx_builder_empty_hint") }}</p>
 					<BuilderButton
+						class="mx-auto"
+						size="xs"
 						:label="translate('zx_builder_new_component')"
 						@click="modal = { type: 'new-component' }"
 					/>
