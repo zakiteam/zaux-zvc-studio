@@ -32,6 +32,9 @@
           <NuxtLink :to="'/editor/' + project.id" class="py-1 mr-auto underline rounded-xxs text-zaux-accent">
             {{ translate('zx_builder_hub_open') }}
           </NuxtLink>
+          <BuilderButton v-if="['owner', 'editor'].includes(project.role)" icon="duplicate" iconOnly
+            :label="translate('zx_builder_duplicate') + ': ' + project.name" :disabled="busy || loading"
+            @click="duplicateProject(project)" />
           <BuilderButton v-if="['owner', 'editor'].includes(project.role)" icon="edit" iconOnly :label="translate('zx_builder_rename_project')" :disabled="busy" @click="openAction('rename', project)" />
           <BuilderButton v-if="project.role === 'owner'" icon="delete" iconOnly :label="translate('zx_builder_delete_project')" :disabled="busy" @click="openAction('delete', project)" />
         </div>
@@ -44,7 +47,7 @@
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import { listRemoteProjects, renameRemoteProject, deleteRemoteProject } from '../services/projects.js';
+import { listRemoteProjects, renameRemoteProject, deleteRemoteProject, duplicateRemoteProject } from '../services/projects.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import BuilderButton from '../components/builder/BuilderButton.vue';
 import BuilderInput from '../components/builder/fields/BuilderInput.vue';
@@ -78,6 +81,18 @@ export default defineComponent({
         if (!disposed) projects.value = result;
       } catch { if (!disposed) error.value = 'zx_builder_hub_load_error'; }
       finally { if (!disposed) loading.value = false; }
+    }
+    async function duplicateProject(project) {
+      if (busy.value || loading.value || !['owner', 'editor'].includes(project.role)) return;
+      busy.value = true;
+      error.value = '';
+      try {
+        const copy = await duplicateRemoteProject(project.id, translate('zx_builder_copy_suffix'), user.value.id);
+        if (disposed) return;
+        search.value = '';
+        projects.value = [copy, ...projects.value];
+      } catch { if (!disposed) error.value = 'zx_builder_hub_action_error'; }
+      finally { if (!disposed) busy.value = false; }
     }
     function openAction(type, project) {
       if (busy.value) return;
@@ -114,7 +129,7 @@ export default defineComponent({
     }
     onMounted(loadProjects);
     onBeforeUnmount(() => { disposed = true; });
-    return { studioLogo, translate, projects, search, filteredProjects, loading, error, action, actionError, busy, loadProjects, openAction, submitAction, formatDate };
+    return { studioLogo, translate, projects, search, filteredProjects, loading, error, action, actionError, busy, loadProjects, duplicateProject, openAction, submitAction, formatDate };
   }
 });
 </script>

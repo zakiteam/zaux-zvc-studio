@@ -17,3 +17,9 @@ Until the user explicitly changes this instruction, skip the testing phase. Do n
 
 ## Knowledge
 Use the project skill `$zaux-builder-work` for ongoing implementation. Keep decision records and the session state concise. Project memory is in `docs/ai/memory/`; user-level Codex memory is a separate system.
+
+## Skill creation
+Create new skills at repository level in `.agents/skills/<skill-name>/SKILL.md`.
+Keep project skills and their supporting files in this repository, not in the
+personal `.codex/skills` directory. Use a different location only when the user
+explicitly requests it.

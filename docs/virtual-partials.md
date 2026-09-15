@@ -2,10 +2,10 @@
 
 ## Create and use a project partial
 
-1. Open Library and choose **New ZVP**. Give the partial a name.
+1. Open Library, use the **Create** dropdown and choose **New ZVP**. The same menu offers New ZVC, ZVC from JSON and ZVP from JSON. Give the partial a name.
 2. Build its tree using Elements. Add editable fields in Fields and bind node properties to those fields.
 3. Return to the template. Drag the partial from Library or Elements into a visual node, before/after a node, or inside a supported container. **Insert node** also inserts it into the current template.
-4. Select the inserted node to edit its partial fields in Properties. In SliderSingle, SliderMultiple or HeroSliderSection, use **Add slide** and choose the ZVP.
+4. Select the inserted node to edit its configured fields in Data (also available in Properties). In SliderSingle, SliderMultiple or HeroSliderSection, use **Add slide** and choose the ZVP.
 
 Partials support text, textarea, number, switch, select, JSON, HTML, CSS, button, button group and component fields, using the same controls as native ZVC metadata. Structured button/component values use JSON controls. Image fields use the media picker. Select options accept typed JSON values and custom values. `showIf` accepts native field/operator/value conditions; hiding a field retains its value. Parent fields can be bound to partial properties.
 
@@ -84,3 +84,33 @@ Source and diffs were reviewed. No automated tests, validators, browser checks o
 | `docs/code-components.md` | Updated source-library conventions. |
 | `docs/data-format.md` | Optional schema and export contract. |
 | `docs/virtual-partials.md` | Usage, example, limits and file inventory. |
+
+## Instance editing and library navigation
+
+Library has separate ZVC and ZVP tabs, with the existing search and Imported/Project filter applied to the selected kind. Selecting, creating or importing a definition activates its matching tab. The Create dropdown groups all four creation actions. ZVP from JSON accepts editable partial definitions/envelopes, visual ZVC definitions and compact Zaux nodes, preserving fields, values and dependencies. A native ZVC source cannot be relabeled as a ZVP source.
+
+Selecting a partial node opens its Data editor. The same field editor is used in Properties and for partial slides; it respects configured types, showIf, typed/custom options, image controls, bindings and edit permissions. Native source bases remain unchanged.
+
+Restore from library restores the selected node or slide using the existing ZVC restoration policy: preserve content/data, restore structure, field metadata and styles. The operation creates an independent captured dependency with a unique descriptor name, so other occurrences in the same template are not changed. Its optional libraryId keeps the original library identity for subsequent restores, including after renaming. The entire restoration is one undoable commit. A deleted library original disables restoration.
+
+### Files changed for this refinement
+
+- `app/components/builder/BuilderSidebar.vue`: creation dropdown, separate tabs and combined filtering.
+- `app/components/builder/BuilderDialog.vue`: ZVP JSON example, parsing and import dialog.
+- `app/components/builder/fields/BuilderPartialFields.vue`: configured instance controls, edit guards and restoration action.
+- `app/components/builder/fields/slides/BuilderSliderSlides.vue`: pass the selected occurrence to restoration.
+- `app/components/builder/inspector/BuilderInspectorDataTab.vue`: selected partial fields in Data.
+- `app/components/builder/inspector/BuilderInspectorPropertiesTab.vue`: selected node restoration reference.
+- `app/composables/useBuilder.js`: kind selection, Data routing and atomic restore commits.
+- `app/data/locale/it.json`, `app/data/locale/en.json`: creation, tab, import and restoration labels.
+- `domain/export.js`: ZVP-specific JSON import.
+- `domain/partials.js`: original lookup and isolated occurrence restoration.
+- `docs/virtual-partials.md`: updated usage and change inventory.
+
+Source and diffs only were reviewed; no tests, builds, validators or browser checks were run. Runtime verification remains with the user.
+
+### Restore copy visibility
+
+Restore reuses the captured dependency when only the selected occurrence references it. A separate internal dependency is allocated only when needed to preserve other occurrences. Internal restore copies are excluded from Elements and Add slide choices; existing occurrences still resolve their own definitions and configured fields. Unused internal copies left by older restores are removed during restoration. The library itself is not duplicated.
+
+Changed files: `domain/partials.js` (reuse and cleanup), `app/composables/useBuilder.js` (separate insertion choices from runtime dependencies), `app/components/builder/BuilderSidebar.vue` and `app/components/builder/fields/slides/BuilderSliderSlides.vue` (filtered choices), and this document. Runtime remains unverified; no tests or builds were run.

@@ -11,3 +11,14 @@ Read only what the task needs:
 The project skill lives at `.agents/skills/zaux-builder-work/SKILL.md`. It is intentionally short and points here for details.
 
 Project session notes belong in `docs/ai/memory/`. Record concrete changes, checks and unresolved issues; do not treat plans or assumptions as verified behavior.
+
+6. [Property decorators](../property-decorators.md): component/prop registry, dynamic options and Inspector wiring.
+
+## Repository skills
+
+Create and maintain project skills under `.agents/skills/` (see `AGENTS.md`).
+
+- [Builder work](../../.agents/skills/zaux-builder-work/SKILL.md)
+- [Palette properties](../../.agents/skills/zaux-palette-props/SKILL.md)
+- [Property decorators](../../.agents/skills/zaux-property-decorators/SKILL.md)
+- [Theme preview properties](../../.agents/skills/zaux-theme-preview-props/SKILL.md)

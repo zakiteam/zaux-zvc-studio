@@ -76,7 +76,7 @@
 				/>
 			</div>
       <p v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_overlay_trigger_hint') }}</p>
-			<BuilderPartialFields v-if="selectedPartial" :key="selectedNode.id" :definition="selectedPartial" :bindings="activeDefinition.fields" :modelValue="selectedNode.props" @change="updateNode" />
+			<BuilderPartialFields v-if="selectedPartial" :key="selectedNode.id" :definition="selectedPartial" :reference="selectedNode" :bindings="activeDefinition.fields" :modelValue="selectedNode.props" @change="updateNode" />
 			<BuilderSlider v-if="sliderConfig" :key="selectedNode.id + selectedNode.name" :node="selectedNode" />
 			<BuilderProperty
 				v-for="property in visibleProperties"
@@ -134,6 +134,7 @@
 			<span>↖</span>
 			<p>{{ translate("zx_builder_select_hint") }}</p>
 			<BuilderButton
+				size="xs"
 				class="mx-auto"
 				:label="translate('zx_builder_elements')"
 				@click="leftTab = 'elements'"
@@ -203,22 +204,10 @@ export default defineComponent({
     }
     const descriptors = computed(() => {
       const node = builder.selectedNode.value;
-      const result = propertyInfo(node?.name);
-      const target = node?.name === 'OffCanvasTrigger' ? ['OffCanvas', 'offCanvasId'] : node?.name === 'ZModalTrigger' ? ['ZModal', 'modalId'] : null;
-      if (target) {
-        const trees = builder.mode.value === 'library' ? [builder.activeDefinition.value.tree] : builder.activeTemplate.value.instances.map(instance => instance.definition.tree);
-        const options = [];
-        function collect(nodes) {
-          for (const item of nodes) {
-            const id = item.props[target[1]];
-            if (item.name === target[0] && typeof id === 'string' && id) options.push({ value: id, label: (item.props.title || item.name) + ' (' + id + ')' });
-            collect(item.children);
-          }
-        }
-        trees.forEach(collect);
-        result[target[1]] = { ...result[target[1]], options };
-      }
-      return result;
+      const trees = builder.mode.value === 'library'
+        ? [builder.activeDefinition.value?.tree ?? []]
+        : (builder.activeTemplate.value?.instances ?? []).map(instance => instance.definition.tree);
+      return propertyInfo(node?.name, { props: node?.props ?? {}, trees });
     });
 		const visibleProperties = computed(() =>
 			Object.keys(builder.selectedNode.value?.props ?? {}).filter(

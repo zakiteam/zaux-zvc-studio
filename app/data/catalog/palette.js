@@ -8,11 +8,21 @@ export default [
   ...formComponents,
   ...Object.entries(sliderControls).map(([name, config]) => ({ name, props: config.props })),
   { name: 'Zsection', container: true, props: { size: 'm', contained: true } },
-  { name: 'IntroText', props: { title: 'Titolo della sezione', excerpt: 'Un nuovo spazio per i tuoi contenuti.', size: 'm' } },
+  { name: 'IntroText', props: { theme: 'light1', subtitle: '', title: 'Titolo della sezione', excerpt: 'Un nuovo spazio per i tuoi contenuti.', size: 'm' } },
   { name: 'ZButton', props: { label: 'Scopri di più', theme: 'primary', tag: 'a', href: '#', size: 's' } },
   { name: 'Paragraph', props: { contentHTML: '<p>Scrivi qui il tuo testo.</p>', size: 'm' } },
   { name: 'Zimg', props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false, imgClasses: ['w-full'] } },
+  { name: 'Videoplayer', props: {
+    size: 'm', theme: 'light1', rounded: null, showControls: true,
+    video: { srcList: [{ url: '/assets/media/samplevid1.mp4', type: 'video/mp4' }], poster: '/assets/builder/placeholder.svg', autoPlay: false, muted: true, loop: false, activateControls: false, fillSpace: true, captions: [] }
+  } },
+  { name: 'Media', props: {
+    type: 'img', fillSpace: true, containerClasses: '', elementClasses: ['w-full'],
+    props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false }
+  } },
+  { name: 'Icon', props: { iconName: 'media', iconSet: 'zaux', size: 'text-icon-m', ariaHidden: true } },
   { name: 'Separator', props: {} },
+  { name: 'a', html: true, createProps: t => ({ textContent: t('zx_builder_preset_link'), href: '#', id: '' }) },
   { name: 'div', container: true, html: true, props: {} },
   { name: 'section', container: true, html: true, props: {} },
   { name: 'nav', container: true, html: true, props: {} },

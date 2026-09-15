@@ -18,6 +18,12 @@ export function createInstance(definition) {
 }
 export function createTemplate(name) { return { id: uid(), name, instances: [] }; }
 
+// Internal IDs stay scoped to the new document, preserving source/partial references.
+export function copyWorkspace(workspace, name) {
+  const now = new Date().toISOString();
+  return { ...clone(workspace), id: uid(), name, createdAt: now, updatedAt: now };
+}
+
 export function createWorkspace() {
   const hero = createDefinition('Welcome Section');
   hero.fields = [

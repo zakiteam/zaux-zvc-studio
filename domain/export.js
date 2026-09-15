@@ -34,6 +34,13 @@ export function parseComponentDocument(text) {
   }
   return { kind: 'component', data: isNodeDocument(value) ? definitionFromNode(value) : validateDefinition(value) };
 }
+export function parsePartialDocument(text) {
+  const payload = parseComponentDocument(text);
+  if (payload.data.sourceKey && !payload.data.sourceKey.endsWith('.zvp.js')) throw new Error('zx_builder_invalid_document');
+  payload.data.kind = 'zvp';
+  payload.data.exportName = payload.data.exportName.replace(/^ZVC/, 'ZVP');
+  return { kind: 'component', data: validateDefinition(payload.data) };
+}
 export function parseDocument(text) {
   const payload = parseJson(text);
   if (payload?.format === 'zaux-builder') {

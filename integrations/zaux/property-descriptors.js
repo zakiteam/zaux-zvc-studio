@@ -1,4 +1,5 @@
-import { componentVariants, componentSelects } from './component-options.js';
+import { componentVariants } from './component-options.js';
+import { decorateProperties, selectOptions } from './property-decorators.js';
 import section from '../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
 import intro from '../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
 import button from '../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
@@ -14,13 +15,7 @@ const supplements = {
   Separator: { sizes: ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl'], themes: ['light1', 'light2', 'light3', 'dark1'] }
 };
 
-function optionsFor(values) {
-  return values.map(value => value !== null && typeof value === 'object'
-    ? { value: value.value, label: value.label ?? String(value.value) }
-    : { value, label: String(value) });
-}
-
-export function propertyDescriptors(name, props) {
+export function propertyDescriptors(name, props, context = {}) {
   const descriptors = Object.fromEntries(Object.entries(props).map(([key, descriptor]) => [key,
     typeof descriptor === 'function' ? { type: descriptor } : { ...descriptor }
   ]));
@@ -28,20 +23,13 @@ export function propertyDescriptors(name, props) {
     if (!Object.hasOwn(descriptors, field.name)) continue;
     descriptors[field.name].control = field.ctrlType;
     if (field.ctrlType === 'select' && Array.isArray(field.value)) {
-      descriptors[field.name].options = optionsFor(field.value);
+      descriptors[field.name].options = selectOptions(field.value).options;
     }
   }
   const meta = componentVariants[name] ?? metadata[name] ?? supplements[name];
   for (const [key, values] of [['size', meta?.sizes], ['theme', meta?.themes]]) {
     if (!Object.hasOwn(descriptors, key) || !Array.isArray(values)) continue;
-    descriptors[key] = { ...descriptors[key], control: 'select', options: optionsFor(values) };
+    descriptors[key] = { ...descriptors[key], ...selectOptions(values) };
   }
-  for (const [key, values] of Object.entries(componentSelects[name] ?? {})) {
-    if (Object.hasOwn(descriptors, key)) descriptors[key] = { ...descriptors[key], control: 'select', options: optionsFor(values) };
-  }
-  if (['Zimg', 'img'].includes(name)) {
-    for (const key of name === 'Zimg' ? ['src', 'fallbackSrc'] : ['src']) descriptors[key] = { ...descriptors[key], image: true };
-  }
-  if (name === 'video') descriptors.poster = { ...descriptors.poster, image: true };
-  return descriptors;
+  return decorateProperties(name, descriptors, context);
 }

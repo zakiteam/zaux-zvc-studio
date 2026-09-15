@@ -1,4 +1,5 @@
 {
+  "zx_builder_preset_link": "Link",
   "zx_builder_media_download": "Download image",
   "zx_builder_media_download_error": "Unable to download the image. Please try again.",
   "zx_builder_library_category": "Library category",
@@ -635,5 +636,25 @@
   "zx_builder_html": "HTML",
   "zx_builder_css-editor": "CSS",
   "zx_builder_button": "Button",
-  "zx_builder_buttongroup": "Button group"
+  "zx_builder_buttongroup": "Button group",
+  "zx_builder_create": "Create",
+  "zx_builder_zvc": "ZVC",
+  "zx_builder_zvp": "ZVP",
+  "zx_builder_new_partial_json": "ZVP from JSON",
+  "zx_builder_partial_json_hint": "Paste a Studio definition, an editable JSON export or a Zaux node with name and props. A project ZVP will be created, preserving its fields and values.",
+  "zx_builder_partial_restore_hint": "Restore structure, fields and styles from the library while preserving this occurrence's data. Other instances remain independent.",
+  "zx_builder_partial_original_missing": "The original ZVP is no longer in the library.",
+  "zx_builder_body_background": "Body background",
+  "zx_builder_body_background_reset": "Reset body background",
+  "zx_builder_canvas_light": "Light canvas",
+  "zx_builder_canvas_dark": "Dark canvas",
+  "zx_builder_show_header": "Show header",
+  "zx_builder_hide_header": "Hide header",
+  "zx_builder_open_preview_page": "Open preview page",
+  "zx_builder_preview_open_error": "Unable to open the preview: local storage is unavailable.",
+  "zx_builder_preview_unavailable": "Preview unavailable. Check the project and selected template.",
+  "zx_builder_copy_node": "Copy node",
+  "zx_builder_paste_node": "Paste node",
+  "zx_builder_copied_node": "Copied",
+  "zx_builder_drag_copied_node": "Drag onto the canvas or outline; click to paste after the selection"
 }

@@ -5,7 +5,7 @@
   </StudioAccess>
 </template>
 <script>
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 import StudioAccess from './components/studio/StudioAccess.vue';
 import { useHead, useRoute } from '#imports';
 import { useStudioTheme } from './composables/useStudioTheme.js';
@@ -14,10 +14,11 @@ export default defineComponent({
   setup() {
     const route = useRoute();
     const { theme } = useStudioTheme();
+    const isPreview = computed(() => route.path === '/preview' || route.path.startsWith('/view/'));
     useHead(() => ({
       htmlAttrs: {
-        'data-studio-theme': route.path === '/preview' ? null : theme.value,
-        class: { 'zaux-theme-scheme--dark': route.path !== '/preview' && theme.value === 'dark' }
+        'data-studio-theme': isPreview.value ? null : theme.value,
+        class: { 'zaux-theme-scheme--dark': !isPreview.value && theme.value === 'dark' }
       }
     }));
   }

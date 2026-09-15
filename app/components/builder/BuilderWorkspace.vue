@@ -4,7 +4,7 @@
 		class="zb-app flex h-dvh flex-col overflow-hidden bg-zaux-light font-builder text-[13px] text-zaux-dark max-[900px]:h-auto max-[900px]:min-h-dvh max-[900px]:overflow-auto"
 		:class="{ 'zb-app--preview': previewOnly }"
 	>
-		<BuilderHeader />
+		<BuilderHeader v-show="!previewOnly || !previewHeaderHidden || workspaceView !== 'design'" />
 		<div
 			v-if="recovery !== null || incoming || error || remoteConflict"
 			class="zb-notice flex items-center gap-2 bg-utility-warning/20 px-3 py-1.5 text-[11px] text-zaux-dark [&>span]:flex-1 [&_button]:underline"

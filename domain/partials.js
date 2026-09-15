@@ -1,3 +1,4 @@
+import { restoreInstance } from './restore-instance.js';
 import { clone, dataFor } from './nodes.js';
 
 export function partialDefinitions(definition, library) {
@@ -34,4 +35,43 @@ export function capturePartials(definition, library, data = {}, ancestors = []) 
 
 export function definitionCss(definition) {
   return [definition.css, ...(definition.partials ?? []).map(definitionCss)].filter(Boolean).join('\n');
+}
+
+export function partialLibraryDefinition(partial, library) {
+  return partial && library.find(item => item.kind === 'zvp' && item.id === (partial.libraryId ?? partial.id));
+}
+
+// Give the restored occurrence its own dependency, leaving sibling references intact.
+export function restorePartialReference(owner, reference, library, data = {}) {
+  const partial = owner.partials?.find(item => item.exportName === reference.name);
+  const original = partialLibraryDefinition(partial, library);
+  if (!original) throw new Error('zx_builder_partial_original_missing');
+  const restored = restoreInstance({ definition: partial, data: reference.props }, original);
+  const definition = restored.definition;
+  definition.libraryId = original.id;
+  const references = new Map();
+  function count(value) {
+    if (!value || typeof value !== 'object') return;
+    if (typeof value.name === 'string' && value.props) references.set(value.name, (references.get(value.name) ?? 0) + 1);
+    Object.values(value).forEach(count);
+  }
+  count(owner.tree);
+  count(dataFor(owner, data));
+  if (references.get(reference.name) === 1) {
+    // Reuse this occurrence's dependency instead of allocating another alias.
+    definition.exportName = partial.exportName;
+    owner.partials.splice(owner.partials.indexOf(partial), 1, definition);
+  } else {
+    const names = new Set([...library, ...owner.partials].map(item => item.exportName));
+    const base = original.exportName;
+    for (let suffix = 2; names.has(definition.exportName); suffix++) definition.exportName = base + suffix;
+    owner.partials.push(definition);
+  }
+  reference.name = definition.exportName;
+  reference.props = restored.data;
+  // Older restores left unused internal copies behind. Keep all referenced copies.
+  references.clear();
+  count(owner.tree);
+  count(dataFor(owner, data));
+  owner.partials = owner.partials.filter(item => !item.libraryId || references.has(item.exportName));
 }

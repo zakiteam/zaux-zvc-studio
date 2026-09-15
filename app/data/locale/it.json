@@ -1,4 +1,5 @@
 {
+  "zx_builder_preset_link": "Collegamento",
   "zx_builder_media_download": "Scarica immagine",
   "zx_builder_media_download_error": "Impossibile scaricare l'immagine. Riprova.",
   "zx_builder_library_category": "Categoria libreria",
@@ -635,5 +636,25 @@
   "zx_builder_html": "HTML",
   "zx_builder_css-editor": "CSS",
   "zx_builder_button": "Pulsante",
-  "zx_builder_buttongroup": "Gruppo di pulsanti"
+  "zx_builder_buttongroup": "Gruppo di pulsanti",
+  "zx_builder_create": "Crea",
+  "zx_builder_zvc": "ZVC",
+  "zx_builder_zvp": "ZVP",
+  "zx_builder_new_partial_json": "ZVP da JSON",
+  "zx_builder_partial_json_hint": "Incolla una definizione Studio, un export JSON modificabile o un nodo Zaux con name e props. Verrà creato uno ZVP di progetto con campi e valori preservati.",
+  "zx_builder_partial_restore_hint": "Ripristina struttura, campi e stili dalla libreria conservando i dati di questa occorrenza. Le altre istanze restano indipendenti.",
+  "zx_builder_partial_original_missing": "Lo ZVP originale non è più presente nella libreria.",
+  "zx_builder_body_background": "Sfondo body",
+  "zx_builder_body_background_reset": "Ripristina sfondo body",
+  "zx_builder_canvas_light": "Canvas chiaro",
+  "zx_builder_canvas_dark": "Canvas scuro",
+  "zx_builder_show_header": "Mostra testata",
+  "zx_builder_hide_header": "Nascondi testata",
+  "zx_builder_open_preview_page": "Apri pagina preview",
+  "zx_builder_preview_open_error": "Impossibile aprire la preview: salvataggio locale non disponibile.",
+  "zx_builder_preview_unavailable": "Anteprima non disponibile. Controlla il progetto e il template selezionato.",
+  "zx_builder_copy_node": "Copia nodo",
+  "zx_builder_paste_node": "Incolla nodo",
+  "zx_builder_copied_node": "Copiato",
+  "zx_builder_drag_copied_node": "Trascina nel canvas o nella struttura; clicca per incollare dopo la selezione"
 }

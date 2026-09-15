@@ -24,7 +24,7 @@ export function catalogNode(name) {
   if (name.startsWith('Input') || name === 'ZForm') node.props.name += '-' + node.id;
   return node;
 }
-export function propertyInfo(name) {
+export function propertyInfo(name, context = {}) {
   // Existing/sourced components remain editable even when absent from the palette.
-  return propertyDescriptors(name, registry[name]?.props ?? { textContent: { default: '' } });
+  return propertyDescriptors(name, registry[name]?.props ?? { textContent: { default: '' } }, context);
 }

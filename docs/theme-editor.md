@@ -43,6 +43,6 @@ The catalog was generated as an implementation artifact. Source and diffs were r
 
 Accordion starts open, wrapped and boxed, with HTML content and editable icons, border and roundness options. Dropdown and breadcrumb records use their nested renderer contracts; sliders contain populated component slides. Input samples expose their actual state/selection values. ListColumned needs project-owned root/item theme hooks because its pinned implementation imports List.meta. Toast uses a preview-only lifecycle adapter with the native notification store so it stays visible while editing and is cleaned up on sample changes.
 
-The reusable personal skill is `$zaux-theme-preview-props`, installed at `C:/Users/Carlo/.codex/skills/zaux-theme-preview-props/SKILL.md`. It directs future work to native props, templates, nested renderer contracts and theme selectors before extending presets or editable fields.
+The reusable repository skill is [`zaux-theme-preview-props`](../.agents/skills/zaux-theme-preview-props/SKILL.md). It directs future work to native props, templates, nested renderer contracts and theme selectors before extending presets or editable fields.
 
 Source contracts and diffs were reviewed for this update. No automated tests, skill validators, browser checks or production builds were run; runtime behavior remains pending manual verification.

@@ -1,4 +1,5 @@
 import { useSupabaseClient } from './supabase.js';
+import { copyWorkspace } from '../../domain/workspace.js';
 
 export async function listRemoteProjects(userId) {
   const supabase = useSupabaseClient();
@@ -21,6 +22,16 @@ export async function createRemoteProject(name, document, userId) {
   const { data, error } = await useSupabaseClient().from('projects').insert({ name, owner_id: userId, document, schema_version: document.schemaVersion ?? 1 }).select('id, name, owner_id, revision, updated_at').single();
   if (error) throw error;
   return { ...data, role: 'owner' };
+}
+
+export async function duplicateRemoteProject(id, suffix, userId) {
+  const original = await getRemoteProject(id);
+  const copySuffix = ' (' + suffix + ')';
+  // Match the database's 100-character project name limit.
+  const name = Array.from(original.name).slice(0, 100 - Array.from(copySuffix).length).join('').trimEnd() + copySuffix;
+  const document = copyWorkspace(original.document, name);
+  const project = await createRemoteProject(document.name, document, userId);
+  return { ...project, cover_image: document.coverImage ?? null };
 }
 
 export async function saveRemoteProject(project, document) {

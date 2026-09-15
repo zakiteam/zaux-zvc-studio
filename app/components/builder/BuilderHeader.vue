@@ -135,10 +135,16 @@
 					/>
 					<BuilderButton
 						size="xs"
-						variant="primary"
-						icon="arrow-up-right"
 						:label="translate('zx_builder_export')"
 						@click="modal = { type: 'export' }"
+					/>
+					<BuilderButton
+						size="xs"
+						variant="primary"
+						icon="play"
+						:extraProps="{ actionIcon: false }"
+						:label="translate('zx_builder_open_preview_page')"
+						@click="openPreviewPage"
 					/>
 				</div>
 			</div>

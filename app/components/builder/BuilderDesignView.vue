@@ -1,101 +1,76 @@
 <template>
-		<div class="zb-workbench flex min-h-0 flex-1 max-[900px]:flex-wrap">
-			<BuilderSidebar
-				v-show="!previewOnly"
-				:width="leftWidth"
-			/><BuilderResizeHandle
-				v-if="!previewOnly"
-				side="left"
-				:label="translate('zx_builder_resize_left')"
-				@resize="resizePanel('left', $event)"
-			/>
-			<main
-				class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
+	<div class="zb-workbench flex min-h-0 flex-1 max-[900px]:flex-wrap">
+		<BuilderSidebar
+			v-show="!previewOnly"
+			:width="leftWidth"
+		/><BuilderResizeHandle
+			v-if="!previewOnly"
+			side="left"
+			:label="translate('zx_builder_resize_left')"
+			@resize="resizePanel('left', $event)"
+		/>
+		<main
+			class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
+		>
+			<!-- Canvas toolbar is off -->
+			<div
+				class="zb-canvas-toolbar shrink-0 flex hidden flex-wrap min-h-[72px] py-0 items-center justify-between gap-1.5 dark:border-b-none border-b-slim border-zaux-light-grey bg-zaux-white px-1.5 max-[1200px]:px-2"
 			>
-				<div
-					class="zb-canvas-toolbar flex h-[72px] min-h-[72px] items-center justify-between gap-1.5 dark:border-b-none border-b-slim border-zaux-light-grey bg-zaux-white px-3 max-[1200px]:px-2"
-				>
-					<div class="zb-canvas-label min-w-0 max-w-[240px]">
-						<span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
-							{{ translate(mode === 'library' ? 'zx_builder_library' : 'zx_builder_templates') }}
-						</span>
-						<strong v-if="mode === 'library'" class="mt-0.75 block truncate text-[14px] font-medium">
-							{{ activeDefinition?.name }}
-						</strong>
-						<BuilderDropdown
-							v-else
-							:label="activeTemplate.name"
-							:items="templateMenuItems"
-							:disabled="remoteProjectBusy"
-							btnTheme="alt1"
-							btnSize="xs"
-							class="mt-0.75 min-w-0 [&_button]:max-w-full"
-							@select="templateAction"
-						>
-							<template #header>
-								<p class="text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey">
-									{{ translate('zx_builder_templates') }}
-								</p>
-								<p class="mt-0.5 truncate text-[13px] font-semibold">{{ activeTemplate.name }}</p>
-							</template>
-						</BuilderDropdown>
-					</div>
-					<div class="flex flex-col min-w-0 gap-1 py-2">
-						<div class="flex items-stretch min-w-0 gap-1">
-							<BuilderInput
-								type="select"
-								v-model="viewportMode"
-								:label="translate('zx_builder_viewport_mode')"
-								:options="[
-									{ value: 'simple', label: translate('zx_builder_viewport_simple') },
-									{ value: 'zaux', label: translate('zx_builder_viewport_zaux') },
-								]"
-								class="min-w-0 text-[10px] h-full [&_*]:h-full"
-							/>
-							<BuilderInput
-								v-if="viewportMode === 'simple'"
-								type="select"
-								v-model="simpleViewport"
-								:options="simpleViewportOptions"
-								:label="translate('zx_builder_viewport')"
-								class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
-							/>
-							<BuilderInput
-								v-else
-								type="select"
-								v-model="viewport"
-								:options="viewportOptions"
-								:label="translate('zx_builder_viewport')"
-								class="min-w-0 rounded-xs border-slim border-zaux-light-grey bg-zaux-light text-[11px]"
-							/>
-						</div>
-						<label class="flex cursor-pointer items-center gap-1 text-[10px] text-zaux-dark-grey mx-auto">
-							<input v-model="followViewportStyles" type="checkbox" class="w-1.5 h-1.5 accent-zaux-accent" />
-							<span>{{ translate('zx_builder_follow_viewport_styles') }}</span>
-						</label>
-					</div>
-					<BuilderButton
-						size="xs"
-						:label="
+				<div class="zb-canvas-label min-w-0 max-w-[240px] hidden">
+					<span
+						class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
+					>
+						{{
 							translate(
-								previewOnly ? 'zx_builder_design' : 'zx_builder_preview',
+								mode === "library"
+									? "zx_builder_library"
+									: "zx_builder_templates",
 							)
-						"
-						:icon="previewOnly ? 'edit' : 'visibility'"
-						@click="previewOnly = !previewOnly"
-					/>
+						}}
+					</span>
+					<strong
+						v-if="mode === 'library'"
+						class="mt-0.75 block truncate text-[14px] font-medium"
+					>
+						{{ activeDefinition?.name }}
+					</strong>
+					<!--
+					<BuilderDropdown
+						v-else
+						:label="activeTemplate.name"
+						:items="templateMenuItems"
+						:disabled="remoteProjectBusy"
+						btnTheme="alt1"
+						btnSize="xs"
+						class="mt-0.75 min-w-0 [&_button]:max-w-full"
+						@select="templateAction"
+					>
+						<template #header>
+							<p
+								class="text-[9px] font-semibold uppercase tracking-wider text-zaux-dark-grey"
+							>
+								{{ translate("zx_builder_templates") }}
+							</p>
+							<p class="mt-0.5 truncate text-[13px] font-semibold">
+								{{ activeTemplate.name }}
+							</p>
+						</template>
+					</BuilderDropdown>
+					-->
 				</div>
-				<div
-					v-if="mode === 'library'"
-					class="zb-context-line flex justify-between gap-1.5 bg-zaux-accent/5 px-3 py-1.5 text-[10px] text-zaux-dark-grey [&>button]:whitespace-nowrap [&>button]:text-zaux-accent [&>button]:underline"
-				>
-					<span>{{ translate("zx_builder_library_notice") }}</span
-					><button @click="selectTemplate(activeTemplate.id)">
-						{{ translate("zx_builder_back_template") }} ↗
-					</button>
-				</div>
-				<BuilderCanvas />
-				<!--
+			</div>
+			<BuilderPreviewControls class="pt-1.5" />
+			<div
+				v-if="mode === 'library'"
+				class="zb-context-line flex justify-between gap-1.5 bg-zaux-accent/5 px-3 py-1.5 text-[10px] text-zaux-dark-grey [&>button]:whitespace-nowrap [&>button]:text-zaux-accent [&>button]:underline"
+			>
+				<span>{{ translate("zx_builder_library_notice") }}</span
+				><button @click="selectTemplate(activeTemplate.id)">
+					{{ translate("zx_builder_back_template") }} ↗
+				</button>
+			</div>
+			<BuilderCanvas />
+			<!--
 				<footer
 					class="zb-canvas-footer hidden items-center justify-between gap-3 border-t-slim border-zaux-light-grey bg-zaux-white px-3 py-1.5 text-[9px] leading-[1.5] text-zaux-dark-grey [&>span:last-child]:whitespace-nowrap max-[1200px]:[&>span:last-child]:hidden max-[900px]:hidden"
 				>
@@ -106,37 +81,45 @@
 					}}</span
 					><span>{{ translate("zx_builder_readonly_source") }}</span>
 				</footer>
-				-->
-			</main>
-			<BuilderResizeHandle
-				v-if="!previewOnly"
-				side="right"
-				:label="translate('zx_builder_resize_right')"
-				@resize="resizePanel('right', $event)"
-			/><BuilderStyles
-				v-if="stylesOpen && !previewOnly"
-				:width="rightWidth"
-			/><BuilderInspector
-				v-show="!previewOnly && !stylesOpen"
-				:width="rightWidth"
-			/>
-		</div>
+				--></main>
+		<BuilderResizeHandle
+			v-if="!previewOnly"
+			side="right"
+			:label="translate('zx_builder_resize_right')"
+			@resize="resizePanel('right', $event)"
+		/><BuilderStyles
+			v-if="stylesOpen && !previewOnly"
+			:width="rightWidth"
+		/><BuilderInspector
+			v-show="!previewOnly && !stylesOpen"
+			:width="rightWidth"
+		/>
+	</div>
 </template>
 <script>
 import { computed, defineComponent, ref } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
+import BuilderPreviewControls from "./BuilderPreviewControls.vue";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderSidebar from "./BuilderSidebar.vue";
 import BuilderCanvas from "./BuilderCanvas.vue";
 import BuilderInspector from "./BuilderInspector.vue";
 import BuilderStyles from "./BuilderStyles.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
-import BuilderInput from "./fields/BuilderInput.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
 export default defineComponent({
-  components: { BuilderInput, BuilderDropdown, BuilderButton, BuilderSidebar, BuilderCanvas, BuilderInspector, BuilderStyles, BuilderResizeHandle },
-  setup() {
-    const builder = useBuilder();
+	components: {
+		BuilderPreviewControls,
+		BuilderDropdown,
+		BuilderButton,
+		BuilderSidebar,
+		BuilderCanvas,
+		BuilderInspector,
+		BuilderStyles,
+		BuilderResizeHandle,
+	},
+	setup() {
+		const builder = useBuilder();
 		const templateMenuItems = computed(() => {
 			const t = builder.translate;
 			const disabled = !builder.canEditRemote.value;
@@ -200,7 +183,14 @@ export default defineComponent({
 				Math.max(side === "left" ? 210 : 260, target.value + delta),
 			);
 		}
-    return { ...builder, templateMenuItems, templateAction, leftWidth, rightWidth, resizePanel };
-  }
+		return {
+			...builder,
+			templateMenuItems,
+			templateAction,
+			leftWidth,
+			rightWidth,
+			resizePanel,
+		};
+	},
 });
 </script>

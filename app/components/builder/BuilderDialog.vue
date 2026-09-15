@@ -7,7 +7,7 @@
 			ref="dialog"
 			class="zb-dialog max-h-[95dvh] w-[440px] max-w-full overflow-auto rounded-s bg-zaux-white p-4 shadow-deeper [&.zb-dialog--wide]:w-[1400px] [&>header]:mb-3 [&>header]:flex [&>header]:items-start [&>header]:justify-between [&_h2]:mt-1 [&_h2]:text-[25px] [&_h2]:font-normal [&_h2]:tracking-[-0.7px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey [&_footer]:mt-3 [&_footer]:flex [&_footer]:items-center [&_footer]:justify-end [&_footer]:gap-1.5 [&_footer>span]:!mr-auto"
 			:class="{
-				'zb-dialog--wide': ['import', 'export', 'new-component-json'].includes(
+				'zb-dialog--wide': ['import', 'export', 'new-component-json', 'new-partial-json'].includes(
 					modal.type,
 				),
 			}"
@@ -228,13 +228,13 @@
 					/>
 				</footer>
 			</template>
-			<template v-else-if="modal.type === 'new-component-json'">
+			<template v-else-if="['new-component-json', 'new-partial-json'].includes(modal.type)">
 				<p class="mb-2 text-[12px] text-zaux-dark-grey">
-					{{ translate("zx_builder_component_json_hint") }}
+					{{ translate(modal.type === 'new-partial-json' ? 'zx_builder_partial_json_hint' : 'zx_builder_component_json_hint') }}
 				</p>
 				<BuilderCodeEditor
 					v-model="componentText"
-					label="ZVC JSON"
+					:label="translate(modal.type === 'new-partial-json' ? 'zx_builder_new_partial_json' : 'zx_builder_new_component_json')"
 					:rows="18"
 				/>
 				<footer>
@@ -332,6 +332,7 @@ import {
 	onBeforeUnmount,
 	nextTick,
 } from "vue";
+import { presetCss } from '../../../domain/styles.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from "../../composables/useBuilder.js";
 import {
@@ -339,6 +340,7 @@ import {
 	templateRuntime,
 	parseDocument,
 	parseComponentDocument,
+    parsePartialDocument,
 } from "../../../domain/export.js";
 import { createDefinition } from "../../../domain/workspace.js";
 import { projectStarterFiles } from "../../services/starter-export.js";
@@ -369,7 +371,7 @@ export default defineComponent({
 		const importText = ref("");
 		const pendingImport = ref(null);
 		const saving = ref(false);
-		const example = createDefinition(builder.translate("zx_builder_new_name"));
+		const example = createDefinition(builder.translate("zx_builder_new_name"), builder.modal.value.type === "new-partial-json" ? "zvp" : "zvc");
 		example.tree = [
 			createNode("div", {
 				class: "p-4",
@@ -379,7 +381,7 @@ export default defineComponent({
 		const componentText = ref(JSON.stringify(example, null, 2));
 		function addComponentJson() {
 			try {
-				const payload = parseComponentDocument(componentText.value);
+				const payload = builder.modal.value.type === "new-partial-json" ? parsePartialDocument(componentText.value) : parseComponentDocument(componentText.value);
 				builder.importDocument(payload);
 				if (builder.error.value) {
 					localError.value = builder.error.value;
@@ -395,6 +397,7 @@ export default defineComponent({
 		const previousFocus = document.activeElement;
 		const titles = {
 			"new-component-json": "new_component_json",
+            "new-partial-json": "new_partial_json",
 			"new-component": "new_component",
             "new-partial": "new_partial",
 			"new-template": "new_template",
@@ -430,10 +433,12 @@ export default defineComponent({
 			if (scope.value === 'starter' || scope.value === 'template') return packageResult.value.files;
 			try {
 				const themeCss = componentThemesCss(builder.document.value.componentThemes);
+				const bodyCss = presetCss({ cssVars: [], bodyBackground: builder.document.value.styles?.bodyBackground });
 				return definition.value ? {
 					...filesForDefinition(definition.value),
 					...fontFiles(builder.document.value.styles?.fonts),
-					...(themeCss ? { 'component-themes.css': themeCss } : {})
+					...(themeCss ? { 'component-themes.css': themeCss } : {}),
+					...(bodyCss ? { 'body-background.css': bodyCss } : {})
 				} : {};
 			} catch {
 				return {};

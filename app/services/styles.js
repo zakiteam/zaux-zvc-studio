@@ -8,7 +8,7 @@ export { UIConfig as defaultUISettings };
 export function createStyleBridge() {
   let sheet;
   return {
-    apply(preset) {
+    apply(preset, { preview = false } = {}) {
       sheet ??= Object.assign(document.createElement('style'), { id: 'zaux-studio-tokens' });
       if (!sheet.isConnected) document.head.appendChild(sheet);
       const defaults = tokenGroups.flatMap(group => group.variables).filter(variable => variable.type === 'color');
@@ -18,7 +18,7 @@ export function createStyleBridge() {
       ));
       // Define variables directly on the sample, bypassing the inherited Studio palette.
       const swatchCss = presetCss({ cssVars: [{ selector: '.zb-project-swatch', vars: swatchVariables }] });
-      sheet.textContent = presetCss(preset) + '\n' + swatchCss;
+      sheet.textContent = presetCss(preset, { includeBody: preview }) + '\n' + swatchCss;
       useUISettingsStore().loadUISettings(mergeUISettings(UIConfig, preset.uiSettings));
     },
     dispose() { sheet?.remove(); }

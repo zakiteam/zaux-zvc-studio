@@ -3,6 +3,7 @@ import { projectFonts } from './fonts.js';
 
 export function createStylePreset() { return { cssVars: [], uiSettings: {} }; }
 export function validateStylePreset(preset) {
+  if (preset?.bodyBackground !== undefined && (typeof preset.bodyBackground !== 'string' || !/^(?:|transparent|rgb\(var\(--zx-color-[\w-]+\)\)|#[\da-f]{3}|#[\da-f]{4}|#[\da-f]{6}|#[\da-f]{8})$/i.test(preset.bodyBackground))) throw new Error('zx_builder_invalid_style_preset');
   if (preset?.fonts !== undefined) projectFonts(preset.fonts);
   if (!preset || !Array.isArray(preset.cssVars) || preset.cssVars.length > 100) throw new Error('zx_builder_invalid_style_preset');
   const selectors = new Set();
@@ -30,9 +31,10 @@ export function setStyleVariable(preset, name, value, type = 'text') {
   }
   if (!group.vars.length) preset.cssVars.splice(preset.cssVars.indexOf(group), 1);
 }
-export function presetCss(preset) {
+export function presetCss(preset, { includeBody = true } = {}) {
   validateStylePreset(preset);
-  return preset.cssVars.map(group => group.selector + ' {\n' + group.vars.map(variable => '  ' + variable.name + ': ' + variable.value + ';').join('\n') + '\n}').join('\n\n');
+  const variables = preset.cssVars.map(group => group.selector + ' {\n' + group.vars.map(variable => '  ' + variable.name + ': ' + variable.value + ';').join('\n') + '\n}').join('\n\n');
+  return [variables, includeBody && preset.bodyBackground ? `body { background-color: ${preset.bodyBackground}; }` : ''].filter(Boolean).join('\n\n');
 }
 export function mergeUISettings(defaults, overrides = {}) {
   const result = clone(defaults);

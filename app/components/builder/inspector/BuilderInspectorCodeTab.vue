@@ -2,6 +2,7 @@
 	<template v-if="active && activeDefinition">
 		<BuilderButton
 			class="mb-2"
+			size="xs"
 			icon="download"
 			:label="translate('zx_builder_export_zaux_json')"
 			@click="modal = { type: 'export', scope: 'component', format: 'runtime' }"

@@ -1,4 +1,6 @@
-import { partialDefinitions } from '../../domain/partials.js';
+import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
+import { openPreviewPage as openPreviewWindow } from '../services/preview-page.js';
+import { partialDefinitions, partialLibraryDefinition as findPartialLibraryDefinition, restorePartialReference as restorePartial } from '../../domain/partials.js';
 import { parseThemeCss } from '../../domain/component-themes.js';
 import { projectFonts } from '../../domain/fonts.js';
 import { restoreInstance } from '../../domain/restore-instance.js';
@@ -38,6 +40,7 @@ export function createBuilder({ projectId = null } = {}) {
   const leftTab = ref('library');
   const libraryCategory = ref('imported');
   const librarySearch = ref('');
+  const libraryKind = ref('zvc');
   const inspectorTab = ref('properties');
   const viewportMode = ref('simple');
   const simpleViewport = ref('auto');
@@ -59,6 +62,23 @@ export function createBuilder({ projectId = null } = {}) {
     ...viewports.map(item => ({ value: item.name, label: `${item.name} (${item.width} px)` }))
   ]);
   const previewOnly = ref(false);
+  const previewHeaderHidden = ref(false);
+  const canvasDark = ref(false);
+  function updateBodyBackground(value) {
+    commit(workspace => {
+      if (value) workspace.styles.bodyBackground = value;
+      else delete workspace.styles.bodyBackground;
+    });
+  }
+  function openPreviewPage() {
+    try {
+      flushSave();
+      openPreviewWindow(document.value, {
+        projectId: activeRemoteProject.value?.id ?? 'local',
+        templateId: activeTemplate.value.id, componentId: mode.value === 'library' ? activeDefinition.value?.id : null, canvasDark: canvasDark.value
+      });
+    } catch { error.value = 'zx_builder_preview_open_error'; }
+  }
   const stylesOpen = ref(false);
   const workspaceView = ref('design');
   function updateComponentTheme(component, css) {
@@ -101,6 +121,40 @@ export function createBuilder({ projectId = null } = {}) {
   const isSourceBase = computed(() => mode.value === 'library' && activeDefinition.value?.id === 'source:' + activeDefinition.value?.sourceKey);
   const hasSource = computed(() => sourceAvailable(activeDefinition.value));
   const selectedNode = computed(() => activeDefinition.value ? findNode(activeDefinition.value.tree, nodeId.value) : null);
+  const nodeClipboard = ref(null);
+  const clipboardNodeName = computed(() => nodeClipboard.value?.node.name ?? '');
+  const canCopyNode = computed(() => Boolean(selectedNode.value && !isSource.value));
+  const canPasteNode = computed(() => canPasteNodeAt());
+  function copySelectedNode() {
+    if (!canCopyNode.value) return false;
+    try {
+      nodeClipboard.value = snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, document.value.library);
+      return true;
+    } catch (exception) { error.value = exception.message; return false; }
+  }
+  function clearNodeClipboard() { nodeClipboard.value = null; }
+  function canPasteNodeAt(targetId = nodeId.value, position = 'after', targetInstanceId = instanceId.value) {
+    return Boolean(nodeClipboard.value && canDropElement({ kind: 'clipboard' }, targetId, position, targetInstanceId));
+  }
+  function pasteNode(targetId = nodeId.value, position = 'after', targetInstanceId = instanceId.value) {
+    if (!canPasteNodeAt(targetId, position, targetInstanceId)) return false;
+    let definition = mode.value === 'library' ? activeDefinition.value : activeTemplate.value.instances.find(item => item.id === targetInstanceId)?.definition;
+    let pasted;
+    let destinationId = targetInstanceId;
+    commit(() => {
+      if (!definition) {
+        const instance = createInstance(createDefinition(i18n.translate('zx_builder_new_name')));
+        activeTemplate.value.instances.push(instance);
+        definition = instance.definition;
+        destinationId = instance.id;
+      }
+      pasted = materializeNode(nodeClipboard.value, definition, document.value.library);
+      insertNode(definition.tree, pasted, targetId, position);
+    });
+    if (error.value) return false;
+    selectInstance(destinationId, pasted.id);
+    return true;
+  }
   const previewInstances = computed(() => mode.value === 'library' ? (activeDefinition.value ? [{ id: 'library', name: activeDefinition.value.name, definition: activeDefinition.value, data: {} }] : []) : activeTemplate.value.instances);
 
   function flushSave() {
@@ -291,12 +345,13 @@ export function createBuilder({ projectId = null } = {}) {
   function selectTemplate(id) { mode.value = 'template'; templateId.value = id; instanceId.value = activeTemplate.value.instances[0]?.id; nodeId.value = null; }
   function selectLibrary(id) {
     mode.value = 'library'; libraryId.value = id; nodeId.value = null;
+    libraryKind.value = activeDefinition.value?.kind === 'zvp' ? 'zvp' : 'zvc';
     libraryCategory.value = isSourceBase.value ? 'imported' : 'project';
     if (![activeDefinition.value?.name, activeDefinition.value?.exportName, activeDefinition.value?.sourceKey]
       .some(value => value?.toLowerCase().includes(librarySearch.value.trim().toLowerCase()))) librarySearch.value = '';
     if (isSource.value) inspectorTab.value = 'data';
   }
-  function selectInstance(id, selectedId = null) { if (mode.value !== 'library') instanceId.value = id; nodeId.value = isSource.value ? null : selectedId; if (isSource.value) inspectorTab.value = 'data'; }
+  function selectInstance(id, selectedId = null) { if (mode.value !== 'library') instanceId.value = id; nodeId.value = isSource.value ? null : selectedId; if (isSource.value || selectedPartial.value) inspectorTab.value = 'data'; }
   function restoreActiveInstance() {
     if (!canEditRemote.value || !activeInstance.value || !instanceLibraryDefinition.value) return;
     commit(() => {
@@ -401,7 +456,16 @@ export function createBuilder({ projectId = null } = {}) {
     });
   }
   const availablePartials = computed(() => partialDefinitions(activeDefinition.value, document.value.library));
+  const selectablePartials = computed(() => partialDefinitions({
+    ...activeDefinition.value,
+    partials: (activeDefinition.value?.partials ?? []).filter(partial => !partial.libraryId)
+  }, document.value.library));
   const selectedPartial = computed(() => availablePartials.value.find(item => item.exportName === selectedNode.value?.name));
+  function partialLibraryDefinition(partial) { return findPartialLibraryDefinition(partial, document.value.library); }
+  function restorePartialReference(reference) {
+    if (!reference || !activeDefinition.value || isSource.value || !canEditRemote.value) return;
+    commit(() => restorePartial(activeDefinition.value, reference, document.value.library, mode.value === 'template' ? activeInstance.value?.data : {}));
+  }
   function insertPartial(id) {
     const partial = document.value.library.find(item => item.id === id && item.kind === 'zvp');
     if (!partial) return;
@@ -435,20 +499,22 @@ export function createBuilder({ projectId = null } = {}) {
     if (!canEditRemote.value || !payload || !['before', 'after', 'inside'].includes(position)) return false;
     if (payload.kind === 'library') return document.value.library.some(item => item.id === payload.id);
     if (payload.kind === 'instance') return mode.value === 'template' && payload.id !== targetInstanceId && activeTemplate.value.instances.some(item => item.id === payload.id);
-    if (!['node', 'catalog'].includes(payload.kind)) return false;
+    if (!['node', 'catalog', 'clipboard'].includes(payload.kind)) return false;
+    if (payload.kind === 'clipboard' && !nodeClipboard.value) return false;
     const definition = mode.value === 'library' ? activeDefinition.value : activeTemplate.value.instances.find(item => item.id === targetInstanceId)?.definition;
-    if (!definition) return payload.kind === 'catalog' && !targetId && !targetInstanceId && position !== 'inside';
+    if (!definition) return mode.value === 'template' && ['catalog', 'clipboard'].includes(payload.kind) && !targetId && !targetInstanceId && position !== 'inside';
     if (definition.sourceKey) return false;
     const target = targetId ? findNode(definition.tree, targetId) : null;
     if (targetId && !target) return false;
     if (position === 'inside' && (!target || !containers.includes(target.name))) return false;
-    if (payload.kind === 'catalog') return true;
+    if (['catalog', 'clipboard'].includes(payload.kind)) return true;
     if (payload.instanceId !== targetInstanceId) return false;
     const source = findNode(definition.tree, payload.id);
     return Boolean(source && payload.id !== targetId && !findNode(source.children, targetId));
   }
   function dropElement(payload, targetId, position, targetInstanceId) {
     if (!canDropElement(payload, targetId, position, targetInstanceId)) return;
+    if (payload.kind === 'clipboard') { pasteNode(targetId, position, targetInstanceId); return; }
     if (payload.kind === 'library') { insertInstance(payload.id, targetInstanceId, position); return; }
     if (payload.kind === 'instance') { moveInstance(payload.id, targetInstanceId, position); return; }
     if (payload.kind === 'catalog') { addElement(payload.name, targetId, position, targetInstanceId); return; }
@@ -459,15 +525,15 @@ export function createBuilder({ projectId = null } = {}) {
     commit(() => moveNode(activeDefinition.value.tree, payload.id, targetId, position));
   }
   function deleteNode() {
-    if (!editableStructure() || !selectedNode.value) return;
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
     commit(() => { const location = locateNode(activeDefinition.value.tree, nodeId.value); location.list.splice(location.index, 1); });
-    nodeId.value = null;
+    if (!error.value) nodeId.value = null;
   }
   function duplicateNode() {
-    if (!editableStructure() || !selectedNode.value) return;
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
     const node = copyNode(selectedNode.value);
     commit(() => insertNode(activeDefinition.value.tree, node, nodeId.value));
-    nodeId.value = node.id;
+    if (!error.value) nodeId.value = node.id;
   }
   function wrapNode() {
     if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
@@ -558,7 +624,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
   });
   onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { ...i18n, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

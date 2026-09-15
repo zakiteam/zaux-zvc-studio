@@ -39,7 +39,7 @@ export function createBuilderOutlineDrag(builder) {
       return;
     }
     event.preventDefault();
-    event.dataTransfer.dropEffect = ['library', 'catalog'].includes(source.value?.kind) ? 'copy' : 'move';
+    event.dataTransfer.dropEffect = (source.value ? ['library', 'catalog', 'clipboard'].includes(source.value.kind) : event.dataTransfer.effectAllowed === 'copy') ? 'copy' : 'move';
     target.value = next;
   }
   function leave(event) {

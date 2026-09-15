@@ -1,5 +1,9 @@
 <template>
 	<template v-if="active && activeDefinition">
+        <BuilderPartialFields v-if="selectedPartial && !isSource" :key="selectedNode.id + selectedNode.name"
+          :definition="selectedPartial" :reference="selectedNode" :bindings="activeDefinition.fields"
+          :modelValue="selectedNode.props" @change="updateNode" />
+        <template v-else>
 		<p
 			class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
 		>
@@ -47,6 +51,7 @@
 				</button>
 			</div>
 		</fieldset>
+        </template>
 	</template>
 </template>
 <script>
@@ -55,9 +60,10 @@ import { defineComponent, computed } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { fieldInputType, isFieldVisible } from "../../../../domain/fields.js";
 import { clone, dataFor, getValue } from "../../../../domain/nodes.js";
+import BuilderPartialFields from "../fields/BuilderPartialFields.vue";
 import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
-	components: { BuilderValue },
+	components: { BuilderValue, BuilderPartialFields },
 	props: { active: Boolean },
 	setup() {
 		const builder = useBuilder();

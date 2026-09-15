@@ -134,3 +134,7 @@ Optional `definition.kind: 'zvp'` identifies a partial and requires an export na
 Partial dependencies survive workspace/component/template JSON, copies, undo and persistence. Existing dependency snapshots take precedence over later library changes. Bundled native implementations remain shared through sourceKey, as with ZVCs. Runtime output expands partials into ComponentsRenderer descriptors containing their complete trees in props.components, which also works with sliders that only forward name/props.
 
 JavaScript exports use `.zvp.js`, defaults, fields metadata and buildNode/renderNode. Owners include their captured dependency folders and a pure resolver. The full starter places library partials in `project/components/virtual/_partials/`; template-only packages include the dependencies of their own instances. See [virtual partials](virtual-partials.md).
+
+## Project body background
+
+Optional `workspace.styles.bodyBackground` stores a Zaux color reference such as `rgb(var(--zx-color-set1-white))`, a legacy hexadecimal color or `transparent`; absent or empty means no authored body override. It participates in workspace/style-preset persistence and undo. CSS presets and starter/template `style/studio-tokens.css` include the body rule; individual JavaScript exports include `body-background.css`. Canvas light/dark mode and preview header visibility are session-only and excluded from exports. See [preview](preview.md).

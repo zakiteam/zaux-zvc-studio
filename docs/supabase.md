@@ -53,3 +53,27 @@ Both values are public client configuration. Do not add `SUPABASE_SERVICE_ROLE_K
 Open the project dropdown in the top bar and select a remote project. The same menu contains New, Save, Rename and Delete actions. Owners and editors can rename it; only owners see the delete action. Deletion requires confirmation with the project name and removes its memberships through the existing cascade. The open workspace remains a local copy, detached from remote autosave. These actions use the existing RLS policies and require no additional migration.
 
 Both mutations match the current revision and only update the UI after the server returns the affected row. Renaming waits for pending saves; deletion waits for an in-flight save and cancels remote autosave after success. A changed, inaccessible or deleted project leaves the dialog open with an error.
+
+## Duplicate projects
+
+Dashboard cards expose a one-click duplicate icon for owners and editors.
+The action reads the latest saved server document and creates a project owned by
+the current user, using the original name plus the localized copy suffix.
+Unsaved browser edits are not part of this snapshot.
+
+The new document gets a new workspace ID and timestamps. Nested IDs and references
+are preserved within its independent JSON copy, including ZVP references and
+source provenance. Templates, library definitions, styles, fonts and cover data
+are retained. Media URLs still reference the same files; media records and project
+memberships are not copied. The new card appears first in the dashboard.
+
+The service uses the existing read/create policies and requires no SQL migration.
+Runtime verification remains manual.
+
+## Duplicate library entries and templates
+
+The editor Library sidebar exposes duplicate icons on ZVC/ZVP cards and a compact
+template list. These call the existing builder duplicate action, preserving undo
+and autosave. Source definitions become independent configuration copies of the
+same source implementation. Template copies receive new template, instance and
+definition/node IDs through the existing copy helpers.
