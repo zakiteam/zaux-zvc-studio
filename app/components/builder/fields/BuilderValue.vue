@@ -30,9 +30,10 @@
 				@change="apply"
 			/>
 			<BuilderButton
+				class="mt-2"
+				size="xs"
 				v-if="type === 'json'"
 				icon="delete"
-				iconOnly
 				:label="translate('zx_builder_clear_json')"
 				:disabled="disabled"
 				@click="clearJson"
@@ -82,19 +83,6 @@
 					:disabled="disabled"
 					@change="apply"
 				/>
-				<BuilderButton
-					icon="sort"
-					:label="translate('zx_builder_format_html')"
-					:disabled="disabled || formatting || !String(draft).trim()"
-					@click="formatHtml"
-				/>
-				<p
-					v-if="formatError"
-					role="alert"
-					class="mt-1 text-[11px] text-utility-error"
-				>
-					{{ translate("zx_builder_format_html_error") }}
-				</p>
 			</div>
 			<textarea
 				class="px-2 py-1"
@@ -134,7 +122,6 @@ import {
 	defineAsyncComponent,
 	ref,
 	watch,
-	onBeforeUnmount,
 } from "vue";
 import { parseJson } from "../../../../domain/validation.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
@@ -165,20 +152,6 @@ export default defineComponent({
 		const draft = ref("");
 		const invalid = ref(false);
 		const textMode = ref("text");
-		const formatting = ref(false);
-		const formatError = ref(false);
-		let revision = 0;
-		watch(
-			() => [draft.value, props.modelValue, props.type, textMode.value],
-			() => {
-				revision++;
-				formatError.value = false;
-			},
-			{ flush: "sync" },
-		);
-		onBeforeUnmount(() => {
-			revision++;
-		});
 		watch(
 			() => [props.modelValue, props.type],
 			() => {
@@ -205,34 +178,6 @@ export default defineComponent({
 					? "{}"
 					: "null";
 			apply();
-		}
-		async function formatHtml() {
-			if (props.disabled || formatting.value) return;
-			formatting.value = true;
-			formatError.value = false;
-			const currentRevision = revision;
-			const source = String(draft.value);
-			try {
-				const [prettier, plugin] = await Promise.all([
-					import("prettier/standalone"),
-					import("prettier/plugins/html"),
-				]);
-				const result = await prettier.format(source, {
-					parser: "html",
-					plugins: [plugin],
-					tabWidth: 2,
-					printWidth: 80,
-					htmlWhitespaceSensitivity: "strict",
-					embeddedLanguageFormatting: "off",
-				});
-				if (revision !== currentRevision || props.disabled) return;
-				draft.value = result;
-				apply();
-			} catch {
-				if (revision === currentRevision) formatError.value = true;
-			} finally {
-				formatting.value = false;
-			}
 		}
 		function applyRichText(value) {
 			if (props.disabled) return;
@@ -261,9 +206,6 @@ export default defineComponent({
 			draft,
 			invalid,
 			textMode,
-			formatting,
-			formatError,
-			formatHtml,
 			applyRichText,
 			apply,
 			clearJson,

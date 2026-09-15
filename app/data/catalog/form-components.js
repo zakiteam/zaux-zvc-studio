@@ -14,7 +14,8 @@ export default [
   { name: 'InputMultiSelect', createProps: t => ({ ...inputProps(t, 'multiselect'), modelValue: [], placeholder: t('zx_builder_preset_select'), options: choices(t), filterOptions: false }) },
   { name: 'InputRadioSelect', createProps: t => ({ ...inputProps(t, 'radio-select'), modelValue: '', options: choices(t) }) },
   { name: 'InputRadio', createProps: t => ({ ...inputProps(t, 'radio'), modelValue: '', checkedValue: 'option-1' }) },
-  ...['InputCheckbox', 'InputSwitch', 'InputCheckboxCard'].map(name => ({ name,
+  ...['InputCheckbox', 'InputSwitch', 'InputCheckboxCard'].map(name => ({
+    name,
     createProps: t => ({ ...inputProps(t, name.toLowerCase()), modelValue: false, checked: false, checkedValue: 'yes', ...(name === 'InputCheckboxCard' ? { icon: 'media', helperText: t('zx_builder_preset_excerpt') } : {}) })
   })),
   { name: 'InputFile', createProps: t => ({ ...inputProps(t, 'file'), accept: '', maxSize: null, btnLabel: t('zx_builder_preset_file') }) },

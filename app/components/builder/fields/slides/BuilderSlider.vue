@@ -1,8 +1,8 @@
 <template>
   <fieldset :disabled="!canEditRemote || remoteProjectBusy" class="grid min-w-0 gap-3 mb-3">
-    <BuilderSliderSlides v-if="Array.isArray(node.props.slides)" :modelValue="node.props.slides" @change="setProperty('slides', $event)" />
+    <BuilderSliderSlides v-if="Array.isArray(sliderProps?.slides)" :modelValue="sliderProps.slides" @change="setProperty('slides', $event)" />
     <p v-else class="text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_slider_bound') }}</p>
-    <details open>
+    <details v-if="isPlainRecord(sliderProps)" open>
       <summary class="mb-2 font-medium">{{ translate('zx_builder_slider_layout') }}</summary>
       <template v-if="guidedParams">
         <BuilderInput type="select" v-model="scope" :label="translate('zx_builder_viewport')" :options="scopeOptions" />
@@ -14,12 +14,16 @@
     </details>
     <details>
       <summary class="mb-2 font-medium">{{ translate('zx_builder_slider_behavior') }}</summary>
-      <BuilderSliderFields :modelValue="node.props" :fields="config.fields" @change="updateProperties" />
+      <BuilderSliderFields :modelValue="node.props" :fields="componentFields" @change="updateProperties" />
       <BuilderSliderFields v-if="guidedParams" :modelValue="behaviorParams" :fields="behaviorFields" @change="setProperty('customSliderParams', $event)" />
     </details>
-    <details v-if="isPlainRecord(node.props.customSliderParams)">
+    <details v-if="isPlainRecord(sliderProps?.customSliderParams)">
       <summary>{{ translate('zx_builder_slider_params') }}</summary>
-      <BuilderValue type="json" :modelValue="node.props.customSliderParams" :label="translate('zx_builder_slider_params')" @update:modelValue="setParams" />
+      <BuilderValue type="json" :modelValue="sliderProps.customSliderParams" :label="translate('zx_builder_slider_params')" @update:modelValue="setParams" />
+    </details>
+    <details v-if="config.contentPath && isPlainRecord(sliderProps)">
+      <summary>{{ translate('zx_builder_slider_content_json') }}</summary>
+      <BuilderValue type="json" :modelValue="sliderProps" :label="translate('zx_builder_slider_content_json')" @update:modelValue="setContent" />
     </details>
   </fieldset>
 </template>
@@ -27,7 +31,7 @@
 import { defineComponent, computed, ref, watch } from 'vue';
 import { useBuilder } from '../../../../composables/useBuilder.js';
 import { sliderControls, sliderBreakpoints, layoutFields, behaviorFields } from '../../../../../integrations/zaux/slider-controls.js';
-import { isPlainRecord, pathValue } from '../../../../../domain/slider.js';
+import { isPlainRecord, pathValue, changePath } from '../../../../../domain/slider.js';
 import BuilderInput from '../BuilderInput.vue';
 import BuilderValue from '../BuilderValue.vue';
 import BuilderSliderFields from './BuilderSliderFields.vue';
@@ -42,9 +46,14 @@ export default defineComponent({
     watch(builder.viewportStyleScope, value => {
       scope.value = String(sliderBreakpoints.find(item => item.name + ':' === value)?.width ?? '');
     }, { immediate: true });
-    const params = computed(() => props.node.props.customSliderParams);
+    const sliderProps = computed(() => config.value.contentPath ? pathValue(props.node.props, config.value.contentPath) : props.node.props);
+    const componentFields = computed(() => config.value.fields.filter(field =>
+      !config.value.contentPath || !field.path.startsWith(config.value.contentPath + '.') || isPlainRecord(sliderProps.value)
+    ));
+    const defaults = computed(() => config.value.contentPath ? pathValue(config.value.props, config.value.contentPath) : config.value.props);
+    const params = computed(() => sliderProps.value?.customSliderParams);
     const guidedParams = computed(() => isPlainRecord(params.value)
-      && (!config.value.props.overrideDefaultParams || props.node.props.overrideDefaultParams === true)
+      && (!defaults.value.overrideDefaultParams || sliderProps.value.overrideDefaultParams === true)
       && (params.value.breakpoints == null || (isPlainRecord(params.value.breakpoints) && Object.keys(params.value.breakpoints).every(point => /^\d+$/.test(point))))
       && (!params.value.breakpointsBase || params.value.breakpointsBase === 'window'));
     const scopeOptions = computed(() => [
@@ -66,7 +75,13 @@ export default defineComponent({
       if (!builder.canEditRemote.value || builder.remoteProjectBusy.value) return;
       builder.updateNode(value);
     }
-    function setProperty(key, value) { updateProperties({ ...props.node.props, [key]: value }); }
+    function setContent(value) {
+      if (!isPlainRecord(value)) return;
+      updateProperties(config.value.contentPath ? changePath(props.node.props, config.value.contentPath, value) : value);
+    }
+    function setProperty(key, value) {
+      if (isPlainRecord(sliderProps.value)) setContent({ ...sliderProps.value, [key]: value });
+    }
     function setParams(value) { if (isPlainRecord(value)) setProperty('customSliderParams', value); }
     function setLayout(value) {
       if (!scope.value) { setParams(value); return; }
@@ -75,7 +90,7 @@ export default defineComponent({
       else delete breakpoints[scope.value];
       setParams({ ...params.value, breakpoints });
     }
-    return { ...builder, config, scope, scopeOptions, guidedParams, localParams, fallback, behaviorParams,
+    return { ...builder, config, sliderProps, componentFields, setContent, scope, scopeOptions, guidedParams, localParams, fallback, behaviorParams,
       layoutFields, behaviorFields, isPlainRecord, updateProperties, setProperty, setParams, setLayout };
   }
 });

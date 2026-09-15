@@ -68,13 +68,13 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Per-instance content, field definitions, nested JSON properties and explicit bindings.
 - Editable JSON, generated JS, CSS, browser persistence and recovery.
 - Imports support Studio's versioned JSON envelopes.
-- Native .zvc.js modules under app/zvc load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
+- Native .zvc.js modules under app/zvc and the read-only Zaux core/project virtual folders load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
 - Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI and a browser JavaScript editor are not included. Asset uploads use the project-owned filesystem media integration described in [Media library](media-library.md). Hand-written code is maintained in project files.
 
 ## Media library
 
-`server/api/media/` validates the Supabase session and active profile and uses the caller's token for RLS. `server/utils/media.js` owns server authorization, persistent paths and upload limits. Sharp validates static JPEG/PNG/WebP and writes immutable WebP files and thumbnails outside the deployment directory. `server/routes/media/[file].get.js` serves public files; archived assets remain readable by URL.
+`server/api/media/` validates the Supabase session and active profile and uses the caller's token for RLS. `server/utils/media.js` owns server authorization, persistent paths and upload limits. Sharp validates JPEG/PNG/WebP/SVG uploads. Originals are stored unchanged outside the deployment directory; raster thumbnails retain their format and SVG thumbnails use PNG. The public route serves the matching MIME type with a restrictive CSP for SVG document isolation. `server/routes/media/[file].get.js` serves public files; archived assets remain readable by URL.
 
 `app/services/media.js` owns browser IO. `BuilderMediaPicker.vue` provides one native modal dialog for project/global catalogs, search, upload, pagination and archiving; `BuilderImageInput.vue` retains manual URL entry. Project cover and library preview changes use explicit `useBuilder.js` mutations. Native source refresh preserves preview metadata; existing instance copies remain independent. The hub reads the project's cover from its existing JSON document. Personal global assets follow user ownership because the current ZVC library is workspace-local, not a shared organization catalog.
 
@@ -93,6 +93,10 @@ The workspace project menu uses this control for switching projects, creating, s
 ## Builder typography
 
 Studio UI uses the project-owned Tailwind `font-builder` family (Inter from Google Fonts, normal and italic). The Zaux `font-main` utility and `--zx-font-*` tokens remain unchanged for authored content. The project font stylesheet is loaded by `app/pages/preview.vue` only, rather than the global application head. Builder controls, login, loading UI and preview editing overlays explicitly use `font-builder`; code editors keep their monospace family. Editing Zaux typography tokens therefore does not change the Studio UI family.
+
+## Font library
+
+The dashboard exposes a shared Supabase font catalog through `BuilderFontLibrary.vue`; active users read all entries and authors manage their own. `app/services/fonts.js` owns catalog IO, safe stylesheet-link extraction and preview DOM loading. `domain/fonts.js` validates independent project snapshots and generates developer exports. `useBuilder.js` commits selection into `styles.fonts`; the preview loads unique stylesheet URLs and disposes removed links. Style settings map selected families to existing Zaux tokens. Component ZIP exports include `fonts.json` and `fonts.html`. See [font library](font-library.md) for setup and lifecycle. Runtime verification remains manual.
 
 ## Inspector tabs
 
@@ -175,3 +179,13 @@ Base and explicit breakpoints currently use the default policy and expose the fu
 Shared inputs and property editors live in `app/components/builder/fields/`: BuilderInput, BuilderValue, BuilderProperty, BuilderCodeEditor and BuilderRichTextEditor. Slider controls live in `fields/slides/`: BuilderSlider, BuilderSliderFields and BuilderSliderSlides. Node/image style controls live in `fields/styles/`: BuilderNodeStyles, BuilderImageStyles, BuilderStyleField, BuilderStyleSelect and BuilderStyleChoices. Panel components remain alongside BuilderWorkspace or under inspector. Consumers use explicit imports.
 
 `domain/restore-instance.js` owns restoration and property preservation. `useBuilder.js` owns the explicit commit and selection update; BuilderSidebar presents restoration and unmatched property recovery.
+
+### Shared slider controls
+
+SliderSingle, SliderMultiple and HeroSliderSection use the same BuilderSlider panel and slide catalog. integrations/zaux/slider-controls.js declares each palette preset, component fields and optional contentPath: HeroSliderSection stores slides and Swiper parameters inside sliderContent; the other sliders store them directly in props. Edits preserve that native shape and use the existing node mutation, persistence and export flow. Bound or custom containers remain available through advanced properties.
+
+The shared slide catalog includes HeroSection with media-library image selection, text, CTA JSON, alignment and container controls. The exact native fullViewPort boolean is exposed separately for the hero wrapper and its SliderSingle slides; new presets disable viewport sizing. Hero slides start with a minimum height editable through their CSS classes. Full slide props and nested slider content remain editable as JSON. Runtime verification remains with the user; no tests or builds were run.
+
+### Component theme editing and workspace views
+
+`BuilderWorkspace.vue` owns the shared project lifecycle/header/dialogs and switches between `BuilderDesignView.vue` and `BuilderThemeEditor.vue`. Theme editing loads on first use and remains mounted to retain unapplied source drafts while switching views. `domain/component-themes.js` keeps per-component CSS source authoritative for both variable controls and direct editing. `useBuilder.js` commits edits to the optional project-level `componentThemes` array. Only preview iframes receive this CSS. `scripts/zaux/theme-catalog.mjs` derives variables and real selectors from read-only upstream Sass during project preparation. See [Theme editor](theme-editor.md) for source syntax, preview behavior, persistence and export contracts. No automated or browser verification was run.

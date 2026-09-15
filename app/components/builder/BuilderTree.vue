@@ -66,27 +66,30 @@
     </li>
   </ul>
 </template>
+
 <script>
-import { computed, defineComponent } from 'vue';
-import { useBuilder } from '../../composables/useBuilder.js';
-import { useBuilderOutlineDrag } from '../../composables/useBuilderOutlineDrag.js';
-import BuilderButton from './BuilderButton.vue';
-import BuilderDropdown from './BuilderDropdown.vue';
-export default defineComponent({
-  name: 'BuilderTree', components: { BuilderButton, BuilderDropdown }, props: { nodes: Array, instance: String, depth: { default: 0 } },
-  setup(props) {
-    const builder = useBuilder();
-    const outlineDrag = useBuilderOutlineDrag();
-    const canWrap = computed(() => {
-      const definition = builder.mode.value === 'library'
-        ? builder.activeDefinition.value
-        : builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.definition;
-      return builder.canEditRemote.value && !!definition && !definition.sourceKey;
-    });
-    function wrapHere(id) { builder.selectInstance(props.instance, id); builder.wrapNode(); }
-    function duplicateHere(id) { builder.selectInstance(props.instance, id); builder.duplicateNode(); }
-    function deleteHere(id) { builder.selectInstance(props.instance, id); builder.deleteNode(); }
-    return { ...builder, outlineDrag, canWrap, wrapHere, duplicateHere, deleteHere };
-  }
-});
+  import { computed, defineComponent } from 'vue';
+  import { useBuilder } from '../../composables/useBuilder.js';
+  import { useBuilderOutlineDrag } from '../../composables/useBuilderOutlineDrag.js';
+  import BuilderButton from './BuilderButton.vue';
+  import BuilderDropdown from './BuilderDropdown.vue';
+
+  export default defineComponent({
+    name: 'BuilderTree', components: { BuilderButton, BuilderDropdown }, props: { nodes: Array, instance: String, depth: { default: 0 } },
+    setup(props) {
+      const builder = useBuilder();
+      const outlineDrag = useBuilderOutlineDrag();
+      const canWrap = computed(() => {
+        const definition = builder.mode.value === 'library'
+          ? builder.activeDefinition.value
+          : builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.definition;
+        return builder.canEditRemote.value && !!definition && !definition.sourceKey;
+      });
+      function wrapHere(id) { builder.selectInstance(props.instance, id); builder.wrapNode(); }
+      function duplicateHere(id) { builder.selectInstance(props.instance, id); builder.duplicateNode(); }
+      function deleteHere(id) { builder.selectInstance(props.instance, id); builder.deleteNode(); }
+      return { ...builder, outlineDrag, canWrap, wrapHere, duplicateHere, deleteHere };
+    }
+  });
+  
 </script>

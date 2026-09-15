@@ -1,7 +1,9 @@
 import { clone } from './nodes.js';
+import { projectFonts } from './fonts.js';
 
 export function createStylePreset() { return { cssVars: [], uiSettings: {} }; }
 export function validateStylePreset(preset) {
+  if (preset?.fonts !== undefined) projectFonts(preset.fonts);
   if (!preset || !Array.isArray(preset.cssVars) || preset.cssVars.length > 100) throw new Error('zx_builder_invalid_style_preset');
   const selectors = new Set();
   for (const group of preset.cssVars) {

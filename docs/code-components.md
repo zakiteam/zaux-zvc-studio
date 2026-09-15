@@ -12,7 +12,7 @@ app/zvc/starterhero/
     StarterHero.defaults.js
 ```
 
-Loading is automatic: Vite imports every `**/*.zvc.js` file. No manual index is required. Reload the page after changing source files; rebuild the application for production. Base definitions are also added to projects already present in localStorage.
+Loading is automatic: Vite imports every `**/*.zvc.js` file from `app/zvc` and from `vendor/zaux/{core,project}/components/virtual`. No manual index is required. Reload the page after changing source files; rebuild the application for production. Base definitions are also added to projects already present in localStorage.
 
 Use the same Zaux syntax:
 
@@ -51,7 +51,7 @@ export default {
 };
 ```
 
-The module must export `ZVCName` and `buildNode`. `label` is the displayed name; `fields` describes the controls. `builder: false` excludes a base definition from the library. The loader recognizes defaults at `data/Name.defaults.js`; for custom paths, expose values through `fields[].default`.
+The module must export `ZVCName` and `buildNode`. The Zaux adapter also accepts upstream `meta.ZVCName`, falling back to the conventional `ZVC` + filename registration name. `label` is the displayed name; `fields` describes the controls. `builder: false` excludes a base definition from the library. The loader recognizes defaults at `data/Name.defaults.js`; for custom paths, expose values through `fields[].default`.
 
 The imported module function is executed as-is, including conditions, composition, and helper calls. Its source is never interpreted or reconstructed. To nest local modules, import them and call their `buildNode`; the original Zaux registry still contains components from the submodule.
 
@@ -118,3 +118,19 @@ ZForm accepts children in its default slot. Accordion, OffCanvas and ZModal acce
 Visual JavaScript ZIP exports that use these components include StudioComponentsRenderer.js and registration instructions. Register that adapter after Zaux setup in the destination app, including when rendering their runtime JSON exports. It depends only on Vue and registered Zaux components, not Studio services. The persisted workspace schema remains unchanged.
 
 Source and diffs were reviewed only. No automated tests, browser checks, validators or production builds were run; runtime verification remains with the user.
+
+## Imported and project library categories
+
+The library selector separates **Imported** source bases (`app/zvc`, Zaux core and Zaux project) from **Project** definitions created, copied, converted or added as editable JSON in Studio. Search filters the selected category by display name, export name and source path, ignoring case. Selecting a newly created definition switches to its category automatically.
+
+`integrations/zaux/source-library.js` discovers upstream sources read-only; `app/services/source-zvc.js` merges them into existing workspaces using stable `zaux/core/...` and `zaux/project/...` source keys. Existing `app/zvc` keys stay unchanged. Source bases retain their defaults and metadata, and insertion keeps independent instance configuration. JavaScript exports and source previews also support upstream folders; dependencies outside an exported folder still require the destination Zaux project.
+
+ZVP files are not separate library definitions. A ZVC imports a partial and calls its `buildNode(data, params)`; executing that ZVC incorporates the partial's returned nodes directly into its snapshot, including nested content. Conversion to visual keeps this expanded output. The pinned dependency currently contains no `.zvp.js` partials. No vendor file or revision is changed.
+
+Source review only. Tests, builds and browser verification were not run; runtime verification remains with the user.
+
+### Duplicate native field metadata
+
+Some upstream modules (including `IntroTextSect`) declare the same field key twice. Native metadata is normalized to one control per key, with later properties taking precedence and existing defaults retained when not overridden. The same normalization repairs native definitions already saved in local or remote documents at validation time. It preserves instance values and independent configuration; visual definitions still reject duplicate keys.
+
+Remote loading prepares and validates the complete source-enriched workspace before replacing the active document. Builder format errors retain their translated message instead of being reported as access failures. This correction was reviewed in source only; runtime verification remains manual.

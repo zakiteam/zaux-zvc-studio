@@ -2,12 +2,16 @@ import { clone, dataFor } from '../../domain/nodes.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
 import slotRendererSource from '../../integrations/zaux/slot-renderer.js?raw';
 import { componentFiles } from '../../domain/export.js';
+import { zauxSources } from '../../integrations/zaux/source-library.js';
 
 const modules = import.meta.glob('../zvc/**/*.zvc.js', { eager: true, import: 'default' });
 const defaults = import.meta.glob('../zvc/**/data/*.defaults.js', { eager: true, import: 'default' });
 const rawFiles = import.meta.glob('../zvc/**/*.{js,json,css,scss}', { eager: true, query: '?raw', import: 'default' });
 const prefix = '../zvc/';
-const registry = Object.fromEntries(Object.entries(modules).map(([path, module]) => [path.slice(prefix.length), module]));
+const registry = {
+  ...Object.fromEntries(Object.entries(zauxSources).map(([key, source]) => [key, source.module])),
+  ...Object.fromEntries(Object.entries(modules).map(([path, module]) => [path.slice(prefix.length), module]))
+};
 
 function defaultPath(key) {
   const folder = key.slice(0, key.lastIndexOf('/') + 1);
@@ -16,7 +20,7 @@ function defaultPath(key) {
 }
 export function registeredSourceDefinitions() {
   return Object.entries(registry).filter(([, module]) => module.builder !== false).map(([key, module]) =>
-    definitionFromSource(key, module, defaults[defaultPath(key)] ?? {})
+    definitionFromSource(key, module, zauxSources[key]?.defaults ?? defaults[defaultPath(key)] ?? {})
   );
 }
 export function mergeSourceLibrary(workspace) {
@@ -63,14 +67,18 @@ export function filesForDefinition(definition) {
   }
   if (!sourceAvailable(definition)) throw new Error('zx_builder_source_missing');
   const directory = prefix + definition.sourceKey.slice(0, definition.sourceKey.lastIndexOf('/') + 1);
-  const files = Object.fromEntries(Object.entries(rawFiles).filter(([path]) => path.startsWith(directory)).sort(([a], [b]) => Number(b.endsWith('.zvc.js')) - Number(a.endsWith('.zvc.js')) || a.localeCompare(b)).map(([path, text]) => [path.slice(directory.length), text]));
+  const sourceFiles = zauxSources[definition.sourceKey]?.files
+    ?? Object.fromEntries(Object.entries(rawFiles).filter(([path]) => path.startsWith(directory)).map(([path, text]) => [path.slice(directory.length), text]));
+  const files = Object.fromEntries(Object.entries(sourceFiles).sort(([a], [b]) => Number(b.endsWith('.zvc.js')) - Number(a.endsWith('.zvc.js')) || a.localeCompare(b)));
   const path = defaultPath(definition.sourceKey);
-  if (rawFiles[path]) files[path.slice(directory.length)] = 'export default ' + JSON.stringify(dataFor(definition), null, 2) + ';\n';
+  if (Object.hasOwn(files, path.slice(directory.length))) files[path.slice(directory.length)] = 'export default ' + JSON.stringify(dataFor(definition), null, 2) + ';\n';
   // Include all configured values even when the module uses a custom defaults path.
   files['instance-data.json'] = JSON.stringify(dataFor(definition), null, 2);
   if (definition.css.trim()) files['style/Studio.css'] = definition.css;
   return files;
 }
 export function sourceCode(definition) {
-  return definition.sourceKey ? rawFiles[prefix + definition.sourceKey] ?? '' : Object.values(componentFiles(definition))[0];
+  return definition.sourceKey
+    ? zauxSources[definition.sourceKey]?.files[definition.sourceKey.split('/').at(-1)] ?? rawFiles[prefix + definition.sourceKey] ?? ''
+    : Object.values(componentFiles(definition))[0];
 }

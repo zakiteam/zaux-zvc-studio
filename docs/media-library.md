@@ -4,7 +4,7 @@ Studio keeps image files on the Nuxt host and the authenticated catalog in Supab
 
 ## Setup on Plesk
 
-1. Apply `supabase/migrations/20260914120000_media_assets.sql` in the Supabase SQL Editor after the existing project migrations.
+1. Apply `supabase/migrations/20260914120000_media_assets.sql` and `supabase/migrations/20260914140000_media_original_formats.sql` in the Supabase SQL Editor after the existing project migrations. Existing installations must apply the latter migration before uploading JPEG, PNG or SVG files.
 2. Run Nuxt as a persistent Node application. Use a Node version supported by the installed Nuxt and Sharp packages (the project pins Node 24.14.0 for its npm scripts). Install dependencies for the actual deployment OS, including Sharp's optional native packages; do not copy Windows `node_modules` to Linux.
 3. Create a directory owned/writable by the Node application user, outside the application/release directories. The provisionally selected path is `/var/www/vhosts/zaki.it/zaux-studio-media`. Never store uploads under `.output`, `public`, `vendor/zaux`, or a folder replaced during deployment.
 4. Set these runtime environment variables in Plesk alongside the existing public Supabase configuration:
@@ -16,7 +16,7 @@ Studio keeps image files on the Nuxt host and the authenticated catalog in Supab
 
 The production domain is zaux-studio.zaki.it. The user approved assuming the subscription root is /var/www/vhosts/zaki.it; this has not been verified on the server. The media directory is outside the presumed application directory /var/www/vhosts/zaki.it/zaux-studio.zaki.it. If the real subscription root differs, update NUXT_MEDIA_STORAGE_DIR before uploading files. Set both variables in the Plesk Node.js environment: the built server does not automatically load the local .env file.
 
-5. Restart the Node application after changing runtime configuration. The built-in Nuxt route serves `/media/<uuid>.webp` and `/media/<uuid>-thumb.webp`; no nginx alias is required. Ensure Plesk forwards this path to Node instead of returning a static 404. If using a separate static media domain, map that domain to the same persistent directory and set the public base URL accordingly.
+5. Restart the Node application after changing runtime configuration. The built-in Nuxt route serves `/media/<uuid>.<ext>` and `/media/<uuid>-thumb.<ext>` (jpg, png, webp or svg; SVG thumbnails use png); no nginx alias is required. Ensure Plesk forwards this path to Node instead of returning a static 404. If using a separate static media domain, map that domain to the same persistent directory and set the public base URL accordingly.
 6. Allow upload request bodies of at least 10 MiB through the Plesk proxy (for example, `client_max_body_size 11m;` when nginx configuration is available). Nuxt independently limits the actual streamed input to 10 MiB, including chunked requests. The upload endpoint accepts the raw file body, not multipart data.
 
 For local development, set the storage variable to a separate absolute directory such as `C:/xampp/media/zaux-studio` and the URL to `http://127.0.0.1:3000/media`. Localhost URLs are for local use only; exported documents keep their URLs. Configure the production URL before authoring production assets.
@@ -33,7 +33,7 @@ No service-role key is required. Each request validates the Supabase user and ac
 - Image URL properties on Zimg/img and video posters expose the shared picker. Recognized native content keys and slider paths also expose it; object-valued image configuration remains JSON.
 - Manual URL entry remains available. Selecting a file saves a normal absolute URL; it does not introduce runtime media objects or a new export dependency. Bound properties still use their field values.
 
-The database catalog uses opaque UUID file keys and stores the original filename, dimensions and stored bytes (image plus thumbnail). Uploads accept static JPEG, PNG and WebP, up to 10 MiB, 40 million pixels and 12000 pixels per side. Sharp decodes and re-encodes a WebP at quality 90, applies EXIF orientation and strips the original metadata; the original upload is not retained. A separate thumbnail fits inside 320 × 240 pixels. See [Sharp input limits](https://sharp.pixelplumbing.com/api-constructor/) and [output options](https://sharp.pixelplumbing.com/api-output/).
+The database catalog uses opaque UUID file keys and stores the original filename, dimensions and stored bytes (image plus thumbnail). Uploads accept static JPEG, PNG, WebP and SVG, up to 10 MiB, 40 million pixels and 12000 pixels per side. Sharp inspects the format and decodes a thumbnail; original bytes, metadata and format are preserved. Raster thumbnails retain the source format, while SVG thumbnails use PNG, fitting inside 320 by 240 pixels. Existing WebP files and thumbnails remain available. The public Nuxt route sends the matching MIME type, nosniff and a restrictive sandbox CSP so SVG files opened as documents cannot execute scripts or load external resources. A separate static media domain must provide equivalent response headers.
 
 ## Persistence and lifecycle
 

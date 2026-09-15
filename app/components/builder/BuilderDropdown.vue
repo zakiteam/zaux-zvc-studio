@@ -46,7 +46,7 @@
 				role="menu"
 				:aria-label="label"
 				:class="contentClass"
-				class="zb-builder-dropdown-content mt-1 w-[280px] py-1 pb-2 max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark shadow-deeper"
+				class="zb-builder-dropdown-content mt-1 w-[280px] py-1 pb-2 max-w-[calc(100vw-24px)] overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white font-builder text-zaux-dark dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] shadow-deeper"
 				@keydown="menuKeydown"
 				@keyup.stop
 				@focusout="focusOut"

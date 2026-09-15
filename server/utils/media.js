@@ -15,12 +15,13 @@ export function mediaConfig(event) {
   return { directory: config.mediaStorageDir, baseUrl: config.mediaPublicBaseUrl.replace(/\/$/, '') };
 }
 export function mediaPath(event, key) {
-  if (!/^[0-9a-f-]{36}(?:-thumb)?\.webp$/.test(key)) throw mediaError(404);
+  if (!/^[0-9a-f-]{36}(?:-thumb)?\.(?:jpg|png|webp|svg)$/.test(key)) throw mediaError(404);
   return join(mediaConfig(event).directory, key);
 }
 export function mediaRecord(event, asset) {
   const { baseUrl } = mediaConfig(event);
-  return { ...asset, url: baseUrl + '/' + asset.storage_key, thumbnailUrl: baseUrl + '/' + asset.id + '-thumb.webp' };
+  const extension = asset.storage_key.split('.').pop();
+  return { ...asset, url: baseUrl + '/' + asset.storage_key, thumbnailUrl: baseUrl + '/' + asset.id + '-thumb.' + (extension === 'svg' ? 'png' : extension) };
 }
 export async function mediaSession(event) {
   setHeader(event, 'Cache-Control', 'no-store');

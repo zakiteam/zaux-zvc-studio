@@ -1,11 +1,11 @@
 <template>
 	<div
-		class="zb-dialog-backdrop fixed inset-0 z-[5000] grid place-items-center bg-zaux-black/40 p-4 backdrop-blur-[4px]"
+		class="zb-dialog-backdrop fixed inset-0 z-[5000] grid place-items-center bg-zaux-black/40 py-1.5 px-4 backdrop-blur-[4px]"
 		@mousedown.self="close"
 	>
 		<section
 			ref="dialog"
-			class="zb-dialog max-h-[90dvh] w-[440px] max-w-full overflow-auto rounded-s bg-zaux-white p-4 shadow-deeper [&.zb-dialog--wide]:w-[790px] [&>header]:mb-3 [&>header]:flex [&>header]:items-start [&>header]:justify-between [&_h2]:mt-1 [&_h2]:text-[25px] [&_h2]:font-normal [&_h2]:tracking-[-0.7px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey [&_footer]:mt-3 [&_footer]:flex [&_footer]:items-center [&_footer]:justify-end [&_footer]:gap-1.5 [&_footer>span]:!mr-auto"
+			class="zb-dialog max-h-[95dvh] w-[440px] max-w-full overflow-auto rounded-s bg-zaux-white p-4 shadow-deeper [&.zb-dialog--wide]:w-[1400px] [&>header]:mb-3 [&>header]:flex [&>header]:items-start [&>header]:justify-between [&_h2]:mt-1 [&_h2]:text-[25px] [&_h2]:font-normal [&_h2]:tracking-[-0.7px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey [&_footer]:mt-3 [&_footer]:flex [&_footer]:items-center [&_footer]:justify-end [&_footer]:gap-1.5 [&_footer>span]:!mr-auto"
 			:class="{
 				'zb-dialog--wide': ['import', 'export', 'new-component-json'].includes(
 					modal.type,
@@ -126,6 +126,7 @@
 				</p>
 				<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
 					<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
+						<option value="starter">{{ translate("zx_builder_starter_package") }}</option>
 						<option value="workspace">
 							{{ translate("zx_builder_workspace") }}
 						</option>
@@ -137,7 +138,7 @@
 						</option></select
 					><select
 						class="px-2 py-1 border-none bg-zaux-light"
-						v-if="scope === 'component'"
+						v-if="['component', 'template'].includes(scope)"
 						v-model="format"
 						aria-label="Format"
 					>
@@ -150,6 +151,12 @@
 						<option value="js">JavaScript</option>
 					</select>
 				</div>
+				<p v-if="scope === 'starter'" class="mb-2 text-[12px] text-zaux-dark-grey">
+					{{ translate('zx_builder_starter_hint') }}
+				</p>
+				<p v-if="packageResult.error" role="alert" class="mb-2 text-[12px] text-utility-error">
+					{{ translate(packageResult.error) }}
+				</p>
 				<p
 					v-if="
 						format === 'js' &&
@@ -161,30 +168,37 @@
 					{{ translate("zx_builder_source_missing") }}
 				</p>
 				<p
-					v-if="format === 'runtime' && scope === 'component'"
+					v-if="format === 'runtime' && ['component', 'template'].includes(scope)"
 					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
 				>
 					{{ translate("zx_builder_runtime_hint") }}
 				</p>
-				<div
-					v-if="format === 'js' && scope === 'component'"
-					class="zb-file-tabs mb-1.5 flex flex-wrap gap-0.5 [&>button]:rounded-xxs [&>button]:p-1 [&>button]:font-mono [&>button]:text-[10px] [&>button]:text-zaux-dark-grey [&>button.active]:bg-zaux-accent/10 [&>button.active]:text-zaux-accent"
+				<details
+					v-if="isPackage"
+					class="zb-file-tabs mb-1.5"
 				>
-					<button
-						v-for="file in Object.keys(jsFiles)"
-						:key="file"
-						:class="{ active: selectedFile === file }"
-						@click="selectedFile = file"
+					<summary class="cursor-pointer text-[11px] text-zaux-dark-grey">
+						Files
+					</summary>
+					<div
+						class="max-h-[180px] overflow-auto flex flex-col justify-start items-start gap-0.5 [&>button]:rounded-xxs [&>button]:p-1 [&>button]:font-mono [&>button]:text-[10px] [&>button]:text-zaux-dark-grey [&>button.active]:bg-zaux-accent/10 [&>button.active]:text-zaux-accent"
 					>
-						{{ file }}
-					</button>
-				</div>
+						<button
+							v-for="file in Object.keys(jsFiles)"
+							:key="file"
+							:class="{ active: selectedFile === file }"
+							@click="selectedFile = file"
+						>
+							{{ file }}
+						</button>
+					</div>
+				</details>
 				<BuilderCodeEditor
 					:language="
-						scope === 'component' && format === 'js'
+						isPackage
 							? selectedFile.endsWith('.css')
 								? 'css'
-								: 'javascript'
+								: selectedFile.endsWith('.html') ? 'html' : selectedFile.endsWith('.json') ? 'json' : 'javascript'
 							: 'json'
 					"
 					:modelValue="exportText"
@@ -201,10 +215,10 @@
 						:label="translate('zx_builder_copy')"
 						@click="copy"
 					/><BuilderButton
-						v-if="scope === 'component' && format === 'js'"
+						v-if="isPackage"
 						variant="primary"
-						:label="translate('zx_builder_download_js')"
-						:disabled="!Object.keys(jsFiles).length"
+						:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : 'zx_builder_download_js')"
+						:disabled="saving || !Object.keys(jsFiles).length"
 						@click="downloadJs"
 					/><BuilderButton
 						v-else
@@ -318,13 +332,17 @@ import {
 	onBeforeUnmount,
 	nextTick,
 } from "vue";
+import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from "../../composables/useBuilder.js";
 import {
 	documentEnvelope,
+	templateRuntime,
 	parseDocument,
 	parseComponentDocument,
 } from "../../../domain/export.js";
 import { createDefinition } from "../../../domain/workspace.js";
+import { projectStarterFiles } from "../../services/starter-export.js";
+import { fontFiles } from "../../../domain/fonts.js";
 import { filesForDefinition } from "../../services/source-zvc.js";
 import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
 import { downloadText, downloadZip } from "../../services/files.js";
@@ -337,7 +355,13 @@ export default defineComponent({
 		const dialog = ref(null);
 		const name = ref(builder.modal.value.name ?? "");
 		const scope = ref(builder.modal.value.scope ?? "workspace");
-		const format = ref("json");
+		const format = ref(builder.modal.value.format ?? "json");
+		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
+		const packageResult = computed(() => {
+			if (scope.value !== 'starter' && !(scope.value === 'template' && format.value === 'js')) return { files: {}, error: '' };
+			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined), error: '' }; }
+			catch (error) { return { files: {}, error: error.message.startsWith('zx_') ? error.message : 'zx_builder_starter_error' }; }
+		});
 		const selectedFile = ref("");
 		const localError = ref("");
 		const localErrorDetail = ref("");
@@ -402,8 +426,14 @@ export default defineComponent({
 			return result;
 		});
 		const jsFiles = computed(() => {
+			if (scope.value === 'starter' || scope.value === 'template') return packageResult.value.files;
 			try {
-				return definition.value ? filesForDefinition(definition.value) : {};
+				const themeCss = componentThemesCss(builder.document.value.componentThemes);
+				return definition.value ? {
+					...filesForDefinition(definition.value),
+					...fontFiles(builder.document.value.styles?.fonts),
+					...(themeCss ? { 'component-themes.css': themeCss } : {})
+				} : {};
 			} catch {
 				return {};
 			}
@@ -419,16 +449,19 @@ export default defineComponent({
 			JSON.stringify(documentEnvelope(scope.value, data.value), null, 2),
 		);
 		const exportText = computed(() =>
-			scope.value === "component" && format.value === "js"
-				? (jsFiles.value[selectedFile.value] ?? Object.values(jsFiles.value)[0])
+			isPackage.value
+				? (jsFiles.value[selectedFile.value] ?? Object.values(jsFiles.value)[0] ?? "")
 				: scope.value === "component" && format.value === "runtime"
-					? JSON.stringify(runtimeRoot(definition.value), null, 2)
-					: json.value,
+					? JSON.stringify(runtimeRoot(definition.value, builder.mode.value === "template" ? builder.activeInstance.value.data : {}), null, 2)
+					: scope.value === "template" && format.value === "runtime"
+						? JSON.stringify(templateRuntime(builder.activeTemplate.value), null, 2)
+						: json.value,
 		);
 		watch(
 			jsFiles,
 			(files) => {
-				selectedFile.value = Object.keys(files)[0] ?? "";
+				const paths = Object.keys(files);
+				selectedFile.value = (scope.value === 'template' ? paths.find(path => path.endsWith('.tpl.js')) : null) ?? paths[0] ?? "";
 			},
 			{ immediate: true },
 		);
@@ -496,16 +529,20 @@ export default defineComponent({
 		}
 		function downloadJson() {
 			downloadText(
-				`zaux-${scope.value}${scope.value === "component" && format.value === "runtime" ? "-runtime" : ""}.json`,
+				`zaux-${scope.value}${["component", "template"].includes(scope.value) && format.value === "runtime" ? "-runtime" : ""}.json`,
 				exportText.value,
 			);
 		}
 		async function downloadJs() {
+			if (saving.value || !Object.keys(jsFiles.value).length) return;
+			saving.value = true;
+			localError.value = '';
 			try {
-				await downloadZip(`${definition.value.exportName}.zip`, jsFiles.value);
+				const filename = scope.value === 'starter' ? 'zaux-project-starter.zip' : scope.value === 'template' ? 'zaux-template.zip' : `${definition.value.exportName}.zip`;
+				await downloadZip(filename, jsFiles.value);
 			} catch {
 				localError.value = "zx_builder_storage_error";
-			}
+			} finally { saving.value = false; }
 		}
 		async function readFile(event) {
 			try {
@@ -582,6 +619,8 @@ export default defineComponent({
 			pendingImport,
 			saving,
 			title,
+			isPackage,
+			packageResult,
 			jsFiles,
 			exportText,
 			close,

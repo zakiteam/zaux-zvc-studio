@@ -1,4 +1,6 @@
+import { normalizeSourceFields } from './source-zvc.js';
 import { validateStylePreset } from './styles.js';
+import { validateComponentThemes } from './component-themes.js';
 import { SCHEMA_VERSION } from './workspace.js';
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 function requireValue(condition, error = 'zx_builder_invalid_document') { if (!condition) throw new Error(error); }
@@ -14,6 +16,9 @@ export function validateDefinition(definition) {
   requireValue(/^ZVC[A-Za-z0-9_]+$/.test(definition.exportName));
   requireValue(Array.isArray(definition.fields) && definition.fields.length <= 200 && typeof definition.css === 'string');
   if (definition.sourceKey !== undefined) requireValue(typeof definition.sourceKey === 'string' && definition.sourceKey.endsWith('.zvc.js') && !definition.sourceKey.split('/').includes('..'));
+  // Repair native metadata already saved by the source-library importer.
+  // Visual definitions still require unique authored field keys.
+  if (definition.sourceKey) definition.fields = normalizeSourceFields(definition.fields);
   if (definition.defaults !== undefined) requireValue(object(definition.defaults));
   if (definition.previewImage !== undefined) requireValue(typeof definition.previewImage === 'string');
   const keys = new Set();
@@ -44,6 +49,7 @@ export function validateWorkspace(workspace) {
   requireValue(Array.isArray(workspace.library) && Array.isArray(workspace.templates) && workspace.templates.length > 0);
   requireValue(workspace.library.length <= 500 && workspace.templates.length <= 100);
   if (workspace.styles !== undefined) validateStylePreset(workspace.styles);
+  if (workspace.componentThemes !== undefined) validateComponentThemes(workspace.componentThemes);
   if (workspace.coverImage !== undefined) requireValue(typeof workspace.coverImage === 'string');
   const ids = new Set();
   const unique = id => { requireValue(typeof id === 'string' && !ids.has(id)); ids.add(id); };

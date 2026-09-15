@@ -1,6 +1,7 @@
 <template>
-  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" @click.capture="select" @submit.prevent @dragstart="startDrag" @dragover.prevent="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
-    <component :is="'style'">{{ state.css }} {{ componentCss }}</component>
+  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @click.capture="select" @submit.prevent @dragstart="startDrag" @dragover.prevent="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
+    <p v-if="fontErrors.length" role="alert" class="bg-utility-error/10 p-2 font-builder text-[12px] text-utility-error">{{ translate('zx_builder_fonts_load_error') }}</p>
+    <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
     <section v-for="instance in state.instances" :key="instance.id" :data-zb-instance="instance.id" class="zb-stage-instance min-h-[12px]" :class="{ 'zb-stage-instance--empty': !instance.definition.tree.length }">
       <PreviewBoundary :key="JSON.stringify([instance, state.styles?.uiSettings])" :message="translate('zx_builder_preview_error')"><ComponentsRenderer :components="previewNodes(instance, state.editable)" /></PreviewBoundary>
@@ -14,6 +15,8 @@
 import { defineComponent, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { useHead } from '#imports';
 import { createStyleBridge } from '../services/styles.js';
+import { createThemePreviewLifecycle } from '../services/theme-preview.js';
+import { createFontLoader } from '../services/fonts.js';
 import { previewNodes } from '../services/preview.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
@@ -26,6 +29,10 @@ export default defineComponent({
     useHead({ link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] });
     const translation = useTranslation();
     const styleBridge = createStyleBridge();
+    const themeLifecycle = createThemePreviewLifecycle();
+    let receiveGeneration = 0;
+    const fontErrors = ref([]);
+    const fontLoader = createFontLoader(errors => { fontErrors.value = errors; });
     const state = ref({ instances: [], editable: true, css: '', selectedNodeId: null, selectedInstanceId: null });
     const selection = ref(null);
     const dropMarker = ref(null);
@@ -34,10 +41,17 @@ export default defineComponent({
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
     async function receive(event) {
       if (event.source !== window.parent || event.origin !== window.location.origin || event.data?.channel !== 'zaux-studio' || event.data.type !== 'state') return;
+      const generation = ++receiveGeneration;
+      const showThemeSample = await themeLifecycle.prepare(event.data);
+      if (generation !== receiveGeneration) return;
       if (event.data.styles) styleBridge.apply(event.data.styles);
+      fontLoader.apply(event.data.styles?.fonts ?? []);
       state.value = event.data;
       translation.language.value = event.data.language;
-      await nextTick(); measureSelection();
+      await nextTick();
+      if (generation !== receiveGeneration) return;
+      showThemeSample?.();
+      measureSelection();
     }
     function context(target) {
       const element = target.closest('[data-zb-node]');
@@ -96,8 +110,8 @@ export default defineComponent({
       observer = new ResizeObserver(measureSelection); observer.observe(document.body);
       post({ type: 'ready' });
     });
-    onBeforeUnmount(() => { styleBridge.dispose(); window.removeEventListener('message', receive); window.removeEventListener('resize', measureSelection); window.removeEventListener('scroll', measureSelection); observer?.disconnect(); document.body.classList.remove('zb-preview-body'); });
-    return { ...translation, state, selection, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
+    onBeforeUnmount(() => { receiveGeneration++; themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose(); window.removeEventListener('message', receive); window.removeEventListener('resize', measureSelection); window.removeEventListener('scroll', measureSelection); observer?.disconnect(); document.body.classList.remove('zb-preview-body'); });
+    return { ...translation, fontErrors, state, selection, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

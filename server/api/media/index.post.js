@@ -11,21 +11,22 @@ export default defineEventHandler(async event => {
   const config = mediaConfig(event);
   if (typeof name !== 'string' || !name.trim() || name.length > 200) throw mediaError(400);
   const input = await readMediaUpload(event);
-  let output;
+  let metadata;
   let thumbnail;
   try {
     const image = sharp(input, { limitInputPixels: 40_000_000 });
-    const metadata = await image.metadata();
-    if (!['jpeg', 'png', 'webp'].includes(metadata.format) || (metadata.pages ?? 1) !== 1 || metadata.width > 12000 || metadata.height > 12000) throw new Error('Invalid image');
-    output = await image.rotate().webp({ quality: 90 }).toBuffer({ resolveWithObject: true });
-    thumbnail = await sharp(output.data).resize(320, 240, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 75 }).toBuffer();
+    metadata = await image.metadata();
+    if (!['jpeg', 'png', 'webp', 'svg'].includes(metadata.format) || (metadata.pages ?? 1) !== 1 || !metadata.width || !metadata.height || metadata.width > 12000 || metadata.height > 12000 || metadata.width * metadata.height > 40_000_000) throw new Error('Invalid image');
+    thumbnail = await image.rotate().resize(320, 240, { fit: 'inside', withoutEnlargement: true }).toFormat(metadata.format === 'svg' ? 'png' : metadata.format).toBuffer();
   } catch { throw mediaError(400, 'invalid'); }
   const id = randomUUID();
-  const storageKey = id + '.webp';
+  const extension = metadata.format === 'jpeg' ? 'jpg' : metadata.format;
+  const storageKey = id + '.' + extension;
+  const thumbnailKey = id + '-thumb.' + (extension === 'svg' ? 'png' : extension);
   const files = [];
   try {
     await mkdir(config.directory, { recursive: true });
-    for (const [key, buffer] of [[storageKey, output.data], [id + '-thumb.webp', thumbnail]]) {
+    for (const [key, buffer] of [[storageKey, input], [thumbnailKey, thumbnail]]) {
       const path = mediaPath(event, key);
       const file = await open(path, 'wx');
       files.push(path);
@@ -33,8 +34,9 @@ export default defineEventHandler(async event => {
     }
     const { data, error } = await client.from('media_assets').insert({
       id, scope, project_id: project, owner_id: user.id, storage_key: storageKey,
-      name: name.trim(), bytes: output.info.size + thumbnail.length,
-      width: output.info.width, height: output.info.height
+      name: name.trim(), bytes: input.length + thumbnail.length,
+      width: metadata.orientation >= 5 ? metadata.height : metadata.width,
+      height: metadata.orientation >= 5 ? metadata.width : metadata.height
     }).select(mediaColumns).single();
     if (error) throw error;
     return mediaRecord(event, data);

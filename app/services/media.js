@@ -1,3 +1,4 @@
+import { downloadBlob } from './files.js';
 import { useSupabaseClient } from './supabase.js';
 
 async function mediaRequest(path = '', options = {}) {
@@ -20,3 +21,10 @@ export function uploadMedia(file, { scope, projectId }) {
   return mediaRequest('', { method: 'POST', body: file, query: { name: file.name.slice(0, 200), scope, projectId: scope === 'project' ? projectId : undefined } });
 }
 export function archiveMedia(id) { return mediaRequest('/' + id, { method: 'PATCH' }); }
+
+export async function downloadMedia(asset) {
+  // Fetch the original through our public route, also when previews use a CDN.
+  const response = await fetch('/media/' + encodeURIComponent(asset.storage_key));
+  if (!response.ok) throw new Error('zx_builder_media_download_error');
+  downloadBlob(asset.name, await response.blob());
+}

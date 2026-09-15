@@ -6,7 +6,9 @@
     </header>
     <ZOverflowContainer class="flex-1 h-full min-h-0" autoOverflow>
       <div class="p-2">
+        <BuilderButton size="xs" icon="book-open" class="mb-2" :label="translate('zx_builder_fonts_project')" @click="fontsOpen = true" />
         <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_styles_hint') }}</p>
+        <BuilderFontLibrary v-if="fontsOpen" :modelValue="preset.fonts ?? []" :readonly="!canEditRemote" @close="fontsOpen = false" @apply="applyFonts" />
         <div class="flex flex-wrap gap-0.5">
           <BuilderButton size="xs" icon="upload" :label="translate('zx_builder_import_preset')" @click="fileInput.click()" />
           <BuilderButton size="xs" icon="download" :label="translate('zx_builder_export_preset')" @click="exportPreset" />
@@ -23,8 +25,12 @@
           <div v-for="variable in group.variables" :key="variable.name" class="mt-2">
             <div class="mb-0.5 flex items-center justify-between gap-1">
               <label :for="variable.name" class="break-all font-mono text-[10px] text-zaux-dark-grey">{{ variable.name }}</label>
-              <BuilderButton v-if="hasOverride(variable.name)" icon="undo" iconOnly :label="translate('zx_builder_reset_value') + ': ' + variable.name" @click="updateStyleVariable(variable.name, undefined)" />
+              <BuilderButton v-if="hasOverride(variable.name)" iconOnly icon="undo" size="xs" :label="translate('zx_builder_reset_value') + ': ' + variable.name" @click="updateStyleVariable(variable.name, undefined)" />
             </div>
+            <BuilderInput v-if="group.id === 'fonts' && preset.fonts?.length" type="select" modelValue=""
+              :label="translate('zx_builder_fonts_family')" :disabled="!canEditRemote" class="w-full mb-1"
+              :options="[{ value: '', label: translate('zx_builder_fonts_choose') }, ...preset.fonts.map(font => ({ value: JSON.stringify(font.family) + ', sans-serif', label: font.family }))]"
+              @update:modelValue="$event && changeVariable(variable, $event)" />
             <div class="flex items-center gap-1">
               <input v-if="variable.type === 'color'" type="color" class="!h-[34px] !w-[38px] shrink-0 !cursor-pointer !p-0.5" :value="colorHex(currentValue(variable))" :aria-label="translate('zx_builder_choose_color') + ': ' + variable.name" @input="changeVariable(variable, $event.target.value)" />
               <BuilderInput :id="variable.name" :modelValue="variable.type === 'color' ? colorHex(currentValue(variable)) : currentValue(variable)" class="font-mono !text-[11px]" @change="changeVariable(variable, $event.target.value)" />
@@ -33,18 +39,20 @@
         </details>
         <details class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
           <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_ui_settings') }}</summary>
-          <label v-for="[path, label] in uiControls" :key="path" class="mt-1 flex cursor-pointer items-center justify-between gap-2 rounded-xxs bg-zaux-light p-1 text-[11px]">
+          <label v-for="[path, label] in uiControls" :key="path" class="mt-1 flex cursor-pointer items-center justify-between gap-2 rounded-xxs bg-zaux-light py-1 pr-1 pl-1.5 text-[11px]">
             {{ translate(label) }}<input type="checkbox" class="!w-auto accent-zaux-accent" :checked="getValue(uiSettings, path)" @change="updateStyleUI(path, $event.target.checked)" />
           </label>
-          <BuilderButton class="mt-1" :label="translate('zx_builder_export_ui')" @click="exportUI" />
-          <BuilderButton :label="translate('zx_builder_import_ui')" @click="uiFileInput.click()" />
-          <input ref="uiFileInput" class="hidden" type="file" accept=".json,application/json" @change="importUI" />
+          <div class="flex items-stretch gap-1 pt-1">
+            <BuilderButton size="xs":label="translate('zx_builder_export_ui')" @click="exportUI" />
+            <BuilderButton size="xs" :label="translate('zx_builder_import_ui')" @click="uiFileInput.click()" />
+            <input ref="uiFileInput" class="hidden" type="file" accept=".json,application/json" @change="importUI" />
+          </div>
         </details>
         <details class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
           <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_style_json') }}</summary>
           <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_style_json_hint') }}</p>
+          <BuilderButton class="mt-1 mb-2" size="xs" :label="translate('zx_builder_apply')" @click="applyDraft" />
           <BuilderCodeEditor v-model="draft" rows="16" :label="translate('zx_builder_style_json')" />
-          <BuilderButton :label="translate('zx_builder_apply')" @click="applyDraft" />
         </details>
       </div>
     </ZOverflowContainer>
@@ -60,13 +68,16 @@ import { getValue, clone } from '../../../domain/nodes.js';
 import { parseJson } from '../../../domain/validation.js';
 import { downloadText } from '../../services/files.js';
 import BuilderButton from './BuilderButton.vue';
+import BuilderFontLibrary from './BuilderFontLibrary.vue';
 import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
 import BuilderInput from './fields/BuilderInput.vue';
 export default defineComponent({
-  components: { BuilderCodeEditor, BuilderButton, BuilderInput },
+  components: { BuilderCodeEditor, BuilderButton, BuilderInput, BuilderFontLibrary },
   props: { width: { default: 360 } },
   setup() {
     const builder = useBuilder();
+    const fontsOpen = ref(false);
+    function applyFonts(fonts) { builder.updateProjectFonts(fonts); fontsOpen.value = false; }
     const search = ref(''); const draft = ref(''); const fileInput = ref(null); const uiFileInput = ref(null);
     const localError = ref(''); const status = ref('');
     const preset = computed(() => builder.document.value.styles);
@@ -99,7 +110,7 @@ export default defineComponent({
     function exportUI() { downloadText('zaux-ui-settings.json', JSON.stringify(uiSettings.value, null, 2)); }
     function exportCss() { downloadText('zaux-tokens.css', presetCss(preset.value)); }
     async function copyCss() { try { await navigator.clipboard.writeText(presetCss(preset.value)); status.value = 'zx_builder_copied'; } catch { localError.value = 'zx_builder_clipboard_error'; } }
-    return { ...builder, search, draft, fileInput, uiFileInput, localError, status, visibleGroups, uiControls, uiSettings, colorHex, currentValue, hasOverride: name => !!override(name), changeVariable, applyDraft, importPreset, importUI, exportPreset, exportUI, exportCss, copyCss, getValue };
+    return { ...builder, preset, fontsOpen, applyFonts, search, draft, fileInput, uiFileInput, localError, status, visibleGroups, uiControls, uiSettings, colorHex, currentValue, hasOverride: name => !!override(name), changeVariable, applyDraft, importPreset, importUI, exportPreset, exportUI, exportCss, copyCss, getValue };
   }
 });
 </script>

@@ -33,11 +33,15 @@ A field has `key`, `label`, `type` and `default`. Visual field types: text, text
 
 An instance contains `id`, `sourceId` (provenance only), `name`, a full independent `definition`, and a `data` object overriding that definition's defaults.
 
-Native definitions additionally store sourceKey (relative to app/zvc) and defaults. Their tree is a cached result of buildNode, refreshed from the installed module and current instance data. Source functions are never stored in JSON. Missing modules retain their saved tree and require restoring the module or converting to visual before editing content.
+Native definitions additionally store sourceKey and defaults. Local source keys stay relative to `app/zvc`; upstream keys use `zaux/core/components/virtual/...` or `zaux/project/components/virtual/...`. Library categories are inferred from source-base identity and are not persisted. Their tree is a cached result of buildNode, refreshed from the installed module and current instance data. Source functions are never stored in JSON. Missing modules retain their saved tree and require restoring the module or converting to visual before editing content.
 
 ## Image references
 
 Optional `workspace.coverImage` and `definition.previewImage` strings store absolute public image URLs. Empty strings clear previews. Existing version-1 documents remain valid without these optional fields. Preview metadata survives editable JSON export/import and independent definition copies; source-library refresh preserves its own preview. Component image properties keep ordinary strings, with no binary data or media service objects in workspace JSON. Runtime/JS exports keep image URLs and do not bundle files.
+
+## Project fonts
+
+The optional `workspace.styles.fonts` array stores independent `{ id, family, href }` snapshots from the shared catalog. URLs are HTTPS stylesheet URLs; no raw link markup or executable code is persisted. Existing version-1 documents without the field remain valid. The array follows workspace/style-preset import and export; component ZIPs additionally include font manifest and HTML links. Component/template-only editable JSON retains its existing contract; download font metadata separately for those scopes. See [font library](font-library.md).
 
 ## Transport envelope
 
@@ -106,3 +110,19 @@ The selected instance in Structure exposes **Restore from library**. Its `source
 Restoration retains effective data values and visual node properties, including false, zero, empty strings, null and obsolete data keys. Library structure and CSS replace the instance structure and CSS. Class/style properties (including nested class/style settings and CSS-editor fields) use library values. Arrays retain authored content and use library styling at corresponding positions. New fields use library defaults. Native instances regenerate from their preserved data; generated nodes are not patched.
 
 Copied visual nodes carry optional `sourceNodeId` provenance. Matching requires a unique source identity and the same component name. Older copies without provenance match only component names unique in both trees. Unmatched properties are kept as optional instance `unmappedProperties` records with component name, previous path and properties; Structure exposes this JSON for manual recovery. These optional JSON metadata fields do not change the version 1 envelope and never establish live propagation. Runtime verification remains with the user.
+
+## Component theme CSS
+
+The optional version-1 `workspace.componentThemes` array stores `{ component: 'ZButton', css: '.c-btn--theme-primary { --zx-c-btn-bg-color: 255 0 0; }' }` records. Existing documents without this field have no theme overrides. CSS strings are parsed for syntax, component IDs are unique, and only JSON data is stored. Records contain authored changes and custom CSS, never copies of all upstream defaults. Workspace saves, undo and editable workspace envelopes retain them independently of style presets. Single-component and combined CSS downloads are available in Theme editor; component JavaScript ZIPs include the project's `component-themes.css` when nonempty. Component/template-only JSON contracts are unchanged. See [Theme editor](theme-editor.md).
+
+## Complete project starter
+
+Export > Zaux starter package previews each file and downloads a ZIP containing all library definitions and template instances under `project/components/virtual/<name>`, and every template with `.tpl.js` and `.stories.js` files under `project/templates/<name>`. The Code inspector shortcut opens component export directly in Zaux JSON mode; the JavaScript shortcut selects JavaScript mode.
+
+`domain/starter-export.js` owns package generation; `app/services/starter-export.js` supplies source files and Zaux configuration. Equal definitions share an export; independent copies with different structure, defaults, fields or CSS receive unique names, including case-insensitive collision suffixes. Instance overrides stay in template block data. Native exports retain source folders behind generated entries that apply the exported defaults and metadata. Missing native sources block the package instead of silently dropping components.
+
+Token catalog entries map editable variables back to their original JSON paths. Only changed categories produce complete `style/tokens/*.json` files: colors, typography font families, radius, shadows, blur and border widths. Unedited keys remain intact. `style/studio-tokens.css` preserves all authored variables and selectors. The ZIP includes combined Theme editor overrides, effective UI configuration when edited, font references, a Studio workspace backup and a component/template manifest. Its README lists stylesheet integration and external dependencies; Zaux itself and binary media/font assets are not bundled. Runtime verification remains with the user; no tests, browser checks or builds were run.
+
+### Current template exports
+
+The current-template scope offers editable JSON, Zaux JSON and JavaScript. Zaux JSON uses `templateRuntime`: a top-level array of rendered nodes, matching the page JSON copied from Zaux template stories. Each node contains `ZVCName`, `name`, `props` and optional `children`, with instance values resolved. Multiple root nodes remain in order as separate array entries. There is no template envelope, block wrapper or separate data object; editor node IDs are omitted. JavaScript previews the `.tpl.js` entry first and downloads `zaux-template.zip` with the template, its story and its independent component definitions. It reuses the starter generator scoped to that template, retaining project token/theme/font/UI configuration and excluding unrelated templates and library definitions. The included Studio workspace backup is scoped to the same template. Existing component exports remain available. Source review only; runtime verification is left to the user.

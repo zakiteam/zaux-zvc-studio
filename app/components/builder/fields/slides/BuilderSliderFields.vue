@@ -33,7 +33,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const i18n = useTranslation();
     function selectOptions(field) {
-      const options = field.options ?? [];
+      const options = (field.options ?? []).map(option => option.labelKey ? { ...option, label: i18n.translate(option.labelKey) } : option);
       const value = pathValue(props.modelValue, field.path) ?? field.default ?? '';
       if (field.type !== 'select' || options.some(option => Object.is(option.value ?? option, value))) return options;
       return [{ value, label: i18n.translate('zx_builder_custom_value') + (value === '' ? '' : ': ' + value) }, ...options];

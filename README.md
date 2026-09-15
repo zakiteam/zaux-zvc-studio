@@ -49,6 +49,10 @@ Without a configured Supabase instance, workspace data remains in the current br
 
 Store uploaded images on the Nuxt/Plesk host, with project-scoped and personal global catalogs in Supabase. Use the shared picker for project covers, image fields and ZVC previews. See [media storage setup](docs/media-library.md) for the required SQL migration, persistent directory and public URL configuration.
 
+## Font library
+
+Manage shared Google Fonts, Adobe Fonts/Typekit and custom stylesheet links from the dashboard. Projects select independent font copies, assign them to Zaux tokens and export their family-to-URL mapping. See [font library setup](docs/font-library.md).
+
 ## Using the editor
 
 1. Select a template or create a new one.

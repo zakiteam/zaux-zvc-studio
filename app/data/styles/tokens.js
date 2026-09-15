@@ -6,22 +6,34 @@ import blur from '@zx_style/tokens/blur.json';
 import borders from '@zx_style/tokens/borders.json';
 import { tokenToCssVarsObject } from '@zx_.zaux/extensions/tailwind/plugins/cssvars.js';
 
-function group(id, values, prefix, type = 'text') {
+export const tokenDocuments = { colors, typography, radius, shadows, blur, borders };
+
+function group(id, file, path, prefix, type = 'text') {
+  const values = path.reduce((value, key) => value[key], tokenDocuments[file]);
+  const paths = {};
+  function collect(value, keys = []) {
+    for (const [key, item] of Object.entries(value)) {
+      const next = [...keys, key];
+      if (item && typeof item === 'object') collect(item, next);
+      else paths[prefix + '-' + next.join('-')] = [...path, ...next];
+    }
+  }
+  collect(values);
   return {
-    id, label: 'zx_builder_tokens_' + id,
+    id, file, label: 'zx_builder_tokens_' + id,
     variables: Object.entries(tokenToCssVarsObject(values, prefix, '-', { colorsAsRgb: type === 'color' }))
-      .map(([name, value]) => ({ name, value, type }))
+      .map(([name, value]) => ({ name, value, type, tokenPath: paths[name] }))
   };
 }
 export const tokenGroups = [
-  group('components', colors.set1, '--zx-color-set1', 'color'),
-  group('editor', colors.zaux, '--zx-color-zaux', 'color'),
-  group('utility', colors.utility, '--zx-color-utility', 'color'),
-  group('fonts', typography.fontFamily, '--zx-font'),
-  group('radius', radius, '--zx-radius'),
-  group('shadows', shadows, '--zx-shadow'),
-  group('blur', blur, '--zx-blur'),
-  group('borders', borders.widths, '--zx-border')
+  group('components', 'colors', ['set1'], '--zx-color-set1', 'color'),
+  group('editor', 'colors', ['zaux'], '--zx-color-zaux', 'color'),
+  group('utility', 'colors', ['utility'], '--zx-color-utility', 'color'),
+  group('fonts', 'typography', ['fontFamily'], '--zx-font'),
+  group('radius', 'radius', [], '--zx-radius'),
+  group('shadows', 'shadows', [], '--zx-shadow'),
+  group('blur', 'blur', [], '--zx-blur'),
+  group('borders', 'borders', ['widths'], '--zx-border')
 ];
 export const uiControls = [
   ['global.roundness', 'zx_builder_ui_roundness'],

@@ -1,5 +1,22 @@
 import { clone, dataFor } from './nodes.js';
 
+// Upstream metadata may describe the same data key more than once.
+// Keep one control, with later properties winning, as dataFor does for defaults.
+export function normalizeSourceFields(fields) {
+  const result = [];
+  const positions = new Map();
+  for (const field of fields) {
+    if (typeof field?.key === 'string' && positions.has(field.key)) {
+      const index = positions.get(field.key);
+      result[index] = { ...result[index], ...field };
+    } else {
+      if (typeof field?.key === 'string') positions.set(field.key, result.length);
+      result.push(field);
+    }
+  }
+  return result;
+}
+
 // Adapt a rendered Zaux node without trying to infer its JavaScript logic.
 export function sourceTree(root, prefix) {
   function nodes(value, path) {
@@ -22,7 +39,7 @@ export function definitionFromSource(key, module, defaults = {}) {
   if (typeof module?.buildNode !== 'function' || !module.ZVCName) throw new Error('zx_builder_native_invalid');
   const definition = {
     id: 'source:' + key, name: module.label || module.ZVCName, exportName: module.ZVCName,
-    sourceKey: key, defaults: clone(defaults), fields: clone(module.fields ?? []), tree: [], css: ''
+    sourceKey: key, defaults: clone(defaults), fields: normalizeSourceFields(clone(module.fields ?? [])), tree: [], css: ''
   };
   definition.tree = sourceTree(module.buildNode(dataFor(definition), {}), definition.id);
   return definition;

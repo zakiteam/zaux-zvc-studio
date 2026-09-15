@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, relative, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateThemeCatalog } from './theme-catalog.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const source = resolve(root, 'vendor/zaux');
@@ -67,4 +68,5 @@ for (const area of ['core', 'project']) {
   styles.push(...filesIn(resolve(source, area, 'components')).filter(path => path.endsWith('.scss') && !path.includes(`${area}/storybook`)));
 }
 write('styles.scss', [...new Set(styles)].map(path => `@use ${JSON.stringify(toImport(path))} as *;`).join('\n') + '\n');
+generateThemeCatalog();
 console.log('Zaux bridge prepared outside the read-only submodule.');

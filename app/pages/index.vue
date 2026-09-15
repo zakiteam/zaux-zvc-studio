@@ -6,7 +6,7 @@
         <h1 tabindex="-1" class="text-[28px] font-medium">{{ translate('zx_builder_projects') }}</h1>
         <p class="mt-1 text-[13px] text-zaux-dark-grey">{{ translate('zx_builder_hub_intro') }}</p>
       </div>
-      <BuilderButton :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
+      <BuilderButton variant="outlined" :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
     </header>
     <BuilderInput v-model="search" type="search" :label="translate('zx_builder_hub_search')" :placeholder="translate('zx_builder_hub_search')" class="w-full mb-3 bg-zaux-white" />
     <p v-if="error" role="alert" class="p-2 mb-3 rounded-xs bg-utility-error/10 text-utility-error">{{ translate(error) }}</p>
@@ -17,11 +17,11 @@
       <NuxtLink to="/editor/local" class="underline text-zaux-accent">{{ translate('zx_builder_hub_local') }}</NuxtLink>
     </div>
     <p v-else-if="projects.length && !filteredProjects.length" role="status" class="py-6 text-zaux-dark-grey">{{ translate('zx_builder_hub_empty_search') }}</p>
-    <div v-else class="grid grid-cols-1 gap-3 min-[800px]:grid-cols-2 min-[1300px]:grid-cols-3">
+    <div v-else class="grid grid-cols-1 gap-3 min-[800px]:grid-cols-2 min-[1300px]:grid-cols-5">
       <article v-for="project in filteredProjects" :key="project.id" class="flex flex-col min-w-0 p-3 rounded-s bg-zaux-white">
         <NuxtLink :to="'/editor/' + project.id" class="flex-1 block mb-3 rounded-xxs focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent">
-          <div class="mb-3 flex h-[100px] items-center justify-center rounded-xs bg-zaux-light" aria-hidden="true">
-            <img v-if="project.cover_image" :src="project.cover_image" alt="" loading="lazy" class="h-full w-full rounded-xs object-cover" />
+          <div class="flex items-center justify-center mb-3 aspect-16-9 rounded-xs bg-zaux-light" aria-hidden="true">
+            <img v-if="project.cover_image" :src="project.cover_image" alt="" loading="lazy" class="object-cover w-full h-full rounded-xs aspect-16-9" />
             <img v-else :src="studioLogo" alt="" class="h-[40px] w-[40px] opacity-60" />
           </div>
           <h2 class="break-words text-[18px] font-medium">{{ project.name }}</h2>
@@ -29,7 +29,7 @@
           <p class="mt-1 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_hub_updated', { date: formatDate(project.updated_at) }) }}</p>
         </NuxtLink>
         <div class="flex flex-wrap items-center gap-1">
-          <NuxtLink :to="'/editor/' + project.id" class="px-1 py-1 mr-auto underline rounded-xxs text-zaux-accent">
+          <NuxtLink :to="'/editor/' + project.id" class="py-1 mr-auto underline rounded-xxs text-zaux-accent">
             {{ translate('zx_builder_hub_open') }}
           </NuxtLink>
           <BuilderButton v-if="['owner', 'editor'].includes(project.role)" icon="edit" iconOnly :label="translate('zx_builder_rename_project')" :disabled="busy" @click="openAction('rename', project)" />

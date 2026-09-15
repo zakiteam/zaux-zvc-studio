@@ -1,4 +1,4 @@
-import { clone, createNode, isBinding, runtimeRoot } from './nodes.js';
+import { clone, createNode, isBinding, runtimeNodes } from './nodes.js';
 import { validateDefinition, validateWorkspace, parseJson } from './validation.js';
 import { createDefinition } from './workspace.js';
 
@@ -78,7 +78,10 @@ export function componentFiles(definition) {
   return files;
 }
 export function templateRuntime(template) {
-  return { id: template.id, name: template.name, blocks: template.instances.map(instance => ({
-    id: instance.id, blockName: instance.definition.exportName, data: clone(instance.data), node: runtimeRoot(instance.definition, instance.data)
-  })) };
+  return template.instances.flatMap(instance =>
+    runtimeNodes(instance.definition, instance.data).map(node => ({
+      ZVCName: instance.definition.exportName,
+      ...node
+    }))
+  );
 }

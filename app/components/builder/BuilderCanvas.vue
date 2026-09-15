@@ -8,6 +8,7 @@
 </template>
 <script>
 import { defineComponent, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
 export default defineComponent({
   setup() {
@@ -17,7 +18,7 @@ export default defineComponent({
     let timer;
     let generation = 0;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, language: builder.language.value, css: dynamicCss.value, styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     function receive(event) {
       if (event.origin !== window.location.origin || event.source !== frame.value?.contentWindow || event.data?.channel !== 'zaux-studio') return;
@@ -33,7 +34,7 @@ export default defineComponent({
         if (token === generation) { dynamicCss.value = result.css; sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
-    watch([builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.language, () => builder.document.value.styles], sendState, { deep: true });
+    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
     onMounted(() => { window.addEventListener('message', receive); compileCss(); });
     onBeforeUnmount(() => { window.removeEventListener('message', receive); clearTimeout(timer); generation++; });

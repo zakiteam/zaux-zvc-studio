@@ -112,8 +112,9 @@
 					rows="14"
 					:label="translate('zx_builder_advanced')"
 				/>
-				<div class="flex flex-wrap gap-1">
+				<div class="flex flex-wrap gap-1 mt-1">
 					<BuilderButton
+						size="xs"
 						:label="translate('zx_builder_apply')"
 						@click="applyProps"
 					/><BuilderButton
@@ -188,8 +189,13 @@ export default defineComponent({
     function specializedProperty(key) {
       if (!sliderConfig.value) return false;
       const props = builder.selectedNode.value.props;
-      if (key === 'slides') return Array.isArray(props.slides);
-      if (key === 'customSliderParams') return isPlainRecord(props.customSliderParams);
+      const contentPath = sliderConfig.value.contentPath;
+      if (contentPath) {
+        if (key === contentPath) return isPlainRecord(props[key]);
+      } else {
+        if (key === 'slides') return Array.isArray(props.slides);
+        if (key === 'customSliderParams') return isPlainRecord(props.customSliderParams);
+      }
       return sliderConfig.value.fields.some(field => field.path === key) && !isBinding(props[key]);
     }
     const descriptors = computed(() => {

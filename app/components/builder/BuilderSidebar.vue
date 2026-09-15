@@ -25,7 +25,7 @@
 				>
 					<div>
 						<h2>{{ translate("zx_builder_library") }}</h2>
-						<p>{{ document.library.length }} ZVC</p>
+						<p>{{ filteredLibrary.length }} ZVC</p>
 					</div>
 					<BuilderButton
 						icon="add"
@@ -34,6 +34,17 @@
 						@click="modal = { type: 'new-component' }"
 					/>
 				</div>
+                <div class="flex flex-col gap-1 mb-2">
+                  <BuilderInput v-model="libraryCategory" type="select"
+                    :label="translate('zx_builder_library_category')"
+                    :options="[
+                      { value: 'imported', label: translate('zx_builder_library_imported') },
+                      { value: 'project', label: translate('zx_builder_library_project') }
+                    ]" />
+                  <BuilderInput v-model="librarySearch" type="search"
+                    :label="translate('zx_builder_library_search')"
+                    :placeholder="translate('zx_builder_library_search')" />
+                </div>
 				<BuilderButton
           class="w-full mb-2"
           :extraProps="{
@@ -46,14 +57,14 @@
 					@click="modal = { type: 'new-component-json' }"
 				/>
 				<p
-					v-if="!document.library.length"
+					v-if="!filteredLibrary.length"
 					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
 				>
-					{{ translate("zx_builder_library_empty") }}
+					{{ translate(librarySearch.trim() ? "zx_builder_empty_search" : "zx_builder_library_empty") }}
 				</p>
         <div class="grid grid-cols-2 gap-1">
           <article
-            v-for="(definition, index) in document.library"
+            v-for="(definition, index) in filteredLibrary"
             :key="definition.id"
             class="zb-library-card overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
             :class="{ active: mode === 'library' && libraryId === definition.id }"
@@ -260,10 +271,13 @@
 								<BuilderButton
 									icon="duplicate"
 									iconOnly
+									variant="alt1"
 									:label="`${translate('zx_builder_duplicate')}: ${instance.name}`"
 									@click="duplicate('instance', instance.id)"
-								/><BuilderButton
+									/>
+								<BuilderButton
 									icon="delete"
+									variant="alt1"
 									iconOnly
 									:label="`${translate('zx_builder_delete')}: ${instance.name}`"
 									@click="remove('instance', instance.id)"
@@ -352,6 +366,15 @@ export default defineComponent({
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
+    const filteredLibrary = computed(() => {
+      const query = builder.librarySearch.value.trim().toLowerCase();
+      return builder.document.value.library.filter(definition => {
+        const imported = definition.id === 'source:' + definition.sourceKey;
+        return imported === (builder.libraryCategory.value === 'imported')
+          && [definition.name, definition.exportName, definition.sourceKey ?? '']
+            .some(value => value.toLowerCase().includes(query));
+      });
+    });
     const previewId = ref(null);
     function setPreview(asset) {
       builder.updateLibraryPreview(previewId.value, asset?.url);
@@ -363,7 +386,7 @@ export default defineComponent({
 			),
 		);
 		const drag = outlineDrag.start;
-		return { ...builder, search, filtered, containers, drag, outlineDrag, previewId, setPreview };
+		return { ...builder, search, filtered, filteredLibrary, containers, drag, outlineDrag, previewId, setPreview };
 	},
 });
 </script>

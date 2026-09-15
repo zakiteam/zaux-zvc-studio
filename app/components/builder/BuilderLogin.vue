@@ -6,7 +6,7 @@
         <img class="mx-auto max-w-8" :src="studioLogo" />
         <span class="text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey mb-4">ZAUX STUDIO</span>
       </div>
-      <div class="w-full max-w-[360px] rounded-s border-slim border-zaux-light-grey bg-zaux-white p-4 shadow-deep text-center">
+      <div class="w-full max-w-[360px] rounded-s bg-zaux-white p-4 dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] shadow-deep text-center">
         <form class="" @submit.prevent="submit">
           
           <h1 class="mt-1 text-[25px] font-normal tracking-[-0.7px]">{{ translate('zx_builder_login') }}</h1>
