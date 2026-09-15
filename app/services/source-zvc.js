@@ -1,10 +1,14 @@
+import { localSourceFiles } from '../../domain/source-files.js';
+import partialRendererSource from '../../integrations/zaux/partial-renderer.js?raw';
+import { registerSourceModules } from '../../domain/source-runtime.js';
+import { capturePartials } from '../../domain/partials.js';
 import { clone, dataFor } from '../../domain/nodes.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
 import slotRendererSource from '../../integrations/zaux/slot-renderer.js?raw';
 import { componentFiles } from '../../domain/export.js';
 import { zauxSources } from '../../integrations/zaux/source-library.js';
 
-const modules = import.meta.glob('../zvc/**/*.zvc.js', { eager: true, import: 'default' });
+const modules = import.meta.glob('../zvc/**/*.{zvc,zvp}.js', { eager: true, import: 'default' });
 const defaults = import.meta.glob('../zvc/**/data/*.defaults.js', { eager: true, import: 'default' });
 const rawFiles = import.meta.glob('../zvc/**/*.{js,json,css,scss}', { eager: true, query: '?raw', import: 'default' });
 const prefix = '../zvc/';
@@ -13,9 +17,11 @@ const registry = {
   ...Object.fromEntries(Object.entries(modules).map(([path, module]) => [path.slice(prefix.length), module]))
 };
 
+registerSourceModules(registry);
+
 function defaultPath(key) {
   const folder = key.slice(0, key.lastIndexOf('/') + 1);
-  const name = key.split('/').at(-1).replace('.zvc.js', '');
+  const name = key.split('/').at(-1).replace(/\.zv[cp]\.js$/, '');
   return prefix + folder + 'data/' + name + '.defaults.js';
 }
 export function registeredSourceDefinitions() {
@@ -36,12 +42,17 @@ export function mergeSourceLibrary(workspace) {
 }
 export function sourceAvailable(definition) { return !!registry[definition?.sourceKey]; }
 export function refreshSourceSnapshots(workspace) {
+  function refresh(definition, data = {}) {
+    if (definition.sourceKey) refreshSource(definition, data, registry[definition.sourceKey]);
+    capturePartials(definition, workspace.library, data);
+    for (const partial of definition.partials ?? []) refresh(partial);
+  }
   for (const definition of workspace.library) {
-    if (definition.sourceKey) refreshSource(definition, {}, registry[definition.sourceKey]);
+    refresh(definition);
   }
   for (const template of workspace.templates) {
     for (const instance of template.instances) {
-      if (instance.definition.sourceKey) refreshSource(instance.definition, instance.data, registry[instance.definition.sourceKey]);
+      refresh(instance.definition, instance.data);
     }
   }
 }
@@ -54,6 +65,35 @@ export function visualSourceCopy(definition, data = {}) {
   return result;
 }
 export function filesForDefinition(definition) {
+  const files = ownFilesForDefinition(definition);
+  if (!definition.partials?.length) return files;
+  const entry = definition.sourceKey?.split('/').at(-1) ?? definition.exportName.slice(3) + (definition.kind === 'zvp' ? '.zvp.js' : '.zvc.js');
+  const implementation = entry.replace(/\.zv[cp]\.js$/, '.implementation.js');
+  files[implementation] = files[entry];
+  files['resolve-partials.js'] = partialRendererSource;
+  const imports = [];
+  const registry = [];
+  definition.partials.forEach((partial, index) => {
+    const directory = '_partials/' + partial.exportName;
+    const partialEntry = partial.sourceKey?.split('/').at(-1) ?? partial.exportName.slice(3) + '.zvp.js';
+    for (const [path, content] of Object.entries(filesForDefinition(partial))) files[directory + '/' + path] = content;
+    imports.push(`import partial${index} from ${JSON.stringify('./' + directory + '/' + partialEntry)};`);
+    registry.push(`${JSON.stringify(partial.exportName)}: { buildNode(data = {}, params = {}) { return partial${index}.buildNode({ ...${JSON.stringify(dataFor(partial))}, ...data }, params); } }`);
+  });
+  files[entry] = `import source from ${JSON.stringify('./' + implementation)};
+import { resolvePartials } from './resolve-partials.js';
+${imports.join('\n')}
+const partials = { ${registry.join(', ')} };
+export default {
+  ...source,
+  buildNode(data = {}, params = {}) {
+    return resolvePartials(source.buildNode(data, params), partials, params);
+  }
+};
+`;
+  return files;
+}
+function ownFilesForDefinition(definition) {
   if (!definition.sourceKey) {
     const files = componentFiles(definition);
     function needsSlots(nodes) {
@@ -68,8 +108,8 @@ export function filesForDefinition(definition) {
   if (!sourceAvailable(definition)) throw new Error('zx_builder_source_missing');
   const directory = prefix + definition.sourceKey.slice(0, definition.sourceKey.lastIndexOf('/') + 1);
   const sourceFiles = zauxSources[definition.sourceKey]?.files
-    ?? Object.fromEntries(Object.entries(rawFiles).filter(([path]) => path.startsWith(directory)).map(([path, text]) => [path.slice(directory.length), text]));
-  const files = Object.fromEntries(Object.entries(sourceFiles).sort(([a], [b]) => Number(b.endsWith('.zvc.js')) - Number(a.endsWith('.zvc.js')) || a.localeCompare(b)));
+    ?? localSourceFiles(directory, rawFiles);
+  const files = Object.fromEntries(Object.entries(sourceFiles).sort(([a], [b]) => Number(/\.zv[cp]\.js$/.test(b)) - Number(/\.zv[cp]\.js$/.test(a)) || a.localeCompare(b)));
   const path = defaultPath(definition.sourceKey);
   if (Object.hasOwn(files, path.slice(directory.length))) files[path.slice(directory.length)] = 'export default ' + JSON.stringify(dataFor(definition), null, 2) + ';\n';
   // Include all configured values even when the module uses a custom defaults path.

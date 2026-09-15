@@ -29,7 +29,7 @@ A definition contains `id`, display `name`, valid `exportName` (such as ZVCFeatu
 
 Only an object with exactly one `$bind` key is a binding. Its value is a data key/path. Flat dotted keys have precedence over nested lookup, matching Zaux's getValue helper.
 
-A field has `key`, `label`, `type` and `default`. Visual field types: text, textarea, number, switch, select and json. Native metadata also accepts html, css-editor, button, buttongroup and component, plus the original showIf conditions. Select fields add `options: [{ label, value }]`.
+A field has `key`, `label`, `type` and `default`. Visual and native field types: text, textarea, number, switch, select, json, html, css-editor, button, buttongroup and component, with the original showIf conditions. Select fields add `options: [{ label, value }]`.
 
 An instance contains `id`, `sourceId` (provenance only), `name`, a full independent `definition`, and a `data` object overriding that definition's defaults.
 
@@ -126,3 +126,11 @@ Token catalog entries map editable variables back to their original JSON paths. 
 ### Current template exports
 
 The current-template scope offers editable JSON, Zaux JSON and JavaScript. Zaux JSON uses `templateRuntime`: a top-level array of rendered nodes, matching the page JSON copied from Zaux template stories. Each node contains `ZVCName`, `name`, `props` and optional `children`, with instance values resolved. Multiple root nodes remain in order as separate array entries. There is no template envelope, block wrapper or separate data object; editor node IDs are omitted. JavaScript previews the `.tpl.js` entry first and downloads `zaux-template.zip` with the template, its story and its independent component definitions. It reuses the starter generator scoped to that template, retaining project token/theme/font/UI configuration and excluding unrelated templates and library definitions. The included Studio workspace backup is scoped to the same template. Existing component exports remain available. Source review only; runtime verification is left to the user.
+
+## Virtual partials
+
+Optional `definition.kind: 'zvp'` identifies a partial and requires an export name beginning with `ZVP`. Existing definitions without kind retain ZVC behavior. `sourceKey` additionally accepts `.zvp.js`. References keep ordinary `{ name, props }` JSON, both in tree nodes and nested component/slider properties. `definition.partials` stores independent full definition snapshots keyed by exportName. No functions or registry objects are serialized. Circular partial references are rejected; nesting is bounded.
+
+Partial dependencies survive workspace/component/template JSON, copies, undo and persistence. Existing dependency snapshots take precedence over later library changes. Bundled native implementations remain shared through sourceKey, as with ZVCs. Runtime output expands partials into ComponentsRenderer descriptors containing their complete trees in props.components, which also works with sliders that only forward name/props.
+
+JavaScript exports use `.zvp.js`, defaults, fields metadata and buildNode/renderNode. Owners include their captured dependency folders and a pure resolver. The full starter places library partials in `project/components/virtual/_partials/`; template-only packages include the dependencies of their own instances. See [virtual partials](virtual-partials.md).

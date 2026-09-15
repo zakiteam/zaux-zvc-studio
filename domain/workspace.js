@@ -3,15 +3,15 @@ import { uid, clone, copyNode, createNode, bind } from './nodes.js';
 import stylePreset from '../app/data/styles/preset.js';
 
 export const SCHEMA_VERSION = 1;
-export function exportName(name) {
+export function exportName(name, kind = 'zvc') {
   const cleaned = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+(.)?/g, (_, letter) => letter?.toUpperCase() ?? '');
-  return `ZVC${cleaned.replace(/^ZVC/, '').replace(/^./, letter => letter.toUpperCase()) || 'Component'}`;
+  return `${kind === 'zvp' ? 'ZVP' : 'ZVC'}${cleaned.replace(/^ZV[CP]/, '').replace(/^./, letter => letter.toUpperCase()) || 'Component'}`;
 }
-export function createDefinition(name = 'Component') {
-  return { id: uid(), name, exportName: exportName(name), fields: [], tree: [], css: '' };
+export function createDefinition(name = 'Component', kind = 'zvc') {
+  return { id: uid(), name, exportName: exportName(name, kind), ...(kind === 'zvp' ? { kind } : {}), fields: [], tree: [], css: '' };
 }
 export function copyDefinition(definition, name = definition.name) {
-  return { ...clone(definition), id: uid(), name, exportName: definition.sourceKey ? definition.exportName : exportName(name), tree: definition.tree.map(copyNode) };
+  return { ...clone(definition), id: uid(), name, exportName: definition.sourceKey && (definition.kind !== 'zvp' || name === definition.name) ? definition.exportName : exportName(name, definition.kind), tree: definition.tree.map(copyNode) };
 }
 export function createInstance(definition) {
   return { id: uid(), sourceId: definition.id, name: definition.name, definition: copyDefinition(definition), data: {} };

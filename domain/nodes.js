@@ -1,3 +1,6 @@
+import { sourceModule } from './source-runtime.js';
+import { sourceTree } from './source-zvc.js';
+import { resolvePartials } from '../integrations/zaux/partial-renderer.js';
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const uid = () => globalThis.crypto.randomUUID();
 export const bind = key => ({ $bind: key });
@@ -70,7 +73,15 @@ export function runtimeNodes(definition, overrides = {}, editable = false) {
     if (node.children.length) result.children = node.children.map(render);
     return result;
   }
-  return definition.tree.map(render);
+  const registry = Object.fromEntries((definition.partials ?? []).map(partial => [partial.exportName, {
+    buildNode(props) {
+      const nodes = runtimeNodes(partial, props);
+      return nodes.length === 1 ? nodes[0] : { name: 'ComponentsRenderer', props: { components: nodes } };
+    }
+  }]));
+  const module = definition.kind === 'zvp' ? sourceModule(definition.sourceKey) : null;
+  const tree = module ? sourceTree(module.buildNode(data, {}), definition.id) : definition.tree;
+  return resolvePartials(tree.map(render), registry);
 }
 export function runtimeRoot(definition, overrides = {}) {
   return { ZVCName: definition.exportName, name: 'ComponentsRenderer', props: { components: runtimeNodes(definition, overrides) } };

@@ -11,16 +11,27 @@ export function parseJson(text) {
     return value;
   });
 }
-export function validateDefinition(definition) {
+export function validateDefinition(definition, depth = 0) {
+  requireValue(depth <= 15);
+  requireValue(definition?.kind === undefined || ['zvc', 'zvp'].includes(definition.kind));
   requireValue(object(definition) && typeof definition.id === 'string' && typeof definition.name === 'string' && definition.name.trim());
-  requireValue(/^ZVC[A-Za-z0-9_]+$/.test(definition.exportName));
+  requireValue((definition.kind === 'zvp' ? /^ZVP[A-Za-z0-9_]+$/ : /^ZVC[A-Za-z0-9_]+$/).test(definition.exportName));
   requireValue(Array.isArray(definition.fields) && definition.fields.length <= 200 && typeof definition.css === 'string');
-  if (definition.sourceKey !== undefined) requireValue(typeof definition.sourceKey === 'string' && definition.sourceKey.endsWith('.zvc.js') && !definition.sourceKey.split('/').includes('..'));
+  if (definition.sourceKey !== undefined) requireValue(typeof definition.sourceKey === 'string' && /\.zv[cp]\.js$/.test(definition.sourceKey) && !definition.sourceKey.split('/').includes('..'));
   // Repair native metadata already saved by the source-library importer.
   // Visual definitions still require unique authored field keys.
   if (definition.sourceKey) definition.fields = normalizeSourceFields(definition.fields);
   if (definition.defaults !== undefined) requireValue(object(definition.defaults));
   if (definition.previewImage !== undefined) requireValue(typeof definition.previewImage === 'string');
+  if (definition.partials !== undefined) {
+    requireValue(Array.isArray(definition.partials) && definition.partials.length <= 100);
+    const names = new Set();
+    for (const partial of definition.partials) {
+      requireValue(partial.kind === 'zvp' && !names.has(partial.exportName));
+      names.add(partial.exportName);
+      validateDefinition(partial, depth + 1);
+    }
+  }
   const keys = new Set();
   for (const field of definition.fields) {
     requireValue(object(field) && /^[A-Za-z_][\w.]*$/.test(field.key) && !keys.has(field.key));

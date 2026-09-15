@@ -12,7 +12,7 @@ app/zvc/starterhero/
     StarterHero.defaults.js
 ```
 
-Loading is automatic: Vite imports every `**/*.zvc.js` file from `app/zvc` and from `vendor/zaux/{core,project}/components/virtual`. No manual index is required. Reload the page after changing source files; rebuild the application for production. Base definitions are also added to projects already present in localStorage.
+Loading is automatic: Vite imports every `**/*.zvc.js` and `**/*.zvp.js` file from `app/zvc` and from `vendor/zaux/{core,project}/components/virtual`. No manual index is required. Reload the page after changing source files; rebuild the application for production. Base definitions are also added to projects already present in localStorage.
 
 Use the same Zaux syntax:
 
@@ -51,7 +51,7 @@ export default {
 };
 ```
 
-The module must export `ZVCName` and `buildNode`. The Zaux adapter also accepts upstream `meta.ZVCName`, falling back to the conventional `ZVC` + filename registration name. `label` is the displayed name; `fields` describes the controls. `builder: false` excludes a base definition from the library. The loader recognizes defaults at `data/Name.defaults.js`; for custom paths, expose values through `fields[].default`.
+A ZVC module must export `ZVCName` and `buildNode`. ZVP modules only require `buildNode`; optional metadata supplies `ZVPName`, `label` and `fields`. See [virtual partials](virtual-partials.md). The Zaux adapter also accepts upstream `meta.ZVCName`, falling back to the conventional `ZVC` + filename registration name. `label` is the displayed name; `fields` describes the controls. `builder: false` excludes a base definition from the library. The loader recognizes defaults at `data/Name.defaults.js`; for custom paths, expose values through `fields[].default`.
 
 The imported module function is executed as-is, including conditions, composition, and helper calls. Its source is never interpreted or reconstructed. To nest local modules, import them and call their `buildNode`; the original Zaux registry still contains components from the submodule.
 
@@ -81,7 +81,7 @@ The result must be JSON-compatible: component names, properties, and children. C
 
 For a code-backed ZVC, the JavaScript package contains the original files in its source folder. Conditions remain in the source. The conventional defaults file is updated with the exported configuration; `instance-data.json` contains all values, including values from custom paths. CSS authored in the editor is added to `style/Studio.css`.
 
-Keep required local dependencies in the component folder; imports outside that folder remain dependencies of the destination project. The `@zx_core` and `@zx_project` aliases retain their original Zaux meaning.
+Relative JavaScript/JSON imports within `app/zvc` are bundled automatically, including imports from `_partials`. Package imports, aliases, computed import paths and dependencies outside the available source catalog remain destination-project dependencies. The `@zx_core` and `@zx_project` aliases retain their original Zaux meaning.
 
 Studio JSON stores the relative `sourceKey`, data, and the last rendered tree, without executable code. To continue editing a native component on another installation, also bring its files to `app/zvc/`. If they are missing, the app displays the last result and lets you convert it to a visual definition.
 
@@ -125,7 +125,7 @@ The library selector separates **Imported** source bases (`app/zvc`, Zaux core a
 
 `integrations/zaux/source-library.js` discovers upstream sources read-only; `app/services/source-zvc.js` merges them into existing workspaces using stable `zaux/core/...` and `zaux/project/...` source keys. Existing `app/zvc` keys stay unchanged. Source bases retain their defaults and metadata, and insertion keeps independent instance configuration. JavaScript exports and source previews also support upstream folders; dependencies outside an exported folder still require the destination Zaux project.
 
-ZVP files are not separate library definitions. A ZVC imports a partial and calls its `buildNode(data, params)`; executing that ZVC incorporates the partial's returned nodes directly into its snapshot, including nested content. Conversion to visual keeps this expanded output. The pinned dependency currently contains no `.zvp.js` partials. No vendor file or revision is changed.
+ZVP files are separate imported library definitions. Local partials live under `app/zvc/_partials`. Project partials can also be authored visually with **New ZVP**. They can be inserted as atomic nodes and selected in slider content; the owner captures independent dependencies and resolves `{ name, props }` descriptors before rendering. Direct source imports with `buildNode(data, params)` remain supported. See [virtual partials](virtual-partials.md) for fields, examples and export details. No vendor file or revision is changed.
 
 Source review only. Tests, builds and browser verification were not run; runtime verification remains with the user.
 

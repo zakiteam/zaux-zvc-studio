@@ -1,3 +1,4 @@
+import './source-zvc.js';
 import DOMPurify from 'dompurify';
 import { runtimeNodes } from '../../domain/nodes.js';
 

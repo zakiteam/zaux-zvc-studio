@@ -76,6 +76,7 @@
 				/>
 			</div>
       <p v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_overlay_trigger_hint') }}</p>
+			<BuilderPartialFields v-if="selectedPartial" :key="selectedNode.id" :definition="selectedPartial" :bindings="activeDefinition.fields" :modelValue="selectedNode.props" @change="updateNode" />
 			<BuilderSlider v-if="sliderConfig" :key="selectedNode.id + selectedNode.name" :node="selectedNode" />
 			<BuilderProperty
 				v-for="property in visibleProperties"
@@ -171,6 +172,7 @@ import { useBuilder } from "../../../composables/useBuilder.js";
 import { catalog, propertyInfo } from "../../../services/catalog.js";
 import { parseJson } from "../../../../domain/validation.js";
 import { clone, isBinding } from "../../../../domain/nodes.js";
+import BuilderPartialFields from "../fields/BuilderPartialFields.vue";
 import BuilderSlider from "../fields/slides/BuilderSlider.vue";
 import { sliderControls } from "../../../../integrations/zaux/slider-controls.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
@@ -179,7 +181,7 @@ import BuilderInput from "../fields/BuilderInput.vue";
 import BuilderProperty from "../fields/BuilderProperty.vue";
 import BuilderCodeEditor from "../fields/BuilderCodeEditor.vue";
 export default defineComponent({
-	components: { BuilderSlider, BuilderButton, BuilderInput, BuilderProperty, BuilderCodeEditor },
+	components: { BuilderPartialFields, BuilderSlider, BuilderButton, BuilderInput, BuilderProperty, BuilderCodeEditor },
 	props: { active: Boolean },
 	emits: ["error"],
 	setup(_props, { emit }) {
@@ -187,6 +189,7 @@ export default defineComponent({
 		const propsDraft = ref("");
     const sliderConfig = computed(() => sliderControls[builder.selectedNode.value?.name]);
     function specializedProperty(key) {
+      if (builder.selectedPartial.value?.fields.some(field => field.key === key)) return true;
       if (!sliderConfig.value) return false;
       const props = builder.selectedNode.value.props;
       const contentPath = sliderConfig.value.contentPath;

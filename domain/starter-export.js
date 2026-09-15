@@ -19,7 +19,8 @@ function uniqueName(base, used) {
 function definitionKey(definition) {
   const tree = nodes => nodes.map(node => ({ name: node.name, props: node.props, children: tree(node.children) }));
   return JSON.stringify({
-    exportName: definition.exportName, sourceKey: definition.sourceKey,
+    exportName: definition.exportName, sourceKey: definition.sourceKey, kind: definition.kind,
+    partials: (definition.partials ?? []).map(definitionKey),
     fields: definition.fields, defaults: definition.defaults, css: definition.css,
     tree: definition.sourceKey ? undefined : tree(definition.tree)
   });
@@ -95,13 +96,13 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
     const key = definitionKey(definition);
     if (definitions.has(key)) return definitions.get(key);
     const name = uniqueName(definition.exportName.slice(3), names);
-    const exported = { ...clone(definition), exportName: 'ZVC' + name };
-    const directory = `project/components/virtual/${name.toLowerCase()}`;
+    const exported = { ...clone(definition), exportName: (definition.kind === 'zvp' ? 'ZVP' : 'ZVC') + name };
+    const directory = `project/components/virtual/${definition.kind === 'zvp' ? '_partials/' : ''}${name.toLowerCase()}`;
     const componentFiles = filesForComponent(exported);
     componentFiles[`data/${name}.defaults.js`] = 'export default ' + json(dataFor(exported)).trimEnd() + ';\n';
     for (const [path, content] of Object.entries(componentFiles)) files[`${directory}/${path}`] = content;
     definitions.set(key, exported.exportName);
-    components.push({ name: exported.exportName, originalName: definition.exportName, directory });
+    components.push({ kind: definition.kind ?? 'zvc', name: exported.exportName, originalName: definition.exportName, directory });
     return exported.exportName;
   }
   workspace.library.forEach(addDefinition);
@@ -132,6 +133,8 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
 Copy this package into a compatible Zaux repository. Zaux, its core components, build configuration and dependencies must already be installed.
 
 - Components: project/components/virtual/<name> (the standard Zaux path).
+- Virtual partials: project/components/virtual/_partials/<name>, with native .zvp.js entries. Components also carry independent partial dependencies in their own _partials folders.
+- Dynamic descriptors are resolved by the included resolve-partials.js before reaching Zaux renderers. When using a standalone partial, import it and call buildNode(data, params).
 - Templates: project/templates/<name>, including TemplateRenderer stories.
 - Run the destination project's normal component/template index generation and stylesheet setup. Review existing files before replacing them.
 - style/tokens/*.json contains complete upstream token documents with the edited values applied, only for changed categories. Preserve your destination project's unrelated token changes when merging.
@@ -159,12 +162,13 @@ ${cssPaths.length ? cssPaths.map(path => '- ' + path).join('\n') : 'No authored 
 export function nativeStarterFiles(definition, sourceFiles) {
   const name = definition.exportName.slice(3);
   const entry = definition.sourceKey.split('/').at(-1);
-  const meta = { builder: true, label: definition.name, ZVCName: definition.exportName, fields: definition.fields };
+  const partial = definition.kind === 'zvp';
+  const meta = { builder: true, label: definition.name, [partial ? 'ZVPName' : 'ZVCName']: definition.exportName, fields: definition.fields };
   return {
     ...Object.fromEntries(Object.entries(sourceFiles).map(([path, content]) => ['source/' + path, content])),
     [`${name}.meta.js`]: 'export default ' + json(meta).trimEnd() + ';\n',
     [`data/${name}.defaults.js`]: 'export default ' + json(dataFor(definition)).trimEnd() + ';\n',
-    [`${name}.zvc.js`]: `import source from './source/${entry}';
+    [`${name}.${partial ? 'zvp' : 'zvc'}.js`]: `import source from './source/${entry}';
 import meta from './${name}.meta.js';
 import defaults from './data/${name}.defaults.js';
 
@@ -173,7 +177,7 @@ export default {
   ...meta,
   buildNode(data = {}, params = {}) {
     const node = source.buildNode({ ...defaults, ...data }, params);
-    return Array.isArray(node) ? node : node && { ...node, ZVCName: meta.ZVCName };
+    return ${partial ? 'node' : 'Array.isArray(node) ? node : node && { ...node, ZVCName: meta.ZVCName }'};
   }
 };
 `

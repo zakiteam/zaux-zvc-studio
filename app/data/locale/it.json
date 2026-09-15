@@ -624,7 +624,16 @@
   "zx_builder_theme_preview_missing": "Anteprima non configurata: occorre definire le props per questo componente.",
   "zx_builder_starter_package": "Pacchetto starter Zaux",
   "zx_builder_download_starter": "Scarica starter ZIP",
-  "zx_builder_starter_hint": "Tutti gli ZVC della libreria e dei template, template con stories, token modificati, override CSS, impostazioni UI e riferimenti ai font. Seleziona un file per visualizzarlo. Il README descrive come integrarli in una repo Zaux.",
+  "zx_builder_starter_hint": "Tutti gli ZVC e ZVP della libreria e dei template, template con stories, token modificati, override CSS, impostazioni UI e riferimenti ai font. Seleziona un file per visualizzarlo. Il README descrive come integrarli in una repo Zaux.",
   "zx_builder_starter_error": "Impossibile generare il pacchetto starter. Controlla le definizioni del progetto.",
-  "zx_builder_export_zaux_json": "Esporta JSON Zaux"
+  "zx_builder_export_zaux_json": "Esporta JSON Zaux",
+  "zx_builder_new_partial": "Nuovo ZVP",
+  "zx_builder_partials": "Partial ZVP",
+  "zx_builder_add_partial": "Inserisci nodo",
+  "zx_builder_partial_cycle": "I partial non possono contenere riferimenti circolari.",
+  "zx_builder_field_show_if": "Visibilità condizionale (showIf)",
+  "zx_builder_html": "HTML",
+  "zx_builder_css-editor": "CSS",
+  "zx_builder_button": "Pulsante",
+  "zx_builder_buttongroup": "Gruppo di pulsanti"
 }

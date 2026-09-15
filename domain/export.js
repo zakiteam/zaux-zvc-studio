@@ -64,13 +64,15 @@ function exportTree(tree) {
 }
 export function componentFiles(definition) {
   validateDefinition(definition);
-  const name = definition.exportName.replace(/^ZVC/, '');
+  const name = definition.exportName.replace(/^ZV[CP]/, '');
   const defaults = Object.fromEntries(definition.fields.map(field => [field.key, field.default ?? null]));
-  const meta = { builder: true, label: definition.name, ZVCName: definition.exportName, meta: { version: 1 }, fields: definition.fields };
-  const root = { name: 'ComponentsRenderer', props: { components: exportTree(definition.tree) } };
-  const source = `import ZVCHelper from "@zx_core/common/helpers/zvc.helper";\nimport meta from "./${name}.meta.js";\nimport defaults from "./data/${name}.defaults.js";\n\nexport default {\n  ...meta,\n  buildNode(data = {}, params = {}) {\n    data = { ...defaults, ...data };\n    const gv = (path) => ZVCHelper.getValue(data, path);\n    const nodeObject = {\n      meta: { ZVCName: meta.ZVCName },\n      node: ${jsValue(root, 3)}\n    };\n    return ZVCHelper.renderNode(nodeObject, data, params, meta);\n  }\n};\n`;
+  const partial = definition.kind === 'zvp';
+  const meta = { builder: true, label: definition.name, [partial ? 'ZVPName' : 'ZVCName']: definition.exportName, meta: { version: 1 }, fields: definition.fields };
+  const tree = exportTree(definition.tree);
+  const root = partial && tree.length === 1 ? tree[0] : { name: 'ComponentsRenderer', props: { components: tree } };
+  const source = `import ZVCHelper from "@zx_core/common/helpers/zvc.helper";\nimport meta from "./${name}.meta.js";\nimport defaults from "./data/${name}.defaults.js";\n\nexport default {\n  ...meta,\n  buildNode(data = {}, params = {}) {\n    data = { ...defaults, ...data };\n    const gv = (path) => ZVCHelper.getValue(data, path);\n    const nodeObject = {\n${partial ? '' : '      meta: { ZVCName: meta.ZVCName },\n'}      node: ${jsValue(root, 3)}\n    };\n    return ZVCHelper.renderNode(nodeObject, data, params${partial ? '' : ', meta'});\n  }\n};\n`;
   const files = {
-    [`${name}.zvc.js`]: source,
+    [`${name}.${partial ? 'zvp' : 'zvc'}.js`]: source,
     [`${name}.meta.js`]: `export default ${JSON.stringify(meta, null, 2)};\n`,
     [`data/${name}.defaults.js`]: `export default ${JSON.stringify(defaults, null, 2)};\n`
   };

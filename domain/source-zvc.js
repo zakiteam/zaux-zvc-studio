@@ -36,9 +36,11 @@ export function sourceTree(root, prefix) {
   return nodes(root, 'root');
 }
 export function definitionFromSource(key, module, defaults = {}) {
-  if (typeof module?.buildNode !== 'function' || !module.ZVCName) throw new Error('zx_builder_native_invalid');
+  const partial = key.endsWith('.zvp.js');
+  const name = partial ? module.ZVPName ?? 'ZVP' + key.split('/').at(-1).replace('.zvp.js', '') : module.ZVCName;
+  if (typeof module?.buildNode !== 'function' || !name) throw new Error('zx_builder_native_invalid');
   const definition = {
-    id: 'source:' + key, name: module.label || module.ZVCName, exportName: module.ZVCName,
+    id: 'source:' + key, name: module.label || name, exportName: name, ...(partial ? { kind: 'zvp' } : {}),
     sourceKey: key, defaults: clone(defaults), fields: normalizeSourceFields(clone(module.fields ?? [])), tree: [], css: ''
   };
   definition.tree = sourceTree(module.buildNode(dataFor(definition), {}), definition.id);

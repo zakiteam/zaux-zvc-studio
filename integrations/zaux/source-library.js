@@ -1,6 +1,4 @@
-// Only trusted, bundled source files enter the library. ZVPs are implementation
-// details: their buildNode() output is already part of the parent ZVC result.
-const modules = import.meta.glob('../../vendor/zaux/{core,project}/components/virtual/**/*.zvc.js', { eager: true, import: 'default' });
+const modules = import.meta.glob('../../vendor/zaux/{core,project}/components/virtual/**/*.{zvc,zvp}.js', { eager: true, import: 'default' });
 const defaults = import.meta.glob('../../vendor/zaux/{core,project}/components/virtual/**/data/*.defaults.js', { eager: true, import: 'default' });
 const rawFiles = import.meta.glob([
   '../../vendor/zaux/{core,project}/components/virtual/**/*.{js,json,css,scss}',
@@ -10,7 +8,7 @@ const rawFiles = import.meta.glob([
 
 export const zauxSources = Object.fromEntries(Object.entries(modules).map(([path, module]) => {
   const directory = path.slice(0, path.lastIndexOf('/') + 1);
-  const name = path.split('/').at(-1).replace('.zvc.js', '');
+  const name = path.split('/').at(-1).replace(/\.zv[cp]\.js$/, '');
   const key = path.replace('../../vendor/zaux/', 'zaux/');
   return [key, {
     module: { ...module, ZVCName: module.ZVCName ?? module.meta?.ZVCName ?? 'ZVC' + name },

@@ -35,7 +35,7 @@
 			<form
 				v-if="
 					[
-						'new-component',
+						'new-component', 'new-partial',
 						'new-template',
 						'new-project',
 						'rename-project',
@@ -396,6 +396,7 @@ export default defineComponent({
 		const titles = {
 			"new-component-json": "new_component_json",
 			"new-component": "new_component",
+            "new-partial": "new_partial",
 			"new-template": "new_template",
 			"save-library": "save_library",
 			"new-project": "new_project",
@@ -471,8 +472,8 @@ export default defineComponent({
 		async function submitName() {
 			if (!name.value.trim() || saving.value) return;
 			const modal = builder.modal.value;
-			if (modal.type === "new-component")
-				builder.newComponent(name.value.trim());
+			if (["new-component", "new-partial"].includes(modal.type))
+				builder.newComponent(name.value.trim(), modal.type === "new-partial" ? "zvp" : "zvc");
 			if (modal.type === "new-template") builder.newTemplate(name.value.trim());
 			if (modal.type === "rename")
 				builder.rename(modal.kind, modal.id, name.value.trim());

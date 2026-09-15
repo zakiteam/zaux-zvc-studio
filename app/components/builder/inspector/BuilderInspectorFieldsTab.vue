@@ -50,7 +50,7 @@
 				><BuilderValue
 					:modelValue="field.default"
 					:label="`${field.key} default`"
-					:type="field.type"
+					:type="fieldInputType(field)"
 					:options="field.options"
 					@update:modelValue="updateField(field.key, 'default', $event)"
 				/>
@@ -60,23 +60,12 @@
 				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
 				<label>{{ translate("zx_builder_options") }}</label
-				><textarea
-					class="px-2 py-1"
-					:value="
-						field.options.map((option) => option.value ?? option).join('\n')
-					"
-					@change="
-						updateField(
-							field.key,
-							'options',
-							$event.target.value
-								.split('\n')
-								.filter(Boolean)
-								.map((value) => ({ label: value, value })),
-						)
-					"
-				/>
+				><BuilderValue type="json" :label="translate('zx_builder_options')" :modelValue="field.options"
+                  @update:modelValue="updateField(field.key, 'options', $event)" />
 			</div>
+            <label class="block mb-1 text-[11px]">{{ translate('zx_builder_field_show_if') }}</label>
+            <BuilderValue type="json" :label="translate('zx_builder_field_show_if')" :modelValue="field.showIf ?? null"
+              @update:modelValue="updateField(field.key, 'showIf', $event)" />
 			<BuilderButton
 				:label="translate('zx_builder_delete')"
 				@click="deleteField(field.key)"
@@ -141,6 +130,7 @@
 <script>
 import { defineComponent, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
+import { fieldInputType } from "../../../../domain/fields.js";
 import BuilderButton from "../BuilderButton.vue";
 import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
@@ -151,13 +141,13 @@ export default defineComponent({
 		const newLabel = ref("");
 		const newType = ref("text");
 		const fieldError = ref("");
-		const types = ["text", "textarea", "number", "switch", "select", "json"];
+		const types = ["text", "textarea", "number", "switch", "select", "json", "html", "css-editor", "button", "buttongroup", "component"];
 		const defaultFor = (type) =>
 			type === "switch"
 				? false
 				: type === "number"
 					? 0
-					: type === "json"
+					: ["json", "button", "buttongroup", "component"].includes(type)
 						? {}
 						: "";
 		function updateField(key, property, value) {
@@ -211,7 +201,7 @@ export default defineComponent({
 		}
 		return {
 			...builder,
-			types,
+			types, fieldInputType,
 			newKey,
 			newLabel,
 			newType,

@@ -25,7 +25,7 @@
 				>
 					<div>
 						<h2>{{ translate("zx_builder_library") }}</h2>
-						<p>{{ filteredLibrary.length }} ZVC</p>
+						<p>{{ filteredLibrary.length }} ZVC / ZVP</p>
 					</div>
 					<BuilderButton
 						icon="add"
@@ -34,6 +34,8 @@
 						@click="modal = { type: 'new-component' }"
 					/>
 				</div>
+                <BuilderButton class="w-full mb-2" icon="add" :label="translate('zx_builder_new_partial')"
+                  :disabled="!canEditRemote" @click="modal = { type: 'new-partial' }" />
                 <div class="flex flex-col gap-1 mb-2">
                   <BuilderInput v-model="libraryCategory" type="select"
                     :label="translate('zx_builder_library_category')"
@@ -69,7 +71,7 @@
             class="zb-library-card overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
             :class="{ active: mode === 'library' && libraryId === definition.id }"
             :draggable="canEditRemote"
-            @dragstart="drag($event, { kind: 'library', id: definition.id })"
+            @dragstart="drag($event, definition.kind === 'zvp' ? { kind: 'catalog', name: definition.exportName } : { kind: 'library', id: definition.id })"
           >
             <button
               class="zb-library-thumb relative grid group h-[112px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
@@ -92,7 +94,7 @@
 				><span
 					class="zb-card-type absolute right-1 top-1 rounded-xxs bg-zaux-white/70 px-0.5 py-0.25 font-mono text-[8px] text-zaux-dark-grey"
 					>{{
-					definition.sourceKey ? translate("zx_builder_from_code") : "ZVC"
+					definition.kind === "zvp" ? "ZVP" : definition.sourceKey ? translate("zx_builder_from_code") : "ZVC"
 					}}</span
 				>
             </button>
@@ -112,10 +114,10 @@
                 class="zb-card-actions mt-1.5 flex items-center gap-0.5 border-t-slim border-zaux-light pt-0.75 [&>.zb-button]:flex-1 [&>.zb-button]:!px-0.25 [&>.zb-button]:!text-[10px]"
               >
                 <BuilderButton
-                  :label="translate('zx_builder_add_to_template')"
+                  :label="translate(definition.kind === 'zvp' ? 'zx_builder_add_partial' : 'zx_builder_add_to_template')"
                   icon="add"
                   variant="alt1"
-                  @click="insertInstance(definition.id)"
+                  @click="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
                 /><button
                   v-if="!definition.id.startsWith('source:')"
                   class="zb-icon-text w-[18px] text-zaux-dark-grey hover:text-zaux-accent"
@@ -171,7 +173,7 @@
 					{{ translate("zx_builder_palette_hint") }}
 				</p>
 				<div
-					v-for="group in ['zx_builder_zaux', 'zx_builder_native']"
+					v-for="group in ['zx_builder_partials', 'zx_builder_zaux', 'zx_builder_native']"
 					:key="group"
 				>
 					<h3
@@ -380,8 +382,9 @@ export default defineComponent({
       builder.updateLibraryPreview(previewId.value, asset?.url);
       previewId.value = null;
     }
+    const availablePartialEntries = computed(() => builder.availablePartials.value.map(partial => ({ name: partial.exportName, group: 'zx_builder_partials' })));
 		const filtered = computed(() =>
-			catalog.filter((entry) =>
+			[...availablePartialEntries.value, ...catalog].filter((entry) =>
 				entry.name.toLowerCase().includes(search.value.toLowerCase()),
 			),
 		);

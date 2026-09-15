@@ -18,6 +18,7 @@ import { createStyleBridge } from '../services/styles.js';
 import { createThemePreviewLifecycle } from '../services/theme-preview.js';
 import { createFontLoader } from '../services/fonts.js';
 import { previewNodes } from '../services/preview.js';
+import { definitionCss } from '../../domain/partials.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
@@ -36,7 +37,7 @@ export default defineComponent({
     const state = ref({ instances: [], editable: true, css: '', selectedNodeId: null, selectedInstanceId: null });
     const selection = ref(null);
     const dropMarker = ref(null);
-    const componentCss = computed(() => state.value.instances.map(item => item.definition.css).join('\n'));
+    const componentCss = computed(() => state.value.instances.map(item => definitionCss(item.definition)).join('\n'));
     let observer;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
     async function receive(event) {

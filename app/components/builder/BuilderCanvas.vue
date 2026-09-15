@@ -8,6 +8,7 @@
 </template>
 <script>
 import { defineComponent, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { runtimeNodes } from '../../../domain/nodes.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
 export default defineComponent({
@@ -30,7 +31,7 @@ export default defineComponent({
     async function compileCss() {
       const token = ++generation;
       try {
-        const result = await $fetch('/api/preview-css', { method: 'POST', body: { content: JSON.stringify({ instances: builder.previewInstances.value, uiSettings: builder.document.value.styles.uiSettings }) } });
+        const result = await $fetch('/api/preview-css', { method: 'POST', body: { content: JSON.stringify({ rendered: builder.previewInstances.value.map(instance => runtimeNodes(instance.definition, instance.data)), instances: builder.previewInstances.value, uiSettings: builder.document.value.styles.uiSettings }) } });
         if (token === generation) { dynamicCss.value = result.css; sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }

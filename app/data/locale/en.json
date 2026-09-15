@@ -624,7 +624,16 @@
   "zx_builder_theme_preview_missing": "Preview not configured: define a prop preset for this component.",
   "zx_builder_starter_package": "Zaux starter package",
   "zx_builder_download_starter": "Download starter ZIP",
-  "zx_builder_starter_hint": "All library and template ZVCs, templates with stories, edited tokens, CSS overrides, UI settings and font references. Select a file to preview it. The README explains how to integrate them into a Zaux repository.",
+  "zx_builder_starter_hint": "All library and template ZVCs and ZVPs, templates with stories, edited tokens, CSS overrides, UI settings and font references. Select a file to preview it. The README explains how to integrate them into a Zaux repository.",
   "zx_builder_starter_error": "Unable to generate the starter package. Check the project definitions.",
-  "zx_builder_export_zaux_json": "Export Zaux JSON"
+  "zx_builder_export_zaux_json": "Export Zaux JSON",
+  "zx_builder_new_partial": "New ZVP",
+  "zx_builder_partials": "ZVP partials",
+  "zx_builder_add_partial": "Insert node",
+  "zx_builder_partial_cycle": "Partials cannot contain circular references.",
+  "zx_builder_field_show_if": "Conditional visibility (showIf)",
+  "zx_builder_html": "HTML",
+  "zx_builder_css-editor": "CSS",
+  "zx_builder_button": "Button",
+  "zx_builder_buttongroup": "Button group"
 }
