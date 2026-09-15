@@ -9,6 +9,7 @@
 		}"
 		@open="opened"
 		@closed="open = false"
+		v-bind="popOverProps"
 	>
 		<template #trigger>
 			<div ref="trigger" @keydown="triggerKeydown" @keyup.stop @click="triggerClick" @contextmenu="contextMenuOpen">
@@ -119,6 +120,7 @@ export default defineComponent({
 		items: { type: Array, default: () => [] },
 		disabled: Boolean,
 		align: { default: "start" },
+		popOverProps : { default : null },
 		extraTriggerProps : { default : null },
 		btnSize : { default : 's' }
 	},

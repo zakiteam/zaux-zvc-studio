@@ -5,7 +5,7 @@
   >
     <BuilderDropdown
       v-if="color"
-      class="flex-1 min-w-0 [&_.zb-builder-dropdown-content]:py-1"
+      class="flex-1 min-w-0 [&_.zb-builder-dropdown-content]:py-2"
       btnSize="xs"
       :label="selected.label"
       :swatch="selected.swatch"

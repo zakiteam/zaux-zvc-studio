@@ -97,6 +97,10 @@
 					<BuilderDropdown
 						:label="translate('zx_builder_create')"
 						icon="add"
+						align="end"
+						:popOverProps="{
+							dropdown: { class: '!max-w-[150px]' },
+						}"
 						:items="createItems"
 						:disabled="!canEditRemote"
 						@select="modal = { type: $event.id }"
@@ -365,6 +369,16 @@
 				</p>
 			</div>
 			<div v-else class="zb-outline-panel px-2 py-2.5">
+				<!-- Copy/Paste node -->
+				<div class="flex flex-col justify-start gap-2 mb-3 text-left">
+					<div class="flex items-stretch gap-1">
+						<BuilderButton class="w-full" size="xs" icon="copy" :label="translate('zx_builder_copy_node')" :disabled="!canCopyNode" @click="copySelectedNode()" />
+						<BuilderButton class="w-full" size="xs" :label="translate('zx_builder_paste_node')" :disabled="!canPasteNode" @click="pasteNode()" />
+					</div>
+					<button v-if="clipboardNodeName" type="button" class="truncate text-left text-[11px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="dragClipboard" @click="pasteNode()">
+					{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}
+					</button>
+				</div>
 				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">
 					{{ translate("zx_builder_outline_drag_hint") }}
 				</p>
@@ -507,7 +521,7 @@
 							</div>
 							<div v-if="instanceId === instance.id" class="px-0.5 pb-1.5">
 								<div class="flex items-center gap-1">
-                                  <BuilderButton size="xs" class="min-w-0 flex-1"
+                                  <BuilderButton size="xs" class="flex-1 min-w-0"
                                     :label="translate('zx_builder_restore_library')"
                                     :disabled="!canEditRemote || !instanceLibraryDefinition"
                                     @click="restoreActiveInstance" />
