@@ -196,7 +196,7 @@ export default defineComponent({
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;
 			target.value = Math.min(
-				side === "left" ? 420 : 420,
+				side === "left" ? 420 : 1000,
 				Math.max(side === "left" ? 210 : 260, target.value + delta),
 			);
 		}
