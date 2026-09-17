@@ -25,11 +25,11 @@
 
 ## Zaux study
 
-Studied the original checkout at `C:/xampp/htdocs/zaki/zaux`, including:
-- `core/storybook/apps/builder/ZVCBuilder.vue`, its context and CRUD, layouts, storage, import/export, BYO, field and tab-session composables.
-- `core/common/helpers/zvc.helper.js`, `templates.helper.js`, `components.helper.js`, translations and UI settings.
+Studied the original checkout at `vendor/zaux`, including:
+- `vendor/zaux/core/storybook/apps/builder/ZVCBuilder.vue`, its context and CRUD, layouts, storage, import/export, BYO, field and tab-session composables.
+- `vendor/zaux/core/common/helpers/zvc.helper.js`, `templates.helper.js`, `components.helper.js`, translations and UI settings.
 - `project/components/virtual/fancysection/FancySection.zvc.js`, metadata/defaults, and `project/templates/home/Home.tpl.js`.
-- `core/setup.js`, project setup, component registries, Zsection, ComponentsRenderer, IntroText and button contracts.
+- `vendor/zaux/core/setup.js`, project setup, component registries, Zsection, ComponentsRenderer, IntroText and button contracts.
 - Vite/Storybook startup, Tailwind tokens/plugins, generated SCSS and component registration scripts.
 
 The prior builder primarily composes registered definitions and edits fields; BYO accepts serialized node snapshots. A snapshot does not retain the code or data bindings which produced it. Studio stores the editable definition separately, including explicit binding markers.
@@ -38,7 +38,7 @@ The prior builder primarily composes registered definitions and edits fields; BY
 
 The submodule is pinned to `a495ac536ee7932b2875f341c1106375dacc590f`. The source checkout contained uncommitted work; the submodule uses the committed version.
 
-Nuxt initializes the original Zaux core/project setup in a client plugin. A preparation script mirrors the upstream component registration convention while writing indexes, stylesheet imports, attribute metadata and resolved Tailwind data under `integrations/zaux/generated`. Aliases redirect upstream imports of generated files there.
+Nuxt initializes the original Zaux vendor/zaux/project setup in a client plugin. A preparation script mirrors the upstream component registration convention while writing indexes, stylesheet imports, attribute metadata and resolved Tailwind data under `integrations/zaux/generated`. Aliases redirect upstream imports of generated files there.
 
 Zaux public assets are served through Nitro. Fonts/icons keep the original URLs. The bridge uses Tailwind 3 with Zaux design tokens; Studio's CSS is scoped to its chrome.
 
@@ -68,7 +68,7 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Per-instance content, field definitions, nested JSON properties and explicit bindings.
 - Editable JSON, generated JS, CSS, browser persistence and recovery.
 - Imports support Studio's versioned JSON envelopes.
-- Native .zvc.js modules under app/zvc and the read-only Zaux core/project virtual folders load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
+- Native .zvc.js modules under app/zvc and the read-only Zaux vendor/zaux/core/project virtual folders load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
 - Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI and a browser JavaScript editor are not included. Asset uploads use the project-owned filesystem media integration described in [Media library](media-library.md). Hand-written code is maintained in project files.
 
@@ -76,7 +76,7 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 
 `server/api/media/` validates the Supabase session and active profile and uses the caller's token for RLS. `server/utils/media.js` owns server authorization, persistent paths and upload limits. Sharp validates JPEG/PNG/WebP/SVG uploads. Originals are stored unchanged outside the deployment directory; raster thumbnails retain their format and SVG thumbnails use PNG. The public route serves the matching MIME type with a restrictive CSP for SVG document isolation. `server/routes/media/[file].get.js` serves public files; archived assets remain readable by URL.
 
-`app/services/media.js` owns browser IO. `BuilderMediaPicker.vue` provides one native modal dialog for project/global catalogs, search, upload, pagination and archiving; `BuilderImageInput.vue` retains manual URL entry. Project cover and library preview changes use explicit `useBuilder.js` mutations. Native source refresh preserves preview metadata; existing instance copies remain independent. The hub reads the project's cover from its existing JSON document. Personal global assets follow user ownership because the current ZVC library is workspace-local, not a shared organization catalog.
+`app/services/media.js` owns browser IO. `BuilderMediaPicker.vue` provides one native modal dialog for project/global catalogs, search, upload (file picker or clipboard paste), pagination and archiving; `BuilderImageInput.vue` retains manual URL entry. Project cover and library preview changes use explicit `useBuilder.js` mutations. Native source refresh preserves preview metadata; existing instance copies remain independent. The hub reads the project's cover from its existing JSON document. Personal global assets follow user ownership because the current ZVC library is workspace-local, not a shared organization catalog.
 
 See [media storage setup](media-library.md) for deployment, permissions and lifecycle. Runtime and hosting integration remain unverified.
 
@@ -85,6 +85,8 @@ See [media storage setup](media-library.md) for deployment, permissions and life
 `app/components/builder/BuilderDropdown.vue` wraps the Zaux `Popover` and uses `BuilderButton` for its trigger and menu actions. Pass a translated `label` and an `items` array (`id`, `label`, optional `icon`, `disabled`, `hidden`, `active`, `danger`, `separator`, `heading`). The `select` event returns the selected item; application actions belong to the parent. An optional `header` slot adds contextual information; `align` accepts `start` or `end`. The wrapper handles arrow/Home/End navigation, Escape, Tab, outside click and focus restoration.
 
 The workspace project menu uses this control for switching projects, creating, saving, renaming and deleting. It displays the current project and persistence status, retaining the existing role restrictions and delete confirmation.
+
+An opt-in `filterItems` prop (default `false`) adds a compact text field above the list that filters the rendered items by their `label`, hides separators and group headings while a query is active, shows a translated empty-result message and resets when the menu closes. It focuses the field on open, keeps arrow navigation from the field into the filtered actions and is enabled for the color/token dropdowns and the slide content picker.
 
 ## Builder header
 

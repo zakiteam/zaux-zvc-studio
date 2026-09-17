@@ -31,7 +31,7 @@ function panelOptions(trees, component, property) {
 // Extension point: component name -> prop name -> descriptor patch or context function.
 // Context functions run inside the Inspector computed, so their dependencies stay reactive.
 export const propertyDecorators = {
-  IntroText: { subtitle: { control: 'textarea' } },
+  IntroText: { subtitle: { control: 'textarea' }, ctas : { control : 'buttongroup'} },
   Icon: {
     iconSet: selectOptions(Object.keys(iconSets)),
     iconName: ({ props }) => {

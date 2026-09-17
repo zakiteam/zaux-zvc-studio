@@ -31,8 +31,8 @@
 			<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
 				<BuilderButton
 					:extraProps="{
-						customInnerClasses : 'justify-center flex w-full',
-						customInnerWrapperClasses : 'items-center justify-center w-full'
+						customInnerClasses: 'justify-center flex w-full',
+						customInnerWrapperClasses: 'items-center justify-center w-full',
 					}"
 					size="xs"
 					icon="chevron-up"
@@ -41,8 +41,9 @@
 				/><BuilderButton
 					size="xs"
 					:extraProps="{
-						customInnerClasses : 'justify-center flex w-full',
-						customInnerWrapperClasses : 'flex justify-center items-center w-full'
+						customInnerClasses: 'justify-center flex w-full',
+						customInnerWrapperClasses:
+							'flex justify-center items-center w-full',
 					}"
 					icon="chevron-down"
 					:label="translate('zx_builder_move_down')"
@@ -57,9 +58,7 @@
 					type="select"
 					:modelValue="selectedNode.name"
 					:options="[
-						...(catalog.some(
-							(entry) => entry.name === selectedNode.name,
-						)
+						...(catalog.some((entry) => entry.name === selectedNode.name)
 							? []
 							: [
 									{
@@ -75,9 +74,29 @@
 					@change="changeType"
 				/>
 			</div>
-      <p v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_overlay_trigger_hint') }}</p>
-			<BuilderPartialFields v-if="selectedPartial" :key="selectedNode.id" :definition="selectedPartial" :reference="selectedNode" :bindings="activeDefinition.fields" :modelValue="selectedNode.props" @change="updateNode" />
-			<BuilderSlider v-if="sliderConfig" :key="selectedNode.id + selectedNode.name" :node="selectedNode" />
+			<p
+				v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)"
+				class="mb-2 text-[11px] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_overlay_trigger_hint") }}
+			</p>
+
+			<BuilderPartialFields
+				v-if="selectedPartial"
+				:key="selectedNode.id"
+				:definition="selectedPartial"
+				:reference="selectedNode"
+				:bindings="activeDefinition.fields"
+				:modelValue="selectedNode.props"
+				@change="updateNode"
+			/>
+
+			<BuilderSlider
+				v-if="sliderConfig"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
 			<BuilderProperty
 				v-for="property in visibleProperties"
 				:key="`${selectedNode.id}-${selectedNode.name}-${property}`"
@@ -87,6 +106,7 @@
 				:descriptor="descriptors[property]"
 				@change="setProperty(property, $event)"
 			/>
+
 			<div
 				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
@@ -106,6 +126,7 @@
 					@change="addProperty"
 				/>
 			</div>
+
 			<details>
 				<summary>{{ translate("zx_builder_advanced") }}</summary>
 				<BuilderCodeEditor
@@ -160,9 +181,7 @@
 				size="xs"
 				v-if="mode === 'template'"
 				:label="translate('zx_builder_save_library')"
-				@click="
-					modal = { type: 'save-library', name: activeInstance.name }
-				"
+				@click="modal = { type: 'save-library', name: activeInstance.name }"
 			/>
 		</div>
 	</template>
@@ -182,33 +201,52 @@ import BuilderInput from "../fields/BuilderInput.vue";
 import BuilderProperty from "../fields/BuilderProperty.vue";
 import BuilderCodeEditor from "../fields/BuilderCodeEditor.vue";
 export default defineComponent({
-	components: { BuilderPartialFields, BuilderSlider, BuilderButton, BuilderInput, BuilderProperty, BuilderCodeEditor },
+	components: {
+		BuilderPartialFields,
+		BuilderSlider,
+		BuilderButton,
+		BuilderInput,
+		BuilderProperty,
+		BuilderCodeEditor,
+	},
 	props: { active: Boolean },
 	emits: ["error"],
 	setup(_props, { emit }) {
 		const builder = useBuilder();
 		const propsDraft = ref("");
-    const sliderConfig = computed(() => sliderControls[builder.selectedNode.value?.name]);
-    function specializedProperty(key) {
-      if (builder.selectedPartial.value?.fields.some(field => field.key === key)) return true;
-      if (!sliderConfig.value) return false;
-      const props = builder.selectedNode.value.props;
-      const contentPath = sliderConfig.value.contentPath;
-      if (contentPath) {
-        if (key === contentPath) return isPlainRecord(props[key]);
-      } else {
-        if (key === 'slides') return Array.isArray(props.slides);
-        if (key === 'customSliderParams') return isPlainRecord(props.customSliderParams);
-      }
-      return sliderConfig.value.fields.some(field => field.path === key) && !isBinding(props[key]);
-    }
-    const descriptors = computed(() => {
-      const node = builder.selectedNode.value;
-      const trees = builder.mode.value === 'library'
-        ? [builder.activeDefinition.value?.tree ?? []]
-        : (builder.activeTemplate.value?.instances ?? []).map(instance => instance.definition.tree);
-      return propertyInfo(node?.name, { props: node?.props ?? {}, trees });
-    });
+		const sliderConfig = computed(
+			() => sliderControls[builder.selectedNode.value?.name],
+		);
+		function specializedProperty(key) {
+			if (
+				builder.selectedPartial.value?.fields.some((field) => field.key === key)
+			)
+				return true;
+			if (!sliderConfig.value) return false;
+			const props = builder.selectedNode.value.props;
+			const contentPath = sliderConfig.value.contentPath;
+			if (contentPath) {
+				if (key === contentPath) return isPlainRecord(props[key]);
+			} else {
+				if (key === "slides") return Array.isArray(props.slides);
+				if (key === "customSliderParams")
+					return isPlainRecord(props.customSliderParams);
+			}
+			return (
+				sliderConfig.value.fields.some((field) => field.path === key) &&
+				!isBinding(props[key])
+			);
+		}
+		const descriptors = computed(() => {
+			const node = builder.selectedNode.value;
+			const trees =
+				builder.mode.value === "library"
+					? [builder.activeDefinition.value?.tree ?? []]
+					: (builder.activeTemplate.value?.instances ?? []).map(
+							(instance) => instance.definition.tree,
+						);
+			return propertyInfo(node?.name, { props: node?.props ?? {}, trees });
+		});
 		const visibleProperties = computed(() =>
 			Object.keys(builder.selectedNode.value?.props ?? {}).filter(
 				(key) => !["class", "style"].includes(key) && !specializedProperty(key),
@@ -230,17 +268,27 @@ export default defineComponent({
 			},
 			{ deep: true, immediate: true },
 		);
-    function propertyValue(key) {
-      const node = builder.selectedNode.value;
-      return node.name === 'ButtonBlock' && key === 'size' && isPlainRecord(node.props.content) && !isBinding(node.props.content)
-        ? node.props.content.size ?? node.props.size : node.props[key];
-    }
-    function setProperty(key, value) {
-      const node = builder.selectedNode.value;
-      const props = { ...node.props, [key]: value };
-      if (node.name === 'ButtonBlock' && key === 'size' && isPlainRecord(props.content) && !isBinding(props.content)) props.content = { ...props.content, size: value };
-      builder.updateNode(props);
-    }
+		function propertyValue(key) {
+			const node = builder.selectedNode.value;
+			return node.name === "ButtonBlock" &&
+				key === "size" &&
+				isPlainRecord(node.props.content) &&
+				!isBinding(node.props.content)
+				? (node.props.content.size ?? node.props.size)
+				: node.props[key];
+		}
+		function setProperty(key, value) {
+			const node = builder.selectedNode.value;
+			const props = { ...node.props, [key]: value };
+			if (
+				node.name === "ButtonBlock" &&
+				key === "size" &&
+				isPlainRecord(props.content) &&
+				!isBinding(props.content)
+			)
+				props.content = { ...props.content, size: value };
+			builder.updateNode(props);
+		}
 		function addProperty(event) {
 			const key = event.target.value;
 			if (!key) return;
@@ -254,7 +302,9 @@ export default defineComponent({
 						: descriptor.type === Object
 							? {}
 							: null
-					: (value === undefined ? "" : clone(value)),
+					: value === undefined
+						? ""
+						: clone(value),
 			);
 			event.target.value = "";
 		}
@@ -276,7 +326,21 @@ export default defineComponent({
 				emit("error", "zx_builder_invalid_json");
 			}
 		}
-		return { ...builder, sliderConfig, catalog, descriptors, visibleProperties, extraProperties, propsDraft, propertyValue, setProperty, addProperty, changeType, clearProps, applyProps };
+		return {
+			...builder,
+			sliderConfig,
+			catalog,
+			descriptors,
+			visibleProperties,
+			extraProperties,
+			propsDraft,
+			propertyValue,
+			setProperty,
+			addProperty,
+			changeType,
+			clearProps,
+			applyProps,
+		};
 	},
 });
 </script>

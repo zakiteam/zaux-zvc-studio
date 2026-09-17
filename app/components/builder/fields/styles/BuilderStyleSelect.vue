@@ -10,6 +10,7 @@
       :label="selected.label"
       :swatch="selected.swatch"
       :items="items"
+      :filterItems="true"
       :disabled="disabled"
       :extraTriggerProps="{ customInnerClasses : 'flex justify-between w-full', customInnerWrapperClasses : 'w-full justify-between', class: '!w-full !min-h-[30px] !border-none !bg-transparent', 'aria-label': label + ': ' + selected.label }"
       @select="$emit('update:modelValue', $event.id)"

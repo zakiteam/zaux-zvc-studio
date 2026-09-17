@@ -25,7 +25,7 @@
         <BuilderButton variant="light" size="xs" icon="copy" iconOnly :label="translate('zx_builder_duplicate')" @click="duplicate(index)" />
         <BuilderButton variant="light" size="xs" icon="delete" iconOnly :label="translate('zx_builder_delete')" @click="remove(index)" />
       </div>
-      <BuilderDropdown :label="translate('zx_builder_slider_add')" :items="contentItems" @select="add" />
+      <BuilderDropdown :label="translate('zx_builder_slider_add')" :items="contentItems" :filterItems="true" @select="add" />
     </template>
   </section>
 </template>

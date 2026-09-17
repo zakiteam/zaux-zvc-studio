@@ -51,7 +51,7 @@ test('native defaults preserve unexposed values and field conditions follow the 
   assert.equal(isFieldVisible({ showIf: { field: 'a', value: false } }, { a: false }), true);
   assert.equal(isFieldVisible({ showIf: [{ field: 'a', operator: 'gt', value: 2 }, { field: 'b', operator: 'contains', value: 'x' }] }, { a: 3, b: ['x'] }), true);
   assert.equal(isFieldVisible({ showIf: { field: 'a', operator: 'notEmpty' } }, { a: 0 }), false);
-  assert.equal(fieldInputType({ type: 'buttongroup' }), 'json');
+  assert.equal(fieldInputType({ type: 'buttongroup' }), 'buttongroup');
   assert.equal(sourceTree({ name: 'ComponentsRenderer', props: { components: [{ name: 'p', props: { textContent: 'Text' } }] } }, 'test')[0].name, 'p');
 });
 test('all static builder icons resolve to symbols supplied by the read-only Zaux dependency', () => {

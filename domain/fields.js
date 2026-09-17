@@ -1,7 +1,8 @@
 import { getValue } from './nodes.js';
 export function fieldInputType(field) {
   if (field.type === 'html') return 'textarea';
-  if (['button', 'buttongroup', 'component'].includes(field.type)) return 'json';
+  if (field.type === 'buttongroup') return 'buttongroup';
+  if (['button', 'component'].includes(field.type)) return 'json';
   return field.type;
 }
 export function isFieldVisible(field, data) {

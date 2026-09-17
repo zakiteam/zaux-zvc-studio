@@ -19,7 +19,20 @@ export default [
       media: { type: 'img', props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false } }
     })
   },
-  { name: 'Snippetlabel', createProps: t => ({ title: t('zx_builder_preset_title'), excerpt: t('zx_builder_preset_excerpt'), icon: 'media', theme: 'light1', size: 'm', layout: 'horizontal', align: 'left', href: false }) },
+  { 
+    name: 'Snippetlabel', 
+    createProps: t => (
+      { 
+        title: t('zx_builder_preset_title'), 
+        excerpt: t('zx_builder_preset_excerpt'), 
+        icon: 'media', theme: 'light1',
+         size: 'm', 
+         layout: 'horizontal', 
+         align: 'left', 
+         href: false 
+      }
+    ) 
+  },
   {
     name: 'ButtonBlock', createProps: t => ({
       theme: 'light1', size: 'm', align: 'left', rounded: true,

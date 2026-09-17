@@ -58,9 +58,9 @@
         <BuilderInput readonly :modelValue="entry.href" :label="translate('zx_builder_fonts_link')" class="w-full mt-1 text-[11px]" @focus="$event.target.select()" />
       </article>
     </div>
-    <div class="flex justify-center gap-2 my-2">
+    <div class="flex justify-end gap-2 my-2">
       <BuilderButton :disabled="!page || loading || busy" :label="translate('zx_builder_media_previous')" @click="page--" />
-      <span>{{ page + 1 }}</span>
+      <span class="flex flex-col justify-center">{{ page + 1 }}</span>
       <BuilderButton :disabled="!hasMore || loading || busy" :label="translate('zx_builder_media_next')" @click="page++" />
     </div>
     <footer v-if="!manage" class="flex justify-end mt-3">

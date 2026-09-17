@@ -1,5 +1,5 @@
 <template>
-  <dialog ref="dialog" :aria-labelledby="titleId" @keydown.stop @cancel="cancel" @close="$emit('close')"
+  <dialog ref="dialog" :aria-labelledby="titleId" @keydown.stop @paste="paste" @cancel="cancel" @close="$emit('close')"
     class="w-[1400px] max-w-[calc(100vw-32px)] max-h-[90dvh] overflow-auto rounded-s border-none bg-zaux-white p-4 font-builder text-zaux-dark shadow-deeper backdrop:bg-zaux-black/40">
     <header class="flex items-center justify-between gap-2 mb-3">
       <h2 :id="titleId" class="text-[20px] font-medium">{{ translate('zx_builder_media_library') }}</h2>
@@ -107,9 +107,7 @@ export default defineComponent({
     }
     watch([scope, search, () => props.projectId], () => { page.value = 0; schedule(); });
     watch(page, schedule);
-    async function upload(event) {
-      const file = event.target.files?.[0];
-      event.target.value = '';
+    async function uploadFile(file) {
       if (!file || busy.value || !canManage.value) return;
       busy.value = true;
       error.value = '';
@@ -122,6 +120,30 @@ export default defineComponent({
         if (!disposed) selected.value = asset;
       } catch (exception) { if (!disposed) failure(exception); }
       finally { if (!disposed) busy.value = false; }
+    }
+    function upload(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      uploadFile(file);
+    }
+    function paste(event) {
+      if (!canManage.value || busy.value || loading.value) return;
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      let file = null;
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (item.kind === 'file' && item.type.startsWith('image/')) { file = item.getAsFile(); break; }
+      }
+      if (!file) return;
+      // Keep normal text pastes working inside text fields that also receive text.
+      const target = event.target;
+      const textEntry = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+      if (textEntry && event.clipboardData.getData('text/plain')) return;
+      event.preventDefault();
+      // Some browsers hand clipboard images over without a name; the server requires one.
+      const extension = (file.type.split('/')[1] || 'png').replace(/\+.*/, '');
+      uploadFile(file.name ? file : new File([file], `clipboard-${Date.now()}.${extension}`, { type: file.type }));
     }
     async function download(asset) {
       if (busy.value || loading.value) return;
@@ -144,7 +166,7 @@ export default defineComponent({
       disposed = true; request++; clearTimeout(timer); dialog.value?.close();
       if (previousFocus?.isConnected) previousFocus.focus();
     });
-    return { ...useTranslation(), titleId: useId(), dialog, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, download, archive, cancel };
+    return { ...useTranslation(), titleId: useId(), dialog, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, paste, download, archive, cancel };
   }
 });
 </script>

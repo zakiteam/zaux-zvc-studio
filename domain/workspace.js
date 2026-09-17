@@ -54,5 +54,14 @@ export function createWorkspace() {
   const template = createTemplate('Homepage');
   template.instances = [createInstance(hero), createInstance(text)];
   const now = new Date().toISOString();
-  return { schemaVersion: SCHEMA_VERSION, id: uid(), name: 'Untitled workspace', createdAt: now, updatedAt: now, library: [hero, text], templates: [template], styles: clone(stylePreset) };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id: uid(), 
+    name: 'Untitled workspace', 
+    createdAt: now,
+    updatedAt: now,
+    library: [hero, text],
+    templates: [template],
+    styles: clone(stylePreset)
+  };
 }

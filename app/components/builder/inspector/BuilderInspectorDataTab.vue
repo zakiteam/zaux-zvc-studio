@@ -34,7 +34,7 @@
 						!canEditRemote || isSourceBase || (isSource && !hasSource)
 					"
 					:label="field.label"
-          :image="isImageField(field.key, fieldValue(field))"
+          			:image="isImageField(field.key, fieldValue(field))"
 					:type="fieldInputType(field)"
 					:options="field.options"
 					:modelValue="fieldValue(field)"

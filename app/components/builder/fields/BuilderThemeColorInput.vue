@@ -14,7 +14,7 @@
       class="h-[32px] w-0 min-w-0 flex-1 !bg-transparent !px-0 !pr-1 font-mono text-[11px] focus:outline-none"
       @change="$emit('change', $event.target.value)" />
     <BuilderDropdown class="shrink-0 border-l-slim border-zaux-light-grey" align="end" btnSize="xs" btnTheme="alt1"
-      :label="translate('zx_builder_theme_color_tokens')" :items="items" :disabled="disabled"
+      :label="translate('zx_builder_theme_color_tokens')" :items="items" :filterItems="true" :disabled="disabled"
       :extraTriggerProps="{ class: '!min-h-[32px] !px-1.5 !py-0 !border-none !bg-transparent', 'aria-label': translate('zx_builder_theme_color_choose_token') + ': ' + label }"
       @select="selectToken">
       <template #header>

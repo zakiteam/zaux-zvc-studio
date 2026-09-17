@@ -59,6 +59,16 @@
 				>
 					<slot name="header" />
 				</div>
+				<div v-if="filterItems" ref="filterWrap" role="presentation" class="px-2 pb-2 pt-1">
+					<BuilderInput
+						v-model="query"
+						type="search"
+						autocomplete="off"
+						class="w-full rounded-xxs text-[11px]"
+						:placeholder="translate('zx_builder_dropdown_filter_placeholder')"
+						:label="translate('zx_builder_dropdown_filter')"
+					/>
+				</div>
 				<div class="max-h-[min(60dvh,420px)] overflow-y-auto px-2 flex flex-col gap-1">
 					<template v-for="item in visibleItems" :key="item.id">
 						<div
@@ -98,6 +108,13 @@
 							:theme="btnTheme"
 						/>
 					</template>
+					<p
+						v-if="filterItems && query && !visibleItems.length"
+						role="presentation"
+						class="px-0 py-1.5 text-[11px] text-zaux-dark-grey"
+					>
+						{{ translate('zx_builder_dropdown_no_results') }}
+					</p>
 				</div>
 			</div>
 			</Teleport>
@@ -106,9 +123,11 @@
 </template>
 <script>
 import { defineComponent, ref, computed, nextTick, watch, useId, onMounted, onBeforeUnmount } from "vue";
+import { useTranslation } from "../../composables/useTranslation.js";
 import BuilderButton from "./BuilderButton.vue";
+import BuilderInput from "./fields/BuilderInput.vue";
 export default defineComponent({
-	components: { BuilderButton },
+	components: { BuilderButton, BuilderInput },
 	props: {
 		btnTheme : { default : 'secondary' },
 		label: { type: String, required: true },
@@ -118,6 +137,7 @@ export default defineComponent({
 		contentClass: { type: String, default: "" },
 		swatch: String,
 		items: { type: Array, default: () => [] },
+		filterItems: Boolean,
 		disabled: Boolean,
 		align: { default: "start" },
 		popOverProps : { default : null },
@@ -126,16 +146,29 @@ export default defineComponent({
 	},
 	emits: ["select", "contextmenu"],
 	setup(props, { emit }) {
+		const { translate } = useTranslation();
 		const popover = ref(null);
 		const trigger = ref(null);
 		const menu = ref(null);
 		const open = ref(false);
 		const contextStyle = ref({});
 		const menuId = useId();
+		const filterWrap = ref(null);
+		const query = ref("");
 		let focusLast = false;
-		const visibleItems = computed(() =>
-			props.items.filter((item) => item.hidden !== true),
-		);
+		const visibleItems = computed(() => {
+			const items = props.items.filter((item) => item.hidden !== true);
+			const needle = props.filterItems ? query.value.trim().toLowerCase() : "";
+			if (!needle) return items;
+			return items
+				.filter(
+					(item) =>
+						!item.separator &&
+						String(item.label ?? "").toLowerCase().includes(needle),
+				)
+				.map((item) => (item.heading ? { ...item, heading: undefined } : item));
+		});
+		const filterField = () => filterWrap.value?.querySelector("input") ?? null;
 		const buttons = () => [
 			...(menu.value?.querySelectorAll('[role="menuitem"]:not(:disabled)') ??
 				[]),
@@ -152,8 +185,12 @@ export default defineComponent({
 			}
 			open.value = true;
 			await nextTick();
-			const items = buttons();
-			(focusLast ? items.at(-1) : items[0])?.focus();
+			const field = filterField();
+			if (field) field.focus();
+			else {
+				const items = buttons();
+				(focusLast ? items.at(-1) : items[0])?.focus();
+			}
 			focusLast = false;
 		}
 		function triggerClick(event) {
@@ -179,7 +216,7 @@ export default defineComponent({
 				top: `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`,
 			};
 			await nextTick();
-			if (open.value) buttons()[0]?.focus({ preventScroll: true });
+			if (open.value) (filterField() ?? buttons()[0])?.focus({ preventScroll: true });
 		}
 		function outsidePointer(event) {
 			if (props.contextMenu && open.value && !trigger.value?.contains(event.target) && !menu.value?.contains(event.target)) close();
@@ -213,11 +250,32 @@ export default defineComponent({
 			if (props.disabled) return;
 			focusLast = event.key === "ArrowUp";
 			if (open.value) {
-				const items = buttons();
-				(focusLast ? items.at(-1) : items[0])?.focus();
+				const field = filterField();
+				if (field && !focusLast) field.focus();
+				else {
+					const items = buttons();
+					(focusLast ? items.at(-1) : items[0])?.focus();
+				}
 			} else popover.value?.toggleDropDown();
 		}
 		function menuKeydown(event) {
+			const field = filterField();
+			if (field && event.target === field) {
+				if (event.key === "Escape") {
+					event.preventDefault();
+					event.stopPropagation();
+					if (query.value) query.value = "";
+					else close(true);
+					return;
+				}
+				if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				const matches = buttons();
+				if (!matches.length) return;
+				(event.key === "ArrowDown" ? matches[0] : matches.at(-1))?.focus();
+				return;
+			}
 			if (event.key === "Escape") {
 				event.preventDefault();
 				event.stopPropagation();
@@ -256,6 +314,9 @@ export default defineComponent({
 			close(true);
 			emit("select", item);
 		}
+		watch(open, (isOpen) => {
+			if (!isOpen) query.value = "";
+		});
 		watch(
 			() => props.disabled,
 			(disabled) => {
@@ -268,6 +329,9 @@ export default defineComponent({
 			menu,
 			open,
 			menuId,
+			filterWrap,
+			query,
+			translate,
 			visibleItems,
 			opened,
 			triggerKeydown,

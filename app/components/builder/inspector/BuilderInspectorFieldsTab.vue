@@ -24,7 +24,7 @@
 			>
 				<label>{{ translate("zx_builder_field_label") }}</label
 				><input
-					class="px-2 py-1"
+					class="px-2 py-1 bg-zaux-light"
 					:value="field.label"
 					@change="updateField(field.key, 'label', $event.target.value)"
 				/>
@@ -34,7 +34,7 @@
 			>
 				<label>{{ translate("zx_builder_field_type") }}</label
 				><select
-					class="px-2 py-1"
+					class="px-2 py-1 bg-zaux-light"
 					:value="field.type"
 					@change="changeType(field.key, $event.target.value)"
 				>
@@ -66,10 +66,13 @@
             <label class="block mb-1 text-[11px]">{{ translate('zx_builder_field_show_if') }}</label>
             <BuilderValue type="json" :label="translate('zx_builder_field_show_if')" :modelValue="field.showIf ?? null"
               @update:modelValue="updateField(field.key, 'showIf', $event)" />
-			<BuilderButton
-				:label="translate('zx_builder_delete')"
-				@click="deleteField(field.key)"
-			/>
+			<div class="pt-1">
+				<BuilderButton
+					size="xs"
+					:label="translate('zx_builder_delete')"
+					@click="deleteField(field.key)"
+				/>
+			</div>
 		</details>
 		<form
 			class="zb-new-field border-t-slim border-zaux-light-grey py-2.5 [&>h3]:mb-2.5 [&>h3]:text-[14px]"
@@ -147,9 +150,11 @@ export default defineComponent({
 				? false
 				: type === "number"
 					? 0
-					: ["json", "button", "buttongroup", "component"].includes(type)
-						? {}
-						: "";
+					: type === "buttongroup"
+						? []
+						: ["json", "button", "component"].includes(type)
+							? {}
+							: "";
 		function updateField(key, property, value) {
 			builder.updateDefinition((def) => {
 				def.fields.find((field) => field.key === key)[property] = value;
