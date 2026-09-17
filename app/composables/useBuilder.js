@@ -508,7 +508,10 @@ export function createBuilder({ projectId = null } = {}) {
     if (targetId && !target) return false;
     if (position === 'inside' && (!target || !containers.includes(target.name))) return false;
     if (['catalog', 'clipboard'].includes(payload.kind)) return true;
-    if (payload.instanceId !== targetInstanceId) return false;
+    if (mode.value === 'template' && payload.instanceId !== targetInstanceId) {
+      const origin = activeTemplate.value.instances.find(item => item.id === payload.instanceId)?.definition;
+      return Boolean(origin && !origin.sourceKey && findNode(origin.tree, payload.id));
+    }
     const source = findNode(definition.tree, payload.id);
     return Boolean(source && payload.id !== targetId && !findNode(source.children, targetId));
   }
@@ -519,7 +522,20 @@ export function createBuilder({ projectId = null } = {}) {
     if (payload.kind === 'instance') { moveInstance(payload.id, targetInstanceId, position); return; }
     if (payload.kind === 'catalog') { addElement(payload.name, targetId, position, targetInstanceId); return; }
     if (payload.kind !== 'node') return;
-    if (mode.value !== 'library' && payload.instanceId !== targetInstanceId) return;
+    if (mode.value === 'template' && payload.instanceId !== targetInstanceId) {
+      const origin = activeTemplate.value.instances.find(item => item.id === payload.instanceId);
+      const destination = activeTemplate.value.instances.find(item => item.id === targetInstanceId);
+      let moved;
+      commit(() => {
+        const location = locateNode(origin.definition.tree, payload.id);
+        const snapshot = snapshotNode(location.list[location.index], origin.definition, origin.data, document.value.library);
+        moved = materializeNode(snapshot, destination.definition, document.value.library);
+        insertNode(destination.definition.tree, moved, targetId, position);
+        location.list.splice(location.index, 1);
+      });
+      if (!error.value) selectInstance(targetInstanceId, moved.id);
+      return;
+    }
     selectInstance(targetInstanceId, payload.id);
     if (!editableStructure()) return;
     commit(() => moveNode(activeDefinition.value.tree, payload.id, targetId, position));
