@@ -37,6 +37,14 @@ export function createBuilder({ projectId = null } = {}) {
     if (collapsedOutline.value.has(key)) collapsedOutline.value.delete(key);
     else collapsedOutline.value.add(key);
   }
+  const revealTarget = ref(null);
+  function reveal(instanceId, nodeId = null) {
+    revealTarget.value = { instanceId, nodeId };
+  }
+  const revealOutlineTarget = ref(null);
+  function revealOutline(instanceId) {
+    revealOutlineTarget.value = { instanceId };
+  }
   const leftTab = ref('library');
   const libraryCategory = ref('imported');
   const librarySearch = ref('');
@@ -587,7 +595,7 @@ export function createBuilder({ projectId = null } = {}) {
     const copy = visualSourceCopy(activeDefinition.value, mode.value === 'template' ? activeInstance.value.data : {});
     if (isSourceBase.value) { copy.id = uid(); copy.name += ' (' + i18n.translate('zx_builder_visual') + ')'; commit(workspace => appendLibraryDefinition(workspace, copy)); selectLibrary(copy.id); }
     else commit(() => { Object.keys(activeDefinition.value).forEach(key => delete activeDefinition.value[key]); Object.assign(activeDefinition.value, copy); if (mode.value === 'template') activeInstance.value.data = {}; });
-    nodeId.value = null; inspectorTab.value = 'properties'; leftTab.value = 'outline';
+    nodeId.value = null; inspectorTab.value = 'properties'; leftTab.value = 'library';
   }
   function updateData(key, value) { if (activeInstance.value) commit(() => { if (value === undefined) delete activeInstance.value.data[key]; else activeInstance.value.data[key] = value; }); }
   function saveToLibrary(name) {
@@ -640,7 +648,26 @@ export function createBuilder({ projectId = null } = {}) {
     }
   });
   onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
-  const api = { clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  function collapseAllOutline() {
+    const next = new Set(collapsedOutline.value);
+    const walk = (nodes, prefix) => {
+      for (const node of nodes) {
+        next.add(prefix + node.id);
+        if (node.children?.length) walk(node.children, prefix);
+      }
+    };
+    if (mode.value === 'library' && activeDefinition.value) {
+      next.add('definition:' + activeDefinition.value.id);
+      walk(activeDefinition.value.tree, 'node:library:');
+    } else {
+      for (const instance of activeTemplate.value.instances) {
+        next.add('instance:' + instance.id);
+        walk(instance.definition.tree, 'node:' + instance.id + ':');
+      }
+    }
+    collapsedOutline.value = next;
+  }
+  const api = { clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

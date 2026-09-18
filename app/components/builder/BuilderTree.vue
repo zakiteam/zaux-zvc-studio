@@ -35,7 +35,7 @@
               :aria-haspopup="canWrap ? 'menu' : undefined"
               :aria-expanded="canWrap ? open : undefined"
               :aria-controls="canWrap ? menuId : undefined"
-              @click="selectInstance(instance, node.id)"
+              @click="revealNode(node.id)"
               @dragstart.stop="outlineDrag.start($event, { kind: 'node', id: node.id, instanceId: instance })"
             ><span>{{ node.name }}</span><small v-if="node.children.length">{{ node.children.length }}</small></button>
             <div class="zb-tree-actions flex shrink-0 items-center gap-[1px] [&>.zb-button]:!min-w-[25px] [&>.zb-button]:!w-[25px] [&>.zb-button]:!p-0.5">
@@ -88,7 +88,8 @@
       function wrapHere(id) { builder.selectInstance(props.instance, id); builder.wrapNode(); }
       function duplicateHere(id) { builder.selectInstance(props.instance, id); builder.duplicateNode(); }
       function deleteHere(id) { builder.selectInstance(props.instance, id); builder.deleteNode(); }
-      return { ...builder, outlineDrag, canWrap, wrapHere, duplicateHere, deleteHere };
+      function revealNode(id) { builder.selectInstance(props.instance, id); builder.reveal(props.instance, id); }
+      return { ...builder, outlineDrag, canWrap, wrapHere, duplicateHere, deleteHere, revealNode };
     }
   });
   

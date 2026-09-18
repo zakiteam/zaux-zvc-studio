@@ -62,10 +62,10 @@
 			<BuilderPreviewControls class="pt-1.5" />
 			<div
 				v-if="mode === 'library'"
-				class="zb-context-line flex justify-between gap-1.5 bg-zaux-accent/5 px-3 py-1.5 text-[10px] text-zaux-dark-grey [&>button]:whitespace-nowrap [&>button]:text-zaux-accent [&>button]:underline"
+				class="zb-context-line flex justify-between gap-1.5 dark:text-utility-notice bg-utility-notice/30 px-3 py-1.5 text-[10px] text-zaux-dark-grey dark:text-set1-notice [&>button]:whitespace-nowrap [&>button]:text-zaux-accent [&>button]:underline"
 			>
 				<span>{{ translate("zx_builder_library_notice") }}</span
-				><button @click="selectTemplate(activeTemplate.id)">
+				><button class="!text-zaux-dark" @click="selectTemplate(activeTemplate.id)">
 					{{ translate("zx_builder_back_template") }} ↗
 				</button>
 			</div>

@@ -11,6 +11,25 @@ export default defineComponent({
       const component = resolveDynamicComponent(node.name);
       const attributes = { ...node.props, key: index };
       const children = () => (node.children ?? []).map(render);
+      // textContent and innerHTML are DOM properties: assigning them removes every
+      // child element, and Vue never re-creates the already mounted children.
+      // Elements that accept dropped nodes render authored text/markup as children.
+      function elementChildren() {
+        const list = children();
+        if (!list.length) return list;
+        const text = attributes.textContent;
+        if (text != null && typeof text !== 'object') {
+          delete attributes.textContent;
+          const value = String(text);
+          return value ? [value, ...list] : list;
+        }
+        const html = attributes.innerHTML;
+        if (typeof html === 'string') {
+          delete attributes.innerHTML;
+          return html ? [h('span', { innerHTML: html }), ...list] : list;
+        }
+        return list;
+      }
       const trigger = ['OffCanvasTrigger', 'ZModalTrigger'].includes(node.name);
       if (trigger && !node.children?.length) {
         return h('span', { 'data-zb-node': attributes['data-zb-node'], draggable: attributes.draggable, class: 'inline-block min-h-[24px] min-w-[48px]' });
@@ -26,7 +45,7 @@ export default defineComponent({
         const result = h(component, attributes, slots);
         return editorId ? h('span', { 'data-zb-node': editorId, draggable: true, class: 'inline-block' }, [result]) : result;
       }
-      return h(component, attributes, typeof component === 'string' ? children() : slots);
+      return h(component, attributes, typeof component === 'string' ? elementChildren() : slots);
     }
     return () => (props.components ?? []).map(render);
   }

@@ -1,10 +1,12 @@
 <template>
 	<aside
+		ref="asideEl"
 		class="zb-sidebar flex min-h-0 w-[254px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[1200px]:w-[230px] max-[900px]:h-[80dvh] max-[900px]:!w-[210px]"
 		:style="{ width: `${width}px` }"
 	>
 		<section
-			class="px-1.5 py-2"
+			ref="templatesEl"
+			class="shrink-0 px-1.5 py-2"
 			:aria-label="translate('zx_builder_templates')"
 		>
 			<div class="flex items-center justify-between mb-2">
@@ -68,11 +70,12 @@
 			</div>
 		</section>
 		<div
+			ref="tabsEl"
 			class="zb-tabs flex shrink-0 gap-0.5 border-y-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
 			role="tablist"
 		>
 			<button
-				v-for="tab in ['library', 'elements', 'outline']"
+				v-for="tab in ['library', 'elements']"
 				:key="tab"
 				role="tab"
 				:aria-selected="leftTab === tab"
@@ -84,26 +87,34 @@
 		</div>
 		<div class="flex-1 h-full min-h-0 overflow-auto zb-scroll">
 			<div v-if="leftTab === 'library'" class="zb-library-panel px-2 py-2.5">
-				<div
-					class="zb-panel-heading mb-2 flex items-center justify-between [&_h2]:text-[16px] [&_h2]:font-medium [&_h2]:tracking-[-0.4px] [&_p]:mt-0.5 [&_p]:text-[10px] [&_p]:text-zaux-dark-grey"
-				>
-					<div>
-						<h2>{{ translate("zx_builder_library") }}</h2>
-						<p>
-							{{ filteredLibrary.length }}
-							{{ translate("zx_builder_" + libraryKind) }}
-						</p>
+				<div class="sticky top-0 z-10 -mx-2 -mt-2.5 bg-zaux-white px-2 pt-2.5 pb-2.5">
+					<div
+						class="zb-panel-heading mb-2 flex items-center justify-between [&_h2]:text-[16px] [&_h2]:font-medium [&_h2]:tracking-[-0.4px] [&_p]:mt-0.5 [&_p]:text-[10px] [&_p]:text-zaux-dark-grey"
+					>
+						<div>
+							<h2>{{ translate("zx_builder_library") }}</h2>
+							<p>
+								{{ filteredLibrary.length }}
+								{{ translate("zx_builder_" + libraryKind) }}
+							</p>
+						</div>
+						<BuilderDropdown
+							:label="translate('zx_builder_create')"
+							icon="add"
+							align="end"
+							:popOverProps="{
+								dropdown: { class: '!max-w-[150px]' },
+							}"
+							:items="createItems"
+							:disabled="!canEditRemote"
+							@select="modal = { type: $event.id }"
+						/>
 					</div>
-					<BuilderDropdown
-						:label="translate('zx_builder_create')"
-						icon="add"
-						align="end"
-						:popOverProps="{
-							dropdown: { class: '!max-w-[150px]' },
-						}"
-						:items="createItems"
-						:disabled="!canEditRemote"
-						@select="modal = { type: $event.id }"
+					<BuilderInput
+						v-model="librarySearch"
+						type="search"
+						:label="translate('zx_builder_library_search')"
+						:placeholder="translate('zx_builder_library_search')"
 					/>
 				</div>
 				<div
@@ -120,7 +131,7 @@
 						:aria-controls="'library-panel-' + kind"
 						:aria-selected="libraryKind === kind"
 						:tabindex="libraryKind === kind ? 0 : -1"
-						class="flex-1 py-1.5 text-[11px] border-b-thick"
+						class="flex-1 py-1 text-[11px] border-b-thick"
 						:class="
 							libraryKind === kind
 								? 'border-zaux-accent text-zaux-accent'
@@ -147,12 +158,6 @@
 								label: translate('zx_builder_library_project'),
 							},
 						]"
-					/>
-					<BuilderInput
-						v-model="librarySearch"
-						type="search"
-						:label="translate('zx_builder_library_search')"
-						:placeholder="translate('zx_builder_library_search')"
 					/>
 				</div>
 				<p
@@ -311,7 +316,7 @@
 				</p>
 			</div>
 			<div
-				v-else-if="leftTab === 'elements'"
+				v-else
 				class="zb-elements-panel px-2 py-2.5 [&>input]:mb-0.5 [&_h3]:mb-1 [&_h3]:mt-3"
 			>
 				<BuilderInput
@@ -368,10 +373,27 @@
 					{{ translate("zx_builder_empty_search") }}
 				</p>
 			</div>
-			<div v-else class="zb-outline-panel px-2 py-2.5">
+		</div>
+		<BuilderResizeHandle
+			direction="vertical"
+			side="bottom"
+			:label="translate('zx_builder_resize_outline')"
+			@resize="resizeOutline"
+		/>
+		<section
+			class="px-2 overflow-auto zb-outline-panel shrink-0 zb-scroll border-t-slim border-zaux-light-grey"
+			:style="{ height: `${outlineHeight}px` }"
+			:aria-label="translate('zx_builder_outline')"
+		>
 				<!-- Copy/Paste node -->
-				<div class="flex flex-col justify-start gap-2 mb-3 text-left">
-					<div class="flex items-stretch gap-1">
+				<div class="sticky top-0 z-10 -mx-2 mb-3 flex flex-col justify-start gap-2 bg-zaux-white px-2 pt-1.5 text-left">
+					<div class="flex items-center justify-between">
+						<h3 class="zb-eyebrow text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
+							{{ translate("zx_builder_outline") }}
+						</h3>
+						<BuilderButton class="!flex-none" variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" :title="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
+					</div>
+					<div class="flex items-stretch gap-1 pb-2">
 						<BuilderButton class="w-full" size="xs" icon="copy" :label="translate('zx_builder_copy_node')" :disabled="!canCopyNode" @click="copySelectedNode()" />
 						<BuilderButton class="w-full" size="xs" :label="translate('zx_builder_paste_node')" :disabled="!canPasteNode" @click="pasteNode()" />
 					</div>
@@ -383,10 +405,10 @@
 					{{ translate("zx_builder_outline_drag_hint") }}
 				</p>
 				<template v-if="mode === 'library'"
-					><div class="flex items-center gap-0.5">
+					><div class="flex items-center gap-0.5" data-zb-outline-definition>
 						<button
 							type="button"
-							class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
 							:aria-expanded="
 								!collapsedOutline.has('definition:' + activeDefinition?.id)
 							"
@@ -433,6 +455,7 @@
 					><article
 						v-for="instance in activeTemplate.instances"
 						:key="instance.id"
+						:data-zb-outline-instance="instance.id"
 						class="zb-instance relative mb-2 rounded-xxs border-slim border-zaux-light-grey p-1 [&.active]:border-zaux-accent"
 						:class="{ active: instanceId === instance.id }"
 						:draggable="canEditRemote"
@@ -456,7 +479,7 @@
 						<div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
 							<button
 								type="button"
-								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
 								:aria-expanded="
 									!collapsedOutline.has('instance:' + instance.id)
 								"
@@ -478,7 +501,7 @@
 							</button>
 							<button
 								class="zb-instance-name flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
-								@click="selectInstance(instance.id)"
+								@click="revealInstance(instance.id)"
 							>
 								<span>⠿</span>{{ instance.name }}
 							</button>
@@ -559,7 +582,7 @@
 							<button
 								v-if="instance.definition.sourceKey"
 								class="zb-source-outline px-1.5 py-1 text-left text-[10px] text-zaux-accent"
-								@click="selectInstance(instance.id)"
+								@click="revealInstance(instance.id)"
 							>
 								{{ translate("zx_builder_source_outline") }}</button
 							><BuilderTree
@@ -569,10 +592,10 @@
 							/>
 						</template></article
 				></template>
-			</div>
-		</div>
+		</section>
 		<div
-			class="zb-sidebar-footer flex items-center justify-between border-t-slim border-zaux-light-grey px-2 py-1.5 text-[11px] text-zaux-dark-grey [&>select]:w-[58px] [&>select]:p-0.5 [&>select]:text-[10px] [&_small]:ml-0.5 [&_small]:text-[9px]"
+			ref="footerEl"
+			class="zb-sidebar-footer flex shrink-0 items-center justify-between border-t-slim border-zaux-light-grey px-2 py-1.5 text-[11px] text-zaux-dark-grey [&>select]:w-[58px] [&>select]:p-0.5 [&>select]:text-[10px] [&_small]:ml-0.5 [&_small]:text-[9px]"
 		>
 			<span>Zaux Studio <small>0.1</small></span
 			><BuilderInput
@@ -598,12 +621,13 @@
 </template>
 <script>
 import BuilderMediaPicker from "./BuilderMediaPicker.vue";
-import { defineComponent, computed, ref } from "vue";
+import { defineComponent, computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderDropdown from "./BuilderDropdown.vue";
 import BuilderButton from "./BuilderButton.vue";
+import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 import BuilderTree from "./BuilderTree.vue";
 import BuilderInput from "./fields/BuilderInput.vue";
@@ -612,6 +636,7 @@ export default defineComponent({
 		BuilderDropdown,
 		BuilderCodeEditor,
 		BuilderButton,
+		BuilderResizeHandle,
 		BuilderTree,
 		BuilderInput,
 		BuilderMediaPicker,
@@ -621,6 +646,50 @@ export default defineComponent({
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
+		watch(() => builder.revealOutlineTarget.value, async (target) => {
+			if (!target) return;
+			await nextTick();
+			const selector = builder.mode.value === "library"
+				? "[data-zb-outline-definition]"
+				: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
+			document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
+		});
+		const outlineHeight = ref(260);
+		const asideEl = ref(null);
+		const templatesEl = ref(null);
+		const tabsEl = ref(null);
+		const footerEl = ref(null);
+		const MIN_OUTLINE_HEIGHT = 120;
+		const MIN_CONTENT_HEIGHT = 80;
+		const RESIZE_HANDLE_HEIGHT = 4;
+		function clampOutline() {
+			const aside = asideEl.value;
+			if (!aside) return;
+			const fixed =
+				(templatesEl.value?.offsetHeight ?? 0) +
+				(tabsEl.value?.offsetHeight ?? 0) +
+				(footerEl.value?.offsetHeight ?? 0) +
+				RESIZE_HANDLE_HEIGHT;
+			const max = Math.max(
+				MIN_OUTLINE_HEIGHT,
+				aside.clientHeight - fixed - MIN_CONTENT_HEIGHT,
+			);
+			outlineHeight.value = Math.min(
+				max,
+				Math.max(MIN_OUTLINE_HEIGHT, outlineHeight.value),
+			);
+		}
+		function resizeOutline(delta) {
+			outlineHeight.value += delta;
+			clampOutline();
+		}
+		onMounted(() => {
+			clampOutline();
+			window.addEventListener("resize", clampOutline);
+		});
+		onBeforeUnmount(() => {
+			window.removeEventListener("resize", clampOutline);
+		});
 		const createItems = computed(() => [
 			{
 				id: "new-component",
@@ -698,6 +767,11 @@ export default defineComponent({
 			};
 		}
 
+		function revealInstance(id) {
+			builder.selectInstance(id);
+			builder.reveal(id);
+		}
+
 		return {
 			...builder,
 			createItems,
@@ -712,6 +786,13 @@ export default defineComponent({
 			setPreview,
 			openNewTemplateModal,
 			openRenameTplModal,
+			revealInstance,
+			outlineHeight,
+			resizeOutline,
+			asideEl,
+			templatesEl,
+			tabsEl,
+			footerEl,
 		};
 	},
 });

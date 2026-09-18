@@ -55,6 +55,7 @@ export default [
       props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false }
     }
   },
+  { name : "RichText" },
   { name: 'Icon', props: { iconName: 'media', iconSet: 'zaux', size: 'text-icon-m', ariaHidden: true } },
   { name: 'Separator', props: {} },
   { name: 'a', html: true, createProps: t => ({ textContent: t('zx_builder_preset_link'), href: '#', id: '' }) },
@@ -67,18 +68,21 @@ export default [
   },
   {
     name : "HtmlRenderer",
+    container : true,
     props : {
       tag : "div",
       html : "Your content here"
     }
   },
-  { name: 'li', html: true, createProps: t => ({ textContent: t('zx_builder_preset_list_item') }) },
+  { name: 'li', html: true, container : true },
   { name: 'h1', html: true, props: { class : 'text-display-l', textContent: 'Heading 1' } },
   { name: 'h2', html: true, props: { class : 'text-display-m', textContent: 'Heading 2' } },
   { name: 'h3', html: true, props: { class : 'text-display-s', textContent: 'Heading 3' } },
   { name: 'h4', html: true, props: { class : 'text-display-xs', textContent: 'Heading 4' } },
   { name: 'h5', html: true, props: { class : 'text-display-xs', textContent: 'Heading 5' } },
   { name: 'h6', html: true, props: { class : 'text-display-xs', textContent: 'Heading 6' } },
+  { name: 'header', container: true, html: true, props : { id : "#zx-app-header"} },
+  { name: 'footer', container: true, html: true, props : { id: "#zx-app-footer"} },
   { name: 'p', html: true, props: { textContent: 'A new paragraph' } },
   { name: 'span', html: true, props: { textContent: 'Span text' } }
 ];

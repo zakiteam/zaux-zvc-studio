@@ -3,7 +3,7 @@
     <template v-if="selectedSlide">
       <div class="flex flex-col gap-2 p-3 bg-zaux-light/50 outline outline-zaux-light-grey rounded-xs">
         <BuilderButton class="mb-2" size="s" icon="chevron-left" variant="alt1" :label="translate('zx_builder_slider_back')" @click="selected = null" />
-        <p class="text-cta-l font-builder">{{ selected + 1 }} · {{ selectedSlide.name || translate('zx_builder_slider_slide') }}</p>
+        <p class="text-cta-m font-builder">{{ selected + 1 }} · {{ selectedSlide.name || translate('zx_builder_slider_slide') }}</p>
         <BuilderPartialFields v-if="partial && isPlainRecord(selectedSlide.props)" :key="selected" :definition="partial" :reference="selectedSlide" :bindings="bindings"
           :modelValue="selectedSlide.props" @change="updateProps" />
         <BuilderSliderFields v-else-if="definition && (selectedSlide.props == null || isPlainRecord(selectedSlide.props))" :key="selected" :modelValue="selectedSlide.props ?? {}"

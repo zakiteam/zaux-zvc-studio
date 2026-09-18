@@ -19,18 +19,22 @@ export default defineComponent({
     let timer;
     let generation = 0;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     function receive(event) {
       if (event.origin !== window.location.origin || event.source !== frame.value?.contentWindow || event.data?.channel !== 'zaux-studio') return;
       const message = event.data;
       if (!builder.previewOnly.value && message.instanceId === (builder.mode.value === 'library' ? 'library' : builder.instanceId.value) && message.nodeId === builder.nodeId.value) {
         if (message.type === 'copy-node') builder.copySelectedNode();
+        if (message.type === 'paste-node') builder.pasteNode();
         if (message.type === 'duplicate-node') builder.duplicateNode();
         if (message.type === 'delete-node') builder.deleteNode();
       }
       if (message.type === 'ready') sendState();
-      if (message.type === 'select') builder.selectInstance(message.instanceId, message.nodeId);
+      if (message.type === 'select') {
+        builder.selectInstance(message.instanceId, message.nodeId);
+        if (message.revealOutline) builder.revealOutline(message.instanceId);
+      }
       if (message.type === 'drop' && !builder.previewOnly.value) builder.dropElement(message.payload, message.nodeId, message.position, message.instanceId);
     }
     async function compileCss() {
@@ -40,8 +44,12 @@ export default defineComponent({
         if (token === generation) { dynamicCss.value = result.css; sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
-    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.canCopyNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
+    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
+    watch(() => builder.revealTarget.value, (target) => {
+      if (!target) return;
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'reveal', instanceId: target.instanceId, nodeId: target.nodeId }, window.location.origin);
+    });
     onMounted(() => { window.addEventListener('message', receive); compileCss(); });
     onBeforeUnmount(() => { window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
     return { ...builder, frame, sendState };

@@ -78,7 +78,7 @@
 			/>
 		</div>
 		<template v-else>
-      <template v-if="descriptor.control == 'buttongroup'">
+      <template v-if="descriptor?.control == 'buttongroup'">
           <BuilderValue
             :modelValue="value"
             :label="property"
@@ -126,7 +126,9 @@ export default defineComponent({
 		path: String,
 		value: { default: null },
 		fields: Array,
-		descriptor: Object,
+		// Authored props without a descriptor (for example the id of the header and
+		// footer presets) fall back to an empty descriptor, so the field still renders.
+		descriptor: { type: Object, default: () => ({}) },
 	},
 	emits: ["change"],
 	setup(props, { emit }) {

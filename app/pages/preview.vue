@@ -8,11 +8,13 @@
       <div v-if="!state.clean && !instance.definition.tree.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ instance.name }}</span><h2>{{ translate('zx_builder_empty_tree') }}</h2></div>
     </section>
     <div v-if="selection && state.editable" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick border-zaux-accent" :style="selection.style" />
-    <div v-if="selection && state.editable" ref="selectionToolbar" data-zb-toolbar class="fixed z-[901] flex items-center gap-1 max-w-[calc(100vw-8px)] rounded-xxs bg-zaux-accent px-1 py-0.5 font-builder text-[10px] text-zaux-white" :style="selection.toolbarStyle">
+    <div v-if="selection && state.editable && hovering" ref="selectionToolbar" data-zb-toolbar class="fixed z-[901] flex items-center gap-1 max-w-[calc(100vw-8px)] rounded-xxs bg-zaux-accent px-1 py-0.5 font-builder text-[10px] text-zaux-white" :style="selection.toolbarStyle" @mouseenter="onHoverEnter" @mouseleave="onHoverLeave">
       <span class="min-w-0 truncate">{{ selection.name }}</span>
-      <button v-if="state.canCopyNode" type="button" class="shrink-0 rounded-xxs px-1 hover:bg-white/20 focus-visible:outline" @click.stop="nodeAction('copy-node')">{{ translate('zx_builder_copy_node') }}</button>
-      <button v-if="state.canCopyNode" type="button" class="shrink-0 rounded-xxs px-1 hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDuplicateNode" @click.stop="nodeAction('duplicate-node')">{{ translate('zx_builder_duplicate') }}</button>
-      <button v-if="state.canCopyNode" type="button" class="shrink-0 rounded-xxs px-1 hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDeleteNode" @click.stop="nodeAction('delete-node')">{{ translate('zx_builder_delete') }}</button>
+      <button v-if="state.selectedNodeId" type="button" class="shrink-0 rounded-xxs px-1 hover:bg-white/20 focus-visible:outline" :title="translate('zx_builder_parent')" :aria-label="translate('zx_builder_parent')" @click.stop="parentAction()"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 10.5V2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.5 6L6 2.5L9.5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button v-if="state.canCopyNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline" @click.stop="nodeAction('copy-node')">{{ translate('zx_builder_copy_node') }}</button>
+      <button v-if="state.canPasteNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline" @click.stop="nodeAction('paste-node')">{{ translate('zx_builder_paste_node') }}</button>
+      <button v-if="state.canCopyNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDuplicateNode" @click.stop="nodeAction('duplicate-node')">{{ translate('zx_builder_duplicate') }}</button>
+      <button v-if="state.canCopyNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDeleteNode" @click.stop="nodeAction('delete-node')">{{ translate('zx_builder_delete') }}</button>
     </div>
     <div v-if="dropMarker && state.editable" class="zb-drop-marker pointer-events-none absolute z-[1000] bg-zaux-accent [&.zb-drop-marker--inside]:border-thick [&.zb-drop-marker--inside]:border-zaux-accent [&.zb-drop-marker--inside]:bg-zaux-accent/10 [&>span]:absolute [&>span]:left-0.5 [&>span]:top-0.5 [&>span]:bg-zaux-accent [&>span]:px-1 [&>span]:py-0.5 [&>span]:font-builder [&>span]:text-[10px] [&>span]:text-zaux-white" :class="{ 'zb-drop-marker--inside': dropMarker.position === 'inside' }" :style="dropMarker.style"><span>{{ translate(`zx_builder_${dropMarker.position}`) }}</span></div>
   </div>
@@ -45,11 +47,22 @@ export default defineComponent({
     const selection = ref(null);
     const selectionToolbar = ref(null);
     const dropMarker = ref(null);
+    const hovering = ref(false);
     const componentCss = computed(() => state.value.instances.map(item => definitionCss(item.definition)).join('\n'));
     let observer;
+    let hoverElement = null;
+    let hideTimer = null;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
+    function revealElement(message) {
+      const selector = message.nodeId
+        ? `[data-zb-node="${CSS.escape(message.nodeId)}"]`
+        : `[data-zb-instance="${CSS.escape(message.instanceId ?? '')}"]`;
+      document.querySelector(selector)?.scrollIntoView({ block: 'center' });
+    }
     async function receive(event) {
-      if (event.source !== window.parent || event.origin !== window.location.origin || event.data?.channel !== 'zaux-studio' || event.data.type !== 'state') return;
+      if (event.source !== window.parent || event.origin !== window.location.origin || event.data?.channel !== 'zaux-studio') return;
+      if (event.data.type === 'reveal') { revealElement(event.data); return; }
+      if (event.data.type !== 'state') return;
       const generation = ++receiveGeneration;
       const showThemeSample = await themeLifecycle.prepare(event.data);
       if (generation !== receiveGeneration) return;
@@ -73,6 +86,22 @@ export default defineComponent({
     function nodeAction(type) {
       post({ type, instanceId: state.value.selectedInstanceId, nodeId: state.value.selectedNodeId });
     }
+    function parentAction() {
+      post({ type: 'select', instanceId: state.value.selectedInstanceId, nodeId: null, revealOutline: true });
+    }
+    function onHoverEnter() { clearTimeout(hideTimer); hovering.value = true; }
+    function onHoverLeave() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { hovering.value = false; }, 160); }
+    function bindHover(element) {
+      if (hoverElement === element) return;
+      hoverElement?.removeEventListener('mouseenter', onHoverEnter);
+      hoverElement?.removeEventListener('mouseleave', onHoverLeave);
+      hoverElement = element ?? null;
+      if (element) {
+        element.addEventListener('mouseenter', onHoverEnter);
+        element.addEventListener('mouseleave', onHoverLeave);
+        hovering.value = true;
+      }
+    }
     function select(event) {
       if (event.target.closest('[data-zb-toolbar]')) return;
       if (state.value.editable) {
@@ -86,6 +115,7 @@ export default defineComponent({
       const selector = id ? `[data-zb-node="${CSS.escape(id)}"]` : `[data-zb-instance="${CSS.escape(state.value.selectedInstanceId ?? '')}"]`;
       const element = document.querySelector(selector);
       if (!element || !state.value.editable) { selection.value = null; return; }
+      bindHover(element);
       const rect = element.getBoundingClientRect();
       const instance = state.value.instances.find(item => item.id === state.value.selectedInstanceId);
       const name = id && instance ? findNode(instance.definition.tree, id)?.name : instance?.name;
@@ -130,7 +160,7 @@ export default defineComponent({
       post({ type: 'ready' });
     });
     onBeforeUnmount(() => { receiveGeneration++; themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose(); window.removeEventListener('message', receive); window.removeEventListener('resize', measureSelection); window.removeEventListener('scroll', measureSelection); observer?.disconnect(); document.body.classList.remove('zb-preview-body'); });
-    return { ...translation, fontErrors, state, selection, selectionToolbar, nodeAction, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
+    return { ...translation, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

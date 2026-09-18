@@ -23,62 +23,94 @@
 				:key="index"
 				class="flex flex-col gap-1 rounded-xxs border-slim border-zaux-light p-2"
 			>
-				<div class="flex justify-end gap-0.5">
-					<BuilderButton
-						size="xs"
-						variant="secondary"
-						icon="duplicate"
-						iconOnly
-						:label="translate('zx_builder_duplicate')"
-						@click="duplicateCTA(index)"
-					/>
-					<BuilderButton
-						size="xs"
-						variant="secondary"
-						icon="delete"
-						iconOnly
-						:label="translate('zx_builder_cta_remove')"
-						@click="removeCTA(index)"
-					/>
+				<div class="flex items-center gap-0.5">
+					<button
+						type="button"
+						class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+						:aria-expanded="!collapsed.has(index)"
+						:aria-label="translate(collapsed.has(index) ? 'zx_builder_expand' : 'zx_builder_collapse')"
+						@click="toggleCollapse(index)"
+					>
+						<span aria-hidden="true">{{ collapsed.has(index) ? "▸" : "▾" }}</span>
+					</button>
+					<span class="min-w-0 flex-1 truncate text-[11px] font-medium">{{ cta.label || (index + 1) }}</span>
+					<div class="flex shrink-0 gap-0.5">
+						<BuilderButton
+							size="xs"
+							variant="secondary"
+							icon="chevron-up"
+							iconOnly
+							:label="translate('zx_builder_move_up')"
+							:disabled="index === 0"
+							@click="moveCTA(index, -1)"
+						/>
+						<BuilderButton
+							size="xs"
+							variant="secondary"
+							icon="chevron-down"
+							iconOnly
+							:label="translate('zx_builder_move_down')"
+							:disabled="index === ctas.length - 1"
+							@click="moveCTA(index, 1)"
+						/>
+						<BuilderButton
+							size="xs"
+							variant="secondary"
+							icon="duplicate"
+							iconOnly
+							:label="translate('zx_builder_duplicate')"
+							@click="duplicateCTA(index)"
+						/>
+						<BuilderButton
+							size="xs"
+							variant="secondary"
+							icon="delete"
+							iconOnly
+							:label="translate('zx_builder_cta_remove')"
+							@click="removeCTA(index)"
+						/>
+					</div>
 				</div>
-				<BuilderInput
-					type="text"
-					:label="translate('zx_builder_cta_label')"
-					v-model="cta.label"
-				/>
-				<BuilderInput
-					type="text"
-					:label="translate('zx_builder_cta_href')"
-					v-model="cta.href"
-				/>
-				<div class="grid grid-cols-2 gap-1">
+				<template v-if="!collapsed.has(index)">
 					<BuilderInput
-						type="select"
-						:label="translate('zx_builder_cta_theme')"
-						:options="themeOptions"
-						v-model="cta.theme"
+						type="text"
+						:label="translate('zx_builder_cta_label')"
+						v-model="cta.label"
 					/>
 					<BuilderInput
-						type="select"
-						:label="translate('zx_builder_cta_size')"
-						:options="sizeOptions"
-						v-model="cta.size"
+						type="text"
+						:label="translate('zx_builder_cta_href')"
+						v-model="cta.href"
 					/>
-				</div>
-				<div class="grid grid-cols-2 gap-1">
-					<BuilderInput
-						type="select"
-						:label="translate('zx_builder_cta_icon')"
-						:options="iconOptions"
-						v-model="cta.iconName"
-					/>
-					<BuilderInput
-						type="select"
-						:label="translate('zx_builder_cta_action_icon')"
-						:options="iconOptions"
-						v-model="cta.actionIconName"
-					/>
-				</div>
+					<div class="grid grid-cols-2 gap-1">
+						<BuilderInput
+							type="select"
+							:label="translate('zx_builder_cta_theme')"
+							:options="themeOptions"
+							v-model="cta.theme"
+						/>
+						<BuilderInput
+							type="select"
+							:label="translate('zx_builder_cta_size')"
+							:options="sizeOptions"
+							v-model="cta.size"
+						/>
+					</div>
+					<div class="grid grid-cols-2 gap-1">
+						<BuilderInput
+							type="select"
+							:label="translate('zx_builder_cta_icon')"
+							:options="iconOptions"
+							v-model="cta.iconName"
+						/>
+						<BuilderInput
+							type="select"
+							:label="translate('zx_builder_cta_action_icon')"
+							:options="iconOptions"
+							v-model="cta.actionIconName"
+						/>
+					</div>
+				</template>
 			</div>
 			<div class="flex flex-wrap justify-end gap-0.5">
 				<BuilderButton
@@ -165,6 +197,7 @@
 			const ctas = ref([]);
 			const jsonDraft = ref("");
 			const invalid = ref(false);
+			const collapsed = ref(new Set());
 
 			const iconOptions = computed(() => [
 				{ value: "", label: translate("zx_builder_cta_none") },
@@ -242,6 +275,20 @@
 				ctas.value.splice(index + 1, 0, { ...source });
 			}
 
+			function moveCTA(index, direction) {
+				const target = index + direction;
+				if (target < 0 || target >= ctas.value.length) return;
+				const copy = [...ctas.value];
+				const [item] = copy.splice(index, 1);
+				copy.splice(target, 0, item);
+				ctas.value = copy;
+			}
+
+			function toggleCollapse(index) {
+				if (collapsed.value.has(index)) collapsed.value.delete(index);
+				else collapsed.value.add(index);
+			}
+
 			return {
 				translate,
 				mode,
@@ -257,6 +304,9 @@
 				clearCTAs,
 				removeCTA,
 				duplicateCTA,
+				moveCTA,
+				toggleCollapse,
+				collapsed,
 			};
 		},
 	});

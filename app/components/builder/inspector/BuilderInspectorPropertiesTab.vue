@@ -15,6 +15,12 @@
 				<div class="zb-node-actions ml-auto flex [&>.zb-button]:!p-0.5 gap-1">
 					<BuilderButton
 						variant="light"
+						icon="chevron-up"
+						iconOnly
+						:label="translate('zx_builder_parent')"
+						@click="selectParent"
+					/><BuilderButton
+						variant="light"
 						icon="copy"
 						iconOnly
 						:label="translate('zx_builder_duplicate')"
@@ -326,6 +332,10 @@ export default defineComponent({
 				emit("error", "zx_builder_invalid_json");
 			}
 		}
+		function selectParent() {
+			builder.selectInstance(builder.instanceId.value, null);
+			builder.revealOutline(builder.instanceId.value);
+		}
 		return {
 			...builder,
 			sliderConfig,
@@ -340,6 +350,7 @@ export default defineComponent({
 			changeType,
 			clearProps,
 			applyProps,
+			selectParent,
 		};
 	},
 });
