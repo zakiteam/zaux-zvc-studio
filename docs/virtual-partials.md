@@ -87,7 +87,7 @@ Source and diffs were reviewed. No automated tests, validators, browser checks o
 
 ## Instance editing and library navigation
 
-Library has separate ZVC and ZVP tabs, with the existing search and Imported/Project filter applied to the selected kind. Selecting, creating or importing a definition activates its matching tab. The Create dropdown groups all four creation actions. ZVP from JSON accepts editable partial definitions/envelopes, visual ZVC definitions and compact Zaux nodes, preserving fields, values and dependencies. A native ZVC source cannot be relabeled as a ZVP source.
+Library has separate ZVC and ZVP tabs, with the existing search and Imported/Project filter applied to the selected kind. Selecting, creating or importing a definition activates its matching tab. The Create dropdown groups all four creation actions. ZVP from JSON reuses the same **JSON format** select as ZVC from JSON: the workspace format accepts editable partial definitions/envelopes and visual ZVC definitions, preserving fields, values and dependencies, while a native ZVC source cannot be relabeled as a ZVP source; the simple Zaux format accepts compact `name`/`props` nodes with optional `children`, `fields` and `label`, converted to a project ZVP under the hood. See [data format](data-format.md).
 
 Selecting a partial node opens its Data editor. The same field editor is used in Properties and for partial slides; it respects configured types, showIf, typed/custom options, image controls, bindings and edit permissions. Native source bases remain unchanged.
 

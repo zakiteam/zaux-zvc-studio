@@ -38,3 +38,10 @@
 
 - If commands or tools cannot be used because of permissions or environment state, keep the reply to the minimum: state the block and what is needed, nothing else. No explanations, summaries or unused code until the block is resolved.
 - Preferred format: `Bloccato: <motivo in una riga>` / `Serve: <azione o permesso richiesto>`.
+
+## 2026-09-18 - ZVC/ZVP import formats
+
+- **ZVC from JSON** and **ZVP from JSON** expose a JSON format select with two options: the workspace-compatible definition/envelope, and the simple Zaux `{ name, props }` format written the Zaux way.
+- In the simple format the conversion to a compatible ZVC/ZVP happens in the code. Prop values stay literal; no fields are generated from props. Editable field metadata is declared optionally through a `fields` array, with `children` and `label` also optional.
+- The same dialog offers an opt-out checkbox, selected by default, that transposes the imported content into builder-editable elements: `ComponentsRenderer` wrappers and `Zsection` component content become Structure nodes instead of content properties, reusing the native-source projection in `domain/source-zvc.js`.
+- The imported library name follows `label`, then a declared `ZVCName`/`ZVPName` (runtime descriptors), then the first node of the resulting tree, so rendered snapshots do not all become the same entry named after their first section.

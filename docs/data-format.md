@@ -89,7 +89,36 @@ The component export dialog offers JSON Zaux for a runtime snapshot, alongside e
 
 ## Add a ZVC from JSON
 
-In the Library, **ZVC from JSON** opens an editable definition example. Paste either a complete Studio definition (`id`, `name`, `exportName`, `fields`, `tree`, `css`) or a version 1 component envelope. The definition is validated before insertion; imports create independent IDs and copies through the standard library import path. Workspace/template envelopes are not accepted by this component-only action. Both **ZVC from JSON** and **Import** also accept a single Zaux node with `name` and an object `props`, plus an optional `children` array of nodes in the same format. The node becomes a visual library definition with generated IDs, an export name derived from its component name, empty fields and empty CSS. Props retain their JSON values, including false, zero, empty strings and null. Existing Studio binding-marker semantics still apply. This does not import component implementation code: `name` must identify a component available to the renderer or a supported HTML tag. Use strict JSON with quoted keys and no trailing commas. Invalid drafts remain in the dialog for correction.
+In the Library, **ZVC from JSON** opens a JSON editor with an example and a **JSON format** select that offers two import formats.
+
+**Workspace JSON** (the default option) is the full editable contract: a complete Studio definition (`id`, `name`, `exportName`, `fields`, `tree`, `css`) or a version 1 component envelope. The definition is validated before insertion; imports create independent IDs and copies through the standard library import path. Workspace and template envelopes are not accepted by this component-only action.
+
+**Simple Zaux JSON** accepts one compact Zaux node or an array of nodes, written the way Zaux nodes are authored:
+
+```json
+{
+  "ZVCName": "ZVCHero",
+  "name": "Zsection",
+  "props": { "size": "m", "contained": true },
+  "children": [{ "name": "IntroText", "props": { "title": { "$bind": "title" } } }],
+  "fields": [{ "key": "title", "label": "title", "type": "text", "default": "Untitled" }],
+  "label": "Hero"
+}
+```
+
+`name` identifies the component to render, `props` is the required plain object, `children` reuses the same compact shape at any depth, `fields` optionally carries the full field metadata (`key`, `label`, `type`, `default`, `options`, `showIf`) and the library display name follows `label`, then a declared `ZVCName`/`ZVPName`, then the first node of the resulting tree. `createDefinition` derives the export name from that display name, so a descriptor declaring `ZVCName: "ZVCFeatureSection"` keeps exactly that export name, and a runtime snapshot that declares its name is not renamed after its first node. Without `label` and without a declared name the fallback is the first node name, which for rendered section lists is often the same component (for example `Zsection`) for every import; declare `ZVCName`/`ZVPName` or `label` to keep distinct entries. `definitionFromSimpleZaux` and `parseSimpleComponentDocument` in `domain/export.js` run the conversion in the code: they derive node IDs, `kind`, display name and the `ZVC…`/`ZVP…` export name, then validate the resulting definition, so the imported entry behaves like any authored ZVC or ZVP. Prop values are never rewritten and keep false, zero, empty strings and null; existing `$bind` markers keep their data-binding meaning. Field metadata is optional, so a component authored from `name` and `props` alone keeps literal props and an empty Data field list until fields are added.
+
+**Convert content to editable elements** is a checkbox beside the select, shown for the simple format and selected by default. Without it the node list is copied verbatim and a wrapper stays a single outline entry with `components` in its properties. With it, the same input is transposed into the visual representation: `ComponentsRenderer` wrappers expose their `props.components` as outline nodes, node arrays are flattened and `Zsection` with `content.type: 'component'` stores that content as a default-slot child, matching the native-source projection described in [code components](code-components.md). The conversion reuses `sourceTree` from `domain/source-zvc.js`, so an imported definition matches what native ZVC copies already produce:
+
+```json
+{ "name": "ComponentsRenderer", "props": { "components": [{ "name": "IntroText", "props": { "title": "Hi" } }] } }
+```
+
+becomes one `IntroText` root node instead of a `ComponentsRenderer` node containing a `components` property. Other specialized content properties (sliders, `PJPostLayout`, modals, offcanvas) stay in their own property editors, as they do for native sources.
+
+Choosing the other option on a full definition (or a workspace/template envelope) is rejected with a translated message, and the compact format rejects `tree` and `schemaVersion` documents for the same reason. Switching the select replaces the editor text only while the example is still untouched, so a pasted draft is not discarded.
+
+No component implementation code is imported: `name` must identify a component available to the renderer or a supported HTML tag. Use strict JSON with quoted keys and no trailing commas. Invalid drafts remain in the dialog for correction. The workspace-level **Import** action keeps its own auto-detection and also accepts the compact format, including its optional `fields` and `label`.
 
 CodeMirror provides the shared JSON, CSS and JavaScript editor, including read-only export snippets. `BuilderCodeEditor` accepts `modelValue`, `language`, `label`, `rows`, `readonly` and `disabled`; it emits draft updates and commits on blur. JSON edits still use the existing parse/apply flow. Clear JSON writes `{}` for objects, `[]` for arrays and `null` for scalar JSON values; advanced node properties clear to `{}`. CSS fields use the CSS language mode.
 

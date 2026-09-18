@@ -1,26 +1,61 @@
-import { clone, createNode, isBinding, runtimeNodes } from './nodes.js';
+import { clone, createNode, isBinding, runtimeNodes, uid } from './nodes.js';
+import { sourceTree } from './source-zvc.js';
 import { validateDefinition, validateWorkspace, parseJson } from './validation.js';
 import { createDefinition } from './workspace.js';
 
 const isNodeDocument = value => value && typeof value === 'object' && !Array.isArray(value)
   && Object.hasOwn(value, 'props') && !Object.hasOwn(value, 'tree') && !Object.hasOwn(value, 'schemaVersion');
 
-function definitionFromNode(value) {
-  let count = 0;
-  function node(input, depth = 0) {
-    if (!input || typeof input !== 'object' || Array.isArray(input) || depth >= 30 || ++count > 2000
-      || typeof input.name !== 'string' || !input.name.trim()
-      || !input.props || typeof input.props !== 'object' || Array.isArray(input.props)
-      || (input.children !== undefined && !Array.isArray(input.children))) {
-      throw new Error('zx_builder_invalid_document');
-    }
-    return createNode(input.name, input.props, (input.children ?? []).map(child => node(child, depth + 1)));
+// Compact Zaux JSON: { name, props, children? }. Prop values stay literal.
+function zauxNode(input, state, depth = 0) {
+  if (!input || typeof input !== 'object' || Array.isArray(input) || depth >= 30 || ++state.count > 2000
+    || typeof input.name !== 'string' || !input.name.trim()
+    || !input.props || typeof input.props !== 'object' || Array.isArray(input.props)
+    || (input.children !== undefined && !Array.isArray(input.children))) {
+    throw new Error('zx_builder_invalid_document');
   }
-  const root = node(value);
-  const definition = createDefinition(root.name);
-  definition.tree = [root];
+  return createNode(input.name, input.props, (input.children ?? []).map(child => zauxNode(child, state, depth + 1)));
+}
+
+// Reuse the native-source projection so wrappers and slot content become
+// editable outline nodes instead of content properties. Invalid shapes report
+// the regular import error instead of the native-module message.
+function editableNodes(value) {
+  try {
+    return sourceTree(value, uid());
+  } catch {
+    throw new Error('zx_builder_invalid_document');
+  }
+}
+
+// Simple Zaux JSON: one node or an array of nodes, plus optional metadata:
+// { name, props, children?, fields?, label?, ZVCName? | ZVPName? }.
+// The workspace derives id, kind, export name and node ids. Prop values are not
+// rewritten, so explicit $bind markers keep their binding meaning. Field
+// metadata stays optional and is validated like in the full definition format.
+// The display name follows label, then a declared ZVCName/ZVPName (runtime
+// descriptors), then the first node name.
+// With options.editable the node list is transposed into the visual
+// representation instead of being copied verbatim: ComponentsRenderer wrappers,
+// node arrays and Zsection component content become outline nodes.
+export function definitionFromSimpleZaux(value, kind = 'zvc', options = {}) {
+  const partial = kind === 'zvp';
+  const meta = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const list = Array.isArray(value) ? value : [value];
+  if (!list.length) throw new Error('zx_builder_invalid_document');
+  const literal = list.map(item => zauxNode(item, { count: 0 }));
+  const tree = options.editable ? editableNodes(value) : literal;
+  const header = Array.isArray(value) ? (list[0] && typeof list[0] === 'object' ? list[0] : {}) : meta;
+  const declared = [header[partial ? 'ZVPName' : 'ZVCName'], header[partial ? 'ZVCName' : 'ZVPName']]
+    .find(name => typeof name === 'string' && name.trim());
+  const label = typeof meta.label === 'string' ? meta.label.trim() : '';
+  const definition = createDefinition(label || declared?.trim() || tree[0]?.name || literal[0].name, partial ? 'zvp' : 'zvc');
+  if (meta.fields !== undefined) definition.fields = clone(meta.fields);
+  definition.tree = tree;
   return validateDefinition(definition);
 }
+
+function definitionFromNode(value) { return definitionFromSimpleZaux(value, 'zvc'); }
 
 export function documentEnvelope(kind, data) {
   return { format: 'zaux-builder', schemaVersion: 1, kind, exportedAt: new Date().toISOString(), data: clone(data) };
@@ -41,6 +76,19 @@ export function parsePartialDocument(text) {
   payload.data.exportName = payload.data.exportName.replace(/^ZVC/, 'ZVP');
   return { kind: 'component', data: validateDefinition(payload.data) };
 }
+
+// Explicit import of the simple Zaux format. Full workspace definitions and
+// envelopes belong to the other option and are rejected here on purpose.
+// options.editable selects the transposed, builder-editable content projection.
+export function parseSimpleComponentDocument(text, kind = 'zvc', options = {}) {
+  const value = parseJson(text);
+  if (value && typeof value === 'object' && !Array.isArray(value)
+    && (Object.hasOwn(value, 'tree') || Object.hasOwn(value, 'schemaVersion') || value.format === 'zaux-builder')) {
+    throw new Error('zx_builder_invalid_simple_json');
+  }
+  return { kind: 'component', data: definitionFromSimpleZaux(value, kind, options) };
+}
+
 export function parseDocument(text) {
   const payload = parseJson(text);
   if (payload?.format === 'zaux-builder') {

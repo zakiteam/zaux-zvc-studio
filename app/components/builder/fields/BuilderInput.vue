@@ -20,7 +20,7 @@
 	<input
 		class="px-2 py-1 border-none"
         :class="highlightWhenSet && modelValue !== '' && modelValue != null ? 'bg-zaux-light-accent/50 outline outline-1 outline-zaux-accent' : 'bg-zaux-light'"
-		v-else
+		v-else-if="type"
 		:id="id"
 		:value="modelValue ?? ''"
 		:type="type"

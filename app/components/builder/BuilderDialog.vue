@@ -230,8 +230,26 @@
 			</template>
 			<template v-else-if="['new-component-json', 'new-partial-json'].includes(modal.type)">
 				<p class="mb-2 text-[12px] text-zaux-dark-grey">
-					{{ translate(modal.type === 'new-partial-json' ? 'zx_builder_partial_json_hint' : 'zx_builder_component_json_hint') }}
+					{{ componentHint }}
 				</p>
+				<div
+					class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark"
+				>
+					<label for="component-json-format">{{ translate("zx_builder_json_format") }}</label
+					><select id="component-json-format" class="px-2 py-1 border-none bg-zaux-light" v-model="componentFormat">
+						<option value="workspace">{{ translate("zx_builder_json_workspace") }}</option>
+						<option value="simple">{{ translate("zx_builder_json_simple") }}</option>
+					</select>
+				</div>
+				<template v-if="componentFormat === 'simple'">
+					<label class="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-zaux-dark">
+						<input v-model="componentEditable" type="checkbox" class="!w-auto accent-zaux-accent" />
+						<span>{{ translate("zx_builder_json_editable_content") }}</span>
+					</label>
+					<p class="zb-help mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">
+						{{ translate("zx_builder_json_editable_hint") }}
+					</p>
+				</template>
 				<BuilderCodeEditor
 					v-model="componentText"
 					:label="translate(modal.type === 'new-partial-json' ? 'zx_builder_new_partial_json' : 'zx_builder_new_component_json')"
@@ -341,6 +359,7 @@ import {
 	parseDocument,
 	parseComponentDocument,
     parsePartialDocument,
+	parseSimpleComponentDocument,
 } from "../../../domain/export.js";
 import { createDefinition } from "../../../domain/workspace.js";
 import { projectStarterFiles } from "../../services/starter-export.js";
@@ -379,9 +398,59 @@ export default defineComponent({
 			}),
 		];
 		const componentText = ref(JSON.stringify(example, null, 2));
+		const componentFormat = ref("workspace");
+		const componentEditable = ref(true);
+		const componentKind = computed(() =>
+			builder.modal.value?.type === "new-partial-json" ? "zvp" : "zvc",
+		);
+		function simpleExample(partial) {
+			return {
+				[partial ? "ZVPName" : "ZVCName"]: partial ? "ZVPProjectCard" : "ZVCHero",
+				name: "Zsection",
+				props: { size: "m", contained: true },
+				children: [{ name: "IntroText", props: { title: { $bind: "title" } } }],
+				fields: [
+					{
+						key: "title",
+						label: "title",
+						type: "text",
+						default: builder.translate("zx_builder_new_name"),
+					},
+				],
+			};
+		}
+		const componentExamples = computed(() => ({
+			workspace: JSON.stringify(example, null, 2),
+			simple: JSON.stringify(simpleExample(componentKind.value === "zvp"), null, 2),
+		}));
+		const componentHint = computed(() =>
+			builder.translate(
+				componentKind.value === "zvp"
+					? componentFormat.value === "simple"
+						? "zx_builder_partial_simple_hint"
+						: "zx_builder_partial_json_hint"
+					: componentFormat.value === "simple"
+						? "zx_builder_component_simple_hint"
+						: "zx_builder_component_json_hint",
+			),
+		);
+		watch(componentFormat, (next, previous) => {
+			if (
+				!componentText.value.trim() ||
+				componentText.value === componentExamples.value[previous]
+			)
+				componentText.value = componentExamples.value[next];
+		});
 		function addComponentJson() {
 			try {
-				const payload = builder.modal.value.type === "new-partial-json" ? parsePartialDocument(componentText.value) : parseComponentDocument(componentText.value);
+				const kind = componentKind.value;
+				const editable = componentEditable.value;
+				const payload =
+					componentFormat.value === "simple"
+						? parseSimpleComponentDocument(componentText.value, kind, { editable })
+						: kind === "zvp"
+							? parsePartialDocument(componentText.value)
+							: parseComponentDocument(componentText.value);
 				builder.importDocument(payload);
 				if (builder.error.value) {
 					localError.value = builder.error.value;
@@ -613,6 +682,10 @@ export default defineComponent({
 			...builder,
 			dialog,
 			componentText,
+			componentFormat,
+			componentEditable,
+			componentKind,
+			componentHint,
 			addComponentJson,
 			name,
 			scope,

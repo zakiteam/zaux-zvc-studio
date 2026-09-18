@@ -110,7 +110,7 @@
 		<BuilderInput
 			v-else
 			v-model="draft"
-			:type="type === 'number' ? 'number' : 'text'"
+			:type="type === 'number' ? 'number' : 'text' && !image"
 			:label="label"
 			@change="apply"
 		/>

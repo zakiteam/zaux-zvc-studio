@@ -67,7 +67,7 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 - Visual placement, nesting, selection and reordering of whitelisted Zaux/HTML nodes. Duplicate/delete actions are available on outline rows.
 - Per-instance content, field definitions, nested JSON properties and explicit bindings.
 - Editable JSON, generated JS, CSS, browser persistence and recovery.
-- Imports support Studio's versioned JSON envelopes.
+- Imports support Studio's versioned JSON envelopes and a simple Zaux `name`/`props` format that the code converts to a compatible definition.
 - Native .zvc.js modules under app/zvc and the read-only Zaux vendor/zaux/core/project virtual folders load automatically and execute their actual buildNode function when content changes. Source files are bundled by Vite, never evaluated from pasted or uploaded text. Explicit conversion freezes the current result as an editable visual tree.
 - Zaux components with specialized content props can be configured in the JSON property editor. Visual child nesting uses default slots on known containers.
 - Optional Supabase authentication and remote JSON project persistence support owner, editor, and viewer access. User activation and membership management are currently administered in Supabase; a sharing UI and a browser JavaScript editor are not included. Asset uploads use the project-owned filesystem media integration described in [Media library](media-library.md). Hand-written code is maintained in project files.

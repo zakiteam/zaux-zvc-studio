@@ -13,6 +13,17 @@ Nuxt 4 / JavaScript editor with read-only Zaux submodule; independent template/l
 ## Current work
 Integrate Zaux token style configuration and migrate Studio styling to Tailwind with the Zaux palette.
 
+## ZVC/ZVP import format select — 2026-09-18
+The `ZVC from JSON` and `ZVP from JSON` dialogs now expose a **JSON format** select with two options. `Workspace JSON` keeps the previous behavior (full definition or version 1 envelope). `Simple Zaux JSON` accepts `{ name, props }` with optional `children`, `fields` and `label`, and converts it to a compatible definition in the code: `definitionFromSimpleZaux` / `parseSimpleComponentDocument` in `domain/export.js` derive id, kind, display name, export name and node ids, then validate the result. Prop values stay literal and `$bind` markers keep their meaning; field metadata is optional, as agreed with the user on 2026-09-18.
+
+The same dialog shows a default-on checkbox, **Converti il contenuto in elementi editabili** / **Convert content to editable elements**, for the simple format. When it is active the node list is transposed through `sourceTree` from `domain/source-zvc.js`, so `ComponentsRenderer` wrappers, node arrays and `Zsection` component content become outline nodes instead of content properties; unchecked imports stay verbatim as before.
+
+The library display name follows `label`, then a declared `ZVCName`/`ZVPName`, then the first node of the resulting tree, so a rendered snapshot keeps its own name instead of being called after its first section.
+
+Changed files: `domain/export.js` (compact-node helper extracted to `zauxNode`, simple-format builder and parser with the `editable` option, `definitionFromNode` now reuses the builder), `app/components/builder/BuilderDialog.vue` (format select, editable checkbox with its hint, per-format hint and example, routing in `addComponentJson`), `app/data/locale/it.json` and `en.json` (eight added keys, two revised hints), `docs/data-format.md`, `docs/virtual-partials.md`, `docs/architecture.md` and `docs/ai/decisions.md`.
+
+Reviewed by source reading only: no tests, browser checks, validators or builds were run. Runtime behavior and the new dialog text remain for manual user verification.
+
 ## Known state
 A production check before the stop instruction exposed Tailwind trying to read preflight.css from Nitro output. The runtime endpoint now disables preflight because it compiles utilities only; this source fix was applied but has not been re-verified. Do not resume testing automatically.
 
