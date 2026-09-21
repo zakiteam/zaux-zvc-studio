@@ -30,7 +30,7 @@ import { definitionCss } from '../../domain/partials.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import ComponentsRenderer from '../../integrations/zaux/slot-renderer.js';
+import ComponentsRenderer from '../../integrations/zaux/renderers/slot-renderer.js';
 import PreviewBoundary from '../components/builder/PreviewBoundary.vue';
 export default defineComponent({
   components: { PreviewBoundary, ComponentsRenderer },
@@ -107,7 +107,7 @@ export default defineComponent({
       if (state.value.editable) {
         event.preventDefault(); event.stopPropagation();
         const target = context(event.target);
-        post({ type: 'select', instanceId: target.instanceId, nodeId: target.node?.id ?? null });
+        post({ type: 'select', instanceId: target.instanceId, nodeId: target.node?.id ?? null, revealOutline: true });
       } else if (event.target.closest('a')) event.preventDefault();
     }
     async function measureSelection() {

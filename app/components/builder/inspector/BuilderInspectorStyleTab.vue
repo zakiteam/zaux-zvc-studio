@@ -70,8 +70,8 @@
 import { computed, defineComponent, nextTick, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { styleVisibility, visibleStyleSections } from "../../../../integrations/zaux/style-visibility.js";
-import { nodeStyleSections } from "../../../../integrations/zaux/node-style-controls.js";
-import { imageStyleTarget } from "../../../../integrations/zaux/image-style-controls.js";
+import { nodeStyleSections } from "../../../../integrations/zaux/controls/node-style-controls.js";
+import { imageStyleTarget } from "../../../../integrations/zaux/controls/image-style-controls.js";
 import BuilderValue from "../fields/BuilderValue.vue";
 import BuilderNodeStyles from "../fields/styles/BuilderNodeStyles.vue";
 export default defineComponent({

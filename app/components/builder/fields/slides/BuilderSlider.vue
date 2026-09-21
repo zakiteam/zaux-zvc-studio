@@ -30,7 +30,7 @@
 <script>
 import { defineComponent, computed, ref, watch } from 'vue';
 import { useBuilder } from '../../../../composables/useBuilder.js';
-import { sliderControls, sliderBreakpoints, layoutFields, behaviorFields } from '../../../../../integrations/zaux/slider-controls.js';
+import { sliderControls, sliderBreakpoints, layoutFields, behaviorFields } from '../../../../../integrations/zaux/controls/slider-controls.js';
 import { isPlainRecord, pathValue, changePath } from '../../../../../domain/slider.js';
 import BuilderInput from '../BuilderInput.vue';
 import BuilderValue from '../BuilderValue.vue';

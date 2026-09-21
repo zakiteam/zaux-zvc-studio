@@ -103,6 +103,30 @@
 				:node="selectedNode"
 			/>
 
+			<BuilderLightbox
+				v-if="lightboxConfig"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
+			<BuilderLightboxTrigger
+				v-else-if="lightboxTrigger"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
+			<BuilderOverlayContent
+				v-if="overlayContent"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
+			<BuilderMedia
+				v-if="mediaConfig"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
 			<BuilderProperty
 				v-for="property in visibleProperties"
 				:key="`${selectedNode.id}-${selectedNode.name}-${property}`"
@@ -200,7 +224,12 @@ import { parseJson } from "../../../../domain/validation.js";
 import { clone, isBinding } from "../../../../domain/nodes.js";
 import BuilderPartialFields from "../fields/BuilderPartialFields.vue";
 import BuilderSlider from "../fields/slides/BuilderSlider.vue";
-import { sliderControls } from "../../../../integrations/zaux/slider-controls.js";
+import BuilderLightbox from "../fields/lightbox/BuilderLightbox.vue";
+import BuilderLightboxTrigger from "../fields/lightbox/BuilderLightboxTrigger.vue";
+import BuilderOverlayContent from "../fields/overlay/BuilderOverlayContent.vue";
+import BuilderMedia from "../fields/BuilderMedia.vue";
+import { sliderControls } from "../../../../integrations/zaux/controls/slider-controls.js";
+import { lightboxControls, isLightboxTrigger } from "../../../../integrations/zaux/controls/lightbox-controls.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
 import BuilderButton from "../BuilderButton.vue";
 import BuilderInput from "../fields/BuilderInput.vue";
@@ -210,6 +239,10 @@ export default defineComponent({
 	components: {
 		BuilderPartialFields,
 		BuilderSlider,
+		BuilderLightbox,
+		BuilderLightboxTrigger,
+		BuilderOverlayContent,
+		BuilderMedia,
 		BuilderButton,
 		BuilderInput,
 		BuilderProperty,
@@ -223,13 +256,41 @@ export default defineComponent({
 		const sliderConfig = computed(
 			() => sliderControls[builder.selectedNode.value?.name],
 		);
+		const lightboxConfig = computed(
+			() => lightboxControls[builder.selectedNode.value?.name],
+		);
+		const lightboxTrigger = computed(() =>
+			isLightboxTrigger(builder.selectedNode.value),
+		);
+		const overlayContent = computed(() =>
+			["ZModal", "OffCanvas"].includes(builder.selectedNode.value?.name),
+		);
+		const mediaConfig = computed(
+			() => builder.selectedNode.value?.name === "Media",
+		);
 		function specializedProperty(key) {
+			if (
+				mediaConfig.value &&
+				["type", "props", "fillSpace", "containerClasses", "elementClasses"].includes(key)
+			)
+				return true;
 			if (
 				builder.selectedPartial.value?.fields.some((field) => field.key === key)
 			)
 				return true;
+			const node = builder.selectedNode.value;
+			if (lightboxConfig.value) {
+				return ["id", "items", "options"].includes(key);
+			}
+			if (lightboxTrigger.value) {
+				return [
+					"data-zlightbox-trigger",
+					"data-zlightbox-id",
+					"data-index",
+				].includes(key);
+			}
 			if (!sliderConfig.value) return false;
-			const props = builder.selectedNode.value.props;
+			const props = node.props;
 			const contentPath = sliderConfig.value.contentPath;
 			if (contentPath) {
 				if (key === contentPath) return isPlainRecord(props[key]);
@@ -339,6 +400,10 @@ export default defineComponent({
 		return {
 			...builder,
 			sliderConfig,
+			lightboxConfig,
+			lightboxTrigger,
+			overlayContent,
+			mediaConfig,
 			catalog,
 			descriptors,
 			visibleProperties,

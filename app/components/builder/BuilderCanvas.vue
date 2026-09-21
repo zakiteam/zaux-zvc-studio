@@ -33,7 +33,7 @@ export default defineComponent({
       if (message.type === 'ready') sendState();
       if (message.type === 'select') {
         builder.selectInstance(message.instanceId, message.nodeId);
-        if (message.revealOutline) builder.revealOutline(message.instanceId);
+        if (message.revealOutline) builder.revealOutline(message.instanceId, message.nodeId);
       }
       if (message.type === 'drop' && !builder.previewOnly.value) builder.dropElement(message.payload, message.nodeId, message.position, message.instanceId);
     }

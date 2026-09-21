@@ -2,7 +2,7 @@
 
 ## Entry point
 
-Add property editor rules to [property-decorators.js](../integrations/zaux/property-decorators.js),
+Add property editor rules to [property-decorators.js](../integrations/zaux/descriptors/property-decorators.js),
 in **propertyDecorators**. Keys are the registered component name and actual prop
 name. **Icon** is the catalog/JSON name of Zaux's Icon.vue.
 
@@ -40,7 +40,7 @@ fetch data, mutate nodes or store functions in workspace JSON.
 1. [palette.js](../app/data/catalog/palette.js) controls insertion and initial JSON props.
 2. [catalog.js](../app/services/catalog.js), propertyInfo(name, context), looks up
    the Vue component and calls propertyDescriptors(name, component.props, context).
-3. [property-descriptors.js](../integrations/zaux/property-descriptors.js) copies
+3. [property-descriptors.js](../integrations/zaux/descriptors/property-descriptors.js) copies
    Vue prop declarations and adds upstream builder metadata and size/theme variants.
 4. decorateProperties() applies the registry last, merging patches over existing
    descriptors. Rules may also describe HTML attributes with no Vue declaration.
@@ -57,6 +57,67 @@ A descriptor does not add a saved prop. Authored props appear in the main list;
 other descriptor keys appear under **Add properties**. To show a prop immediately
 on insertion, include it in the palette preset too.
 
+## Control reference
+
+This is the complete list of editors available for a prop in the Inspector's
+**Properties** tab. The editor is chosen by
+`propertyValueType(property, value, descriptor)` in
+[domain/properties.js](../domain/properties.js) and rendered by
+[BuilderProperty.vue](../app/components/builder/fields/BuilderProperty.vue) and
+[BuilderValue.vue](../app/components/builder/fields/BuilderValue.vue). Descriptors
+only configure these existing editors; they never register a new Vue control.
+See [code-components.md](code-components.md) for the separate ZVC **field** types
+used in the Fields/Data tab.
+
+### Scalar editors
+
+| Editor | Trigger |
+| --- | --- |
+| `text` | string value, or no rule (fallback) |
+| `number` | numeric value, or `type: Number` / numeric `default` |
+| `switch` | boolean value, or `type: Boolean` / boolean `default` |
+| `textarea` | `control: 'textarea'`, or a long-text prop (`excerpt`, `contentHTML`, `innerHTML`, `paragraph`, `textContent`) |
+| `html` | `control: 'html'` (source / rich text / HTML) |
+| `css-editor` | `control: 'css-editor'` |
+| `json` | `null`, object or array value, or `type: Object` / `type: Array` |
+| `select` | `selectOptions([...])` → `control: 'select'` + `options` |
+| `buttongroup` | `control: 'buttongroup'` |
+
+### Pickers and structured editors
+
+| Editor | Trigger |
+| --- | --- |
+| `image` | `image: true` (and value is `null` or a string) → [BuilderImageInput.vue](../app/components/builder/fields/BuilderImageInput.vue): URL + media library |
+| `media` | `media: true` → [BuilderMediaInput.vue](../app/components/builder/fields/BuilderMediaInput.vue): compact `{ type, props }` editor |
+| object | `properties: { key: descriptor }` → nested fields plus an advanced JSON view |
+| array | `items: { default, properties }` → add / edit / remove rows |
+
+### Decision order
+
+`propertyValueType` resolves in this order:
+
+1. `null` or object/array value → `json`
+2. boolean value → `switch`
+3. numeric value → `number`
+4. `descriptor.control` in `text`, `textarea`, `html`, `css-editor` → that editor
+5. string value: long-text prop name → `textarea`, otherwise `text`
+6. `descriptor.type === Boolean` or boolean `default` → `switch`
+7. `descriptor.type === Number` or numeric `default` → `number`
+8. `descriptor.type === Object` or `Array` → `json`
+9. fallback → `text`
+
+`BuilderProperty` then intercepts, before the scalar fallback, in this order:
+bindings, `media: true`, `properties` (object), `items` (array), `buttongroup`,
+then a `select` when `options` is non-empty, and finally `BuilderValue`
+(passing `image: true` through when set).
+
+### How a select is built
+
+`selectOptions(values)` accepts primitives or `{ value, label }` objects and
+returns `{ control: 'select', options: [...] }`. A rule may also return the
+options dynamically, for example `iconName: ({ props }) => selectOptions(...)`.
+Out-of-list values keep a "custom value" entry and remain editable.
+
 ## Existing examples
 
 - Icon.iconName: actual bundled SVG symbol IDs.
@@ -67,11 +128,11 @@ on insertion, include it in the palette preset too.
   trees, deduplicated by ID.
 - a.target: static select; a.href, a.id, a.rel: HTML attribute descriptors.
 
-[icon-options.js](../integrations/zaux/icon-options.js) reads symbol-defs.svg
+[icon-options.js](../integrations/zaux/options/icon-options.js) reads symbol-defs.svg
 files through a Vite raw glob. These assets remain read-only. Added source asset
 sets are picked up when Vite reloads/rebuilds, not through runtime uploads.
 
-Static component choices stay source-backed in component-options.js and enter
+Static component choices stay source-backed in options/component-options.js and enter
 the registry through selectOptions. Size/theme metadata stays in the descriptor
 adapter. Prefer upstream metadata where available; put explicit project overrides
 in the decorator registry.
@@ -119,7 +180,7 @@ The Zaux palette includes `Videoplayer` (the exact upstream registered name) and
 `Media`. The player preset uses the bundled `/assets/media/samplevid1.mp4` and a
 local poster; Media starts as an image. No dependency files are changed.
 
-`media-properties.js` describes the native nested contracts:
+`descriptors/media-properties.js` describes the native nested contracts:
 
 - `Videoplayer.video`: source URL/MIME rows, poster picker, autoplay, mute, loop,
   native controls, fill-space, and caption track rows. Outer properties expose
@@ -140,6 +201,24 @@ object editors retain an advanced JSON view. Labels reuse existing translations.
 
 Only source review was performed; insertion, playback, type switching, nested
 editing and undo remain for manual browser verification.
+
+## Compact media editor
+
+`BuilderMediaInput.vue` is the reusable, descriptor-driven control for a media
+field. A descriptor marked `media: true` makes `BuilderProperty` render it
+instead of the generic object editor; the value is a Media.vue-style object
+`{ type: 'img'|'video', props: { ... } }` with optional root props (`fillSpace`,
+`containerClasses`, `elementClasses`) preserved. It offers a type toggle, image
+selection from the media library, alt, aspect ratio, lazy loading, behavior
+toggles (full width, full height, object fit, and fill-space when the object
+carries it), video URL/format/poster and playback flags, plus a JSON fallback.
+
+The opt-in list lives in `propertyDecorators` (`media: { media: true }`):
+Card, CardMediaBox, CardPic, ZFigure, Usermeta, DisplayBox, FeatBannerSection,
+SectionSplit, SectionSplitIntro and SectionSplitWide. The `Media` component
+itself keeps its flat `type` + `props` + behavior props, so it uses the thin
+`BuilderMedia.vue` Inspector panel instead; that panel reuses `BuilderMediaInput`
+bound to the whole node props and commits through `useBuilder.updateNode`.
 
 ## Initially visible palette properties
 

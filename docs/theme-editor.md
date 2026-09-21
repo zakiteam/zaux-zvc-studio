@@ -31,7 +31,7 @@ The optional version-1 workspace field `componentThemes` stores an array of `{ c
 ## Files and verification
 
 - `scripts/zaux/theme-catalog.mjs` reads upstream Sass and writes `integrations/zaux/generated/component-themes.json`; `prepare.mjs` invokes it during normal project preparation.
-- `integrations/zaux/theme-preview.js` adapts theme fragments and sample props to actual component implementations.
+- `integrations/zaux/theme/theme-preview.js` adapts theme fragments and sample props to actual component implementations.
 - `domain/component-themes.js` owns syntax parsing, variable mutations and CSS exports; workspace validation checks the optional data.
 - `BuilderThemeEditor.vue` owns the editing view and transient drafts; `BuilderThemePreview.vue` owns the iframe integration.
 
@@ -39,7 +39,7 @@ The catalog was generated as an implementation artifact. Source and diffs were r
 
 ## Maintaining component samples
 
-`integrations/zaux/theme-preview-presets.js` contains explicit presets for all 51 current stylesheet entries, independently of the insertion palette. `theme-preview.js` maps known stylesheet aliases to real components and exposes typed field descriptors and sample sizes. New stylesheet entries without a reviewed preset show a missing-preview message; no generic prop bag is assigned.
+`integrations/zaux/theme/theme-preview-presets.js` contains explicit presets for all 51 current stylesheet entries, independently of the insertion palette. `theme/theme-preview.js` maps known stylesheet aliases to real components and exposes typed field descriptors and sample sizes. New stylesheet entries without a reviewed preset show a missing-preview message; no generic prop bag is assigned.
 
 Accordion starts open, wrapped and boxed, with HTML content and editable icons, border and roundness options. Dropdown and breadcrumb records use their nested renderer contracts; sliders contain populated component slides. Input samples expose their actual state/selection values. ListColumned needs project-owned root/item theme hooks because its pinned implementation imports List.meta. Toast uses a preview-only lifecycle adapter with the native notification store so it stays visible while editing and is cleaned up on sample changes.
 

@@ -1,9 +1,10 @@
-import { componentVariants } from './component-options.js';
+import { componentVariants } from '../options/component-options.js';
 import { decorateProperties, selectOptions } from './property-decorators.js';
-import section from '../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
-import intro from '../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
-import button from '../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
-import introBuilder from '../../vendor/zaux/core/components/shared/introtext/builder/IntroText.builder.js';
+import { lightboxTriggerDescriptors } from '../controls/lightbox-controls.js';
+import section from '../../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
+import intro from '../../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
+import button from '../../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
+import introBuilder from '../../../vendor/zaux/core/components/shared/introtext/builder/IntroText.builder.js';
 
 const metadata = { Zsection: section, IntroText: intro.base, ZButton: button };
 const builders = { IntroText: introBuilder };
@@ -11,6 +12,7 @@ const builders = { IntroText: introBuilder };
 const supplements = {
   // Paragraph.vue (sizes) and style/Paragraph.theme.scss (themes).
   Paragraph: { sizes: ['xs', 's', 'm', 'l'], themes: ['light1', 'dark1', 'dark2'] },
+  SliderMultiple : { navButtonTheme : button.themes },
   // Separator.vue defines both sets inline.
   Separator: { sizes: ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl'], themes: ['light1', 'light2', 'light3', 'dark1'] }
 };
@@ -30,6 +32,11 @@ export function propertyDescriptors(name, props, context = {}) {
   for (const [key, values] of [['size', meta?.sizes], ['theme', meta?.themes]]) {
     if (!Object.hasOwn(descriptors, key) || !Array.isArray(values)) continue;
     descriptors[key] = { ...descriptors[key], ...selectOptions(values) };
+  }
+  // The lightbox trigger is opt-in on any element: expose the marker attribute in
+  // "Add properties" without disturbing a component's own declared props.
+  for (const [key, descriptor] of Object.entries(lightboxTriggerDescriptors)) {
+    if (!Object.hasOwn(descriptors, key)) descriptors[key] = { ...descriptor };
   }
   return decorateProperties(name, descriptors, context);
 }

@@ -1,4 +1,4 @@
-import ComponentsRenderer from '../../integrations/zaux/slot-renderer.js';
+import ComponentsRenderer from '../../integrations/zaux/renderers/slot-renderer.js';
 import { zxCoreSetup } from '@zx_core/setup';
 import { zxPJSetup } from '@zx_project/setup';
 import zauxConfig from '@zx/zaux.config';

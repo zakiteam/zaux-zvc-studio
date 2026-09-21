@@ -154,7 +154,7 @@
 	import { useTranslation } from "../../../composables/useTranslation.js";
 	import { parseJson } from "../../../../domain/validation.js";
 	import buttonMeta from "@zx_core/components/shared/button/ZButton.meta.js";
-	import { iconSets } from "@integration/icon-options.js";
+	import { iconSets } from "@integration/options/icon-options.js";
 
 	function makeCta() {
 		return {

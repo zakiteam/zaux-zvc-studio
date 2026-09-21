@@ -6,7 +6,7 @@ import { projectFonts } from '../../domain/fonts.js';
 import { restoreInstance } from '../../domain/restore-instance.js';
 import { computed, inject, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { createWorkspace, createDefinition, copyDefinition, createInstance, createTemplate, exportName } from '../../domain/workspace.js';
-import { clone, uid, createNode, dataFor, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
+import { ancestorIds, clone, uid, createNode, dataFor, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
 import { catalogNode, containers } from '../services/catalog.js';
@@ -42,8 +42,18 @@ export function createBuilder({ projectId = null } = {}) {
     revealTarget.value = { instanceId, nodeId };
   }
   const revealOutlineTarget = ref(null);
-  function revealOutline(instanceId) {
-    revealOutlineTarget.value = { instanceId };
+  function revealOutline(instanceId, nodeId = null) {
+    const next = new Set(collapsedOutline.value);
+    if (mode.value === 'library') {
+      if (activeDefinition.value) next.delete('definition:' + activeDefinition.value.id);
+      if (nodeId && activeDefinition.value) for (const id of ancestorIds(activeDefinition.value.tree, nodeId) ?? []) next.delete('node:library:' + id);
+    } else if (instanceId) {
+      next.delete('instance:' + instanceId);
+      const instance = activeTemplate.value?.instances.find((item) => item.id === instanceId);
+      if (nodeId && instance) for (const id of ancestorIds(instance.definition.tree, nodeId) ?? []) next.delete('node:' + instanceId + ':' + id);
+    }
+    collapsedOutline.value = next;
+    revealOutlineTarget.value = { instanceId, nodeId };
   }
   const leftTab = ref('library');
   const libraryCategory = ref('imported');
@@ -503,6 +513,30 @@ export function createBuilder({ projectId = null } = {}) {
     });
     nodeId.value = node.id;
   }
+  function insertOverlayContent(name) {
+    if (!editableStructure() || !selectedNode.value || !['ZModal', 'OffCanvas'].includes(selectedNode.value.name)) return;
+    let node;
+    try { node = elementNode(name); } catch (exception) { error.value = exception.message; return; }
+    commit(() => { selectedNode.value.children.push(node); });
+  }
+  function removeOverlayContent(index) {
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
+    commit(() => { selectedNode.value.children.splice(index, 1); });
+  }
+  function duplicateOverlayContent(index) {
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
+    const source = selectedNode.value.children[index];
+    if (!source) return;
+    const node = copyNode(source);
+    commit(() => { selectedNode.value.children.splice(index + 1, 0, node); });
+  }
+  function moveOverlayContent(index, delta) {
+    if (!canEditRemote.value || !editableStructure() || !selectedNode.value) return;
+    const list = selectedNode.value.children;
+    const target = index + delta;
+    if (target < 0 || target >= list.length) return;
+    commit(() => { const [item] = list.splice(index, 1); list.splice(target, 0, item); });
+  }
   function canDropElement(payload, targetId, position, targetInstanceId) {
     if (!canEditRemote.value || !payload || !['before', 'after', 'inside'].includes(position)) return false;
     if (payload.kind === 'library') return document.value.library.some(item => item.id === payload.id);
@@ -667,7 +701,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
     collapsedOutline.value = next;
   }
-  const api = { clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   provide(key, api);
   return api;
 }

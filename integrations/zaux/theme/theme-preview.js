@@ -1,4 +1,4 @@
-import { clone } from '../../domain/nodes.js';
+import { clone } from '../../../domain/nodes.js';
 import { createThemePreviewPresets } from './theme-preview-presets.js';
 
 // A stylesheet fragment can theme a differently named component.

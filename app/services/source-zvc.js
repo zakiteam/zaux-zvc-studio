@@ -1,10 +1,10 @@
 import { localSourceFiles } from '../../domain/source-files.js';
-import partialRendererSource from '../../integrations/zaux/partial-renderer.js?raw';
+import partialRendererSource from '../../integrations/zaux/renderers/partial-renderer.js?raw';
 import { registerSourceModules } from '../../domain/source-runtime.js';
 import { capturePartials } from '../../domain/partials.js';
 import { clone, dataFor } from '../../domain/nodes.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
-import slotRendererSource from '../../integrations/zaux/slot-renderer.js?raw';
+import slotRendererSource from '../../integrations/zaux/renderers/slot-renderer.js?raw';
 import { componentFiles } from '../../domain/export.js';
 import { zauxSources } from '../../integrations/zaux/source-library.js';
 

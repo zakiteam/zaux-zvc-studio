@@ -15,7 +15,7 @@
 				</h3>
 				<BuilderButton @click="openNewTemplateModal" iconOnly size="xs" icon="add" />
 			</div>
-			<div class="max-h-[300px] overflow-y-auto">
+			<div class="max-h-[180px] overflow-y-auto">
 				<div
 					v-for="template in document.templates"
 					:key="template.id"
@@ -87,7 +87,7 @@
 		</div>
 		<div class="flex-1 h-full min-h-0 overflow-auto zb-scroll">
 			<div v-if="leftTab === 'library'" class="zb-library-panel px-2 py-2.5">
-				<div class="sticky top-0 z-10 -mx-2 -mt-2.5 bg-zaux-white px-2 pt-2.5 pb-2.5">
+				<div class="sticky top-0 z-20 -mx-2 -mt-2.5 bg-zaux-white px-2 pt-2.5 pb-2.5">
 					<div
 						class="zb-panel-heading mb-2 flex items-center justify-between [&_h2]:text-[16px] [&_h2]:font-medium [&_h2]:tracking-[-0.4px] [&_p]:mt-0.5 [&_p]:text-[10px] [&_p]:text-zaux-dark-grey"
 					>
@@ -116,6 +116,16 @@
 						:label="translate('zx_builder_library_search')"
 						:placeholder="translate('zx_builder_library_search')"
 					/>
+					<BuilderInput
+						class="mt-1.5"
+						v-model="libraryCategory"
+						type="select"
+						:label="translate('zx_builder_library_category')"
+						:options="[
+							{ value: 'imported', label: translate('zx_builder_library_imported') },
+							{ value: 'project', label: translate('zx_builder_library_project') },
+						]"
+					/>
 				</div>
 				<div
 					class="flex mb-2 border-b-slim border-zaux-light-grey"
@@ -142,23 +152,6 @@
 					>
 						{{ translate("zx_builder_" + kind) }}
 					</button>
-				</div>
-				<div class="flex flex-col gap-1 mb-2">
-					<BuilderInput
-						v-model="libraryCategory"
-						type="select"
-						:label="translate('zx_builder_library_category')"
-						:options="[
-							{
-								value: 'imported',
-								label: translate('zx_builder_library_imported'),
-							},
-							{
-								value: 'project',
-								label: translate('zx_builder_library_project'),
-							},
-						]"
-					/>
 				</div>
 				<p
 					v-if="!filteredLibrary.length"
@@ -197,10 +190,14 @@
 						"
 					>
 						<button
-							class="zb-library-thumb relative grid group h-[112px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
+							class="zb-library-thumb relative grid group h-[88px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
 							:class="`zb-library-thumb--${index % 3}`"
 							:aria-label="`${translate('zx_builder_edit_library')}: ${definition.name}`"
-							@click="selectLibrary(definition.id)"
+							@click="
+								definition.kind === 'zvp'
+									? insertPartial(definition.id)
+									: insertInstance(definition.id)
+							"
 						>
 							<BuilderButton
 								class="absolute z-10 hidden top-1 left-1 group-hover:block"
@@ -210,7 +207,7 @@
 								:label="translate('zx_builder_media_preview')"
 								size="xs"
 								:disabled="!canEditRemote"
-								@click="previewId = definition.id"
+								@click.stop="previewId = definition.id"
 							/>
 							<img
 								v-if="definition.previewImage"
@@ -221,7 +218,7 @@
 							/>
 							<span
 								v-else
-								class="zb-mini-layout relative h-[78px] w-[140px] -rotate-3 rounded-xxs bg-zaux-white px-1.5 py-2 shadow-closer [&>i]:my-0.75 [&>i]:block [&>i]:h-[5px] [&>i]:w-[55px] [&>i]:rounded-[1px] [&>i]:bg-zaux-light-grey [&>i:nth-child(2)]:w-[38px] [&>i:nth-child(3)]:h-[9px] [&>i:nth-child(3)]:w-[22px] [&>i:nth-child(3)]:bg-zaux-accent [&>b]:absolute [&>b]:right-1.5 [&>b]:top-2 [&>b]:h-[50px] [&>b]:w-[47px] [&>b]:rounded-t-l [&>b]:rounded-b-xxs [&>b]:bg-zaux-light-accent/30"
+								class="zb-mini-layout relative h-[60px] w-[112px] rounded-xxs bg-zaux-white px-1.5 py-1.5 shadow-closer [&>i]:my-0.5 [&>i]:block [&>i]:h-[4px] [&>i]:w-[44px] [&>i]:rounded-[1px] [&>i]:bg-zaux-light-grey [&>i:nth-child(2)]:w-[30px] [&>i:nth-child(3)]:h-[7px] [&>i:nth-child(3)]:w-[18px] [&>i:nth-child(3)]:bg-zaux-accent [&>b]:absolute [&>b]:right-1.5 [&>b]:top-1.5 [&>b]:h-[39px] [&>b]:w-[37px] [&>b]:rounded-t-l [&>b]:rounded-b-xxs [&>b]:bg-zaux-light-accent/30"
 								><i></i><i></i><i></i><b></b></span
 							><span
 								class="zb-card-type absolute right-1 top-1 rounded-xxs bg-zaux-white/70 px-0.5 py-0.25 font-mono text-[8px] text-zaux-dark-grey"
@@ -235,20 +232,28 @@
 							>
 						</button>
 						<div
-							class="zb-card-body px-1.5 pb-1 pt-1.5 [&>small]:mt-0.5 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
+							class="zb-card-body px-1.5 pb-1.5 pt-1 [&>small]:mt-0.25 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
 						>
 							<div>
 								<button
-									class="zb-card-name block w-full text-left text-[12px] font-semibold"
+									class="zb-card-name block w-full truncate text-left text-[11px] font-semibold"
 									@click="selectLibrary(definition.id)"
 								>
 									{{ definition.name }}
 								</button>
-								<small class="block mb-2">{{ definition.exportName }}</small>
+								<small class="block mb-1.5 truncate">{{ definition.exportName }}</small>
 							</div>
 							<div
-								class="zb-card-actions mt-1.5 flex items-center gap-0.5 border-t-slim border-zaux-light pt-0.75 [&>.zb-button]:flex-1 [&>.zb-button]:!px-0.25 [&>.zb-button]:!text-[10px]"
+								class="flex flex-col gap-1 zb-card-actions"
 							>
+								<BuilderButton
+									size="xs"
+									class="!text-[10px]"
+									variant="alt1"
+									@click="selectLibrary(definition.id)"
+									:label="translate('zx_builder_edit_library')"
+								/>
+								<!--
 								<BuilderButton
 									:label="
 										translate(
@@ -259,52 +264,42 @@
 									"
 									icon="add"
 									variant="alt1"
-									@click="
-										definition.kind === 'zvp'
-											? insertPartial(definition.id)
-											: insertInstance(definition.id)
-									"
 								/>
-								<BuilderButton
-									icon="duplicate"
-									iconOnly
-									size="xs"
-									variant="alt1"
-									class="!flex-none"
-									:label="
-										translate('zx_builder_duplicate') + ': ' + definition.name
-									"
-									:disabled="!canEditRemote"
-									@click.stop="duplicate('library', definition.id)"
-								/>
-								<button
-									v-if="!definition.id.startsWith('source:')"
-									class="zb-icon-text w-[18px] text-zaux-dark-grey hover:text-zaux-accent"
-									:aria-label="`${translate('zx_builder_rename')}: ${definition.name}`"
-									@click="
-										modal = {
-											type: 'rename',
-											kind: 'library',
-											id: definition.id,
-											name: definition.name,
-										}
-									"
-								>
-									✎</button
-								><button
-									v-if="!definition.id.startsWith('source:')"
-									class="zb-icon-text w-[18px] text-zaux-dark-grey hover:text-zaux-accent"
-									:aria-label="`${translate('zx_builder_delete')}: ${definition.name}`"
-									@click="
-										modal = {
-											type: 'delete',
-											kind: 'library',
-											id: definition.id,
-										}
-									"
-								>
-									×
-								</button>
+								-->
+								<div class="flex flex-wrap justify-end gap-1">
+									<BuilderButton
+										icon="duplicate"
+										iconOnly
+										size="xs"
+										variant="alt1"
+										class="!flex-none"
+										:label="
+											translate('zx_builder_duplicate') + ': ' + definition.name
+										"
+										:disabled="!canEditRemote"
+										@click.stop="duplicate('library', definition.id)"
+									/>
+									<BuilderButton
+										v-if="!definition.id.startsWith('source:')"
+										icon="edit"
+										iconOnly
+										size="xs"
+										variant="alt1"
+										:label="`${translate('zx_builder_rename')}: ${definition.name}`"
+										:disabled="!canEditRemote"
+										@click="modal = { type: 'rename', kind: 'library', id: definition.id, name: definition.name }"
+									/>
+									<BuilderButton
+										v-if="!definition.id.startsWith('source:')"
+										icon="close"
+										iconOnly
+										size="xs"
+										variant="alt1"
+										:label="`${translate('zx_builder_delete')}: ${definition.name}`"
+										:disabled="!canEditRemote"
+										@click="modal = { type: 'delete', kind: 'library', id: definition.id }"
+									/>
+								</div>
 							</div>
 						</div>
 					</article>
@@ -641,7 +636,7 @@ export default defineComponent({
 		BuilderInput,
 		BuilderMediaPicker,
 	},
-	props: { width: { default: 254 } },
+	props: { width: { default: 180 } },
 	setup() {
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
@@ -649,17 +644,19 @@ export default defineComponent({
 		watch(() => builder.revealOutlineTarget.value, async (target) => {
 			if (!target) return;
 			await nextTick();
-			const selector = builder.mode.value === "library"
-				? "[data-zb-outline-definition]"
-				: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
+			const selector = target.nodeId
+				? `[data-zb-outline-node="${CSS.escape(target.nodeId)}"]`
+				: builder.mode.value === "library"
+					? "[data-zb-outline-definition]"
+					: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
 			document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
 		});
-		const outlineHeight = ref(260);
+		const outlineHeight = ref(500);
 		const asideEl = ref(null);
 		const templatesEl = ref(null);
 		const tabsEl = ref(null);
 		const footerEl = ref(null);
-		const MIN_OUTLINE_HEIGHT = 120;
+		const MIN_OUTLINE_HEIGHT = 350;
 		const MIN_CONTENT_HEIGHT = 80;
 		const RESIZE_HANDLE_HEIGHT = 4;
 		function clampOutline() {

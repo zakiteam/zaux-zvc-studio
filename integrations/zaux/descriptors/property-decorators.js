@@ -1,6 +1,7 @@
 import { videoProperties, imageProperties } from './media-properties.js';
-import { componentSelects } from './component-options.js';
-import { iconSets, iconSizes } from './icon-options.js';
+import { componentSelects } from '../options/component-options.js';
+import { iconSets, iconSizes } from '../options/icon-options.js';
+import palette from '../../../app/data/catalog/palette.js';
 
 // A decoration adds editor metadata; it never writes to the node's props.
 export function selectOptions(values) {
@@ -40,6 +41,7 @@ export const propertyDecorators = {
     },
     size: selectOptions(iconSizes)
   },
+  ResponsiveProps : { componentName : selectOptions(palette.map(entry => entry.name)) },
   Videoplayer: {
     size: selectOptions(['s', 'm']),
     theme: selectOptions(['light1']),
@@ -65,7 +67,21 @@ export const propertyDecorators = {
   },
   ZModalTrigger: {
     modalId: ({ trees }) => panelOptions(trees, 'ZModal', 'modalId')
-  }
+  },
+  Accordion : { content : { control : 'textarea' } },
+  // The `media` prop of these components carries a Media.vue-style object
+  // ({ type, props }); the shared BuilderMediaInput edits it compactly. Opt-in
+  // per component so other `media` props keep their ordinary editor.
+  Card: { media: { media: true } },
+  CardMediaBox: { media: { media: true } },
+  CardPic: { media: { media: true } },
+  ZFigure: { media: { media: true } },
+  Usermeta: { media: { media: true } },
+  DisplayBox: { media: { media: true } },
+  FeatBannerSection: { media: { media: true } },
+  SectionSplit: { media: { media: true } },
+  SectionSplitIntro: { media: { media: true } },
+  SectionSplitWide: { media: { media: true } }
 };
 
 export function decorateProperties(name, descriptors, { props = {}, trees = [] } = {}) {

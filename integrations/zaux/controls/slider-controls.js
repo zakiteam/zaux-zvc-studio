@@ -1,4 +1,4 @@
-import breakpoints from '../../vendor/zaux/style/tokens/breakpoints.json';
+import breakpoints from '../../../vendor/zaux/style/tokens/breakpoints.json';
 
 export const sliderBreakpoints = Object.entries(breakpoints)
   .map(([name, width]) => ({ name, width: parseFloat(width) }))
@@ -27,7 +27,7 @@ export const sliderControls = {
     ]
   },
   SliderMultiple: {
-    props: { slides: [], overrideDefaultParams: true, customSliderParams: { slidesPerView: 1, spaceBetween: 16, speed: 300, loop: false, pagination: { clickable: true }, breakpoints: { [parseFloat(breakpoints.md)]: { slidesPerView: 3, spaceBetween: 24 } } } },
+    props: { slides: [], overflow : true, navButtonTheme : 'secondary', overrideDefaultParams: true, customSliderParams: { slidesPerView: 1, spaceBetween: 16, speed: 300, loop: false, pagination: { clickable: true }, breakpoints: { [parseFloat(breakpoints.md)]: { slidesPerView: 3, spaceBetween: 24 } } } },
     fields: [{ path: 'hideCtrls', label: 'zx_builder_slider_hide_arrows', type: 'switch', default: false }],
   }
 };

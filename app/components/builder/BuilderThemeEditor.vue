@@ -96,7 +96,7 @@
 import { computed, defineComponent, ref, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
 import catalog from '../../../integrations/zaux/generated/component-themes.json';
-import { themePreviewConfig } from '../../../integrations/zaux/theme-preview.js';
+import { themePreviewConfig } from '../../../integrations/zaux/theme/theme-preview.js';
 import { componentThemesCss, parseThemeCss, setThemeVariable, themeVariableOverrides, ruleConditions } from '../../../domain/component-themes.js';
 import { isThemeColorVariable } from '../../../domain/theme-colors.js';
 import BuilderThemeColorInput from './fields/BuilderThemeColorInput.vue';

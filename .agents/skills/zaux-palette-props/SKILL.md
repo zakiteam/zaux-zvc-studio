@@ -15,8 +15,8 @@ Project: `C:/xampp/htdocs/zaki/zaux-builder`. Read its `AGENTS.md`,
 
 - Initial authored properties: `app/data/catalog/palette.js` or the catalog module
   that owns the component entry. Some entries derive from `sliderControls`.
-- Control metadata: `integrations/zaux/property-decorators.js`.
-- Existing source metadata is already adapted in `property-descriptors.js`.
+- Control metadata: `integrations/zaux/descriptors/property-decorators.js`.
+- Existing source metadata is already adapted in `descriptors/property-descriptors.js`.
   Reuse it instead of duplicating option lists.
 
 `catalogNode()` in `app/services/catalog.js` copies the preset into each new node.

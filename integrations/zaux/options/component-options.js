@@ -1,5 +1,5 @@
-import card from '../../vendor/zaux/core/components/shared/card/Card.meta.js';
-import input from '../../vendor/zaux/core/components/shared/input/Input.meta.js';
+import card from '../../../vendor/zaux/core/components/shared/card/Card.meta.js';
+import input from '../../../vendor/zaux/core/components/shared/input/Input.meta.js';
 
 // Source: each component's Vue template, theme SCSS and input stories.
 // The pinned multiselect metadata lists outlined-light2, but its SCSS implements outlined-dark1 instead.

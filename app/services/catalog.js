@@ -3,7 +3,7 @@ import * as common from '@integration/generated/core-common.js';
 import { createNode, clone } from '../../domain/nodes.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import palette from '../data/catalog/palette.js';
-import { propertyDescriptors } from '../../integrations/zaux/property-descriptors.js';
+import { propertyDescriptors } from '../../integrations/zaux/descriptors/property-descriptors.js';
 
 const registry = { ...shared, ...common };
 export const containers = palette.filter(entry => entry.container).map(entry => entry.name);
@@ -21,6 +21,7 @@ export function catalogNode(name) {
   const node = createNode(name, clone(entry.createProps ? entry.createProps(translate) : entry.props ?? {}), (entry.createChildren?.(translate) ?? []).map(makeNode));
   if (name === 'OffCanvas') node.props.offCanvasId = 'offcanvas-' + node.id;
   if (name === 'ZModal') node.props.modalId = 'modal-' + node.id;
+  if (name === 'ZLightbox') node.props.id = 'lightbox-' + node.id;
   if (name.startsWith('Input') || name === 'ZForm') node.props.name += '-' + node.id;
   return node;
 }

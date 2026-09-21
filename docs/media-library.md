@@ -72,7 +72,7 @@ Manual verification remains with the user: upload/selection for all three entry 
 | `app/data/locale/en.json` | English media labels and errors. |
 | `domain/media.js` | Recognize scalar image URL fields. |
 | `domain/validation.js` | Validate optional preview strings. |
-| `integrations/zaux/property-descriptors.js` | Mark supported image properties in the project adapter. |
+| `integrations/zaux/descriptors/property-descriptors.js` | Mark supported image properties in the project adapter. |
 | `server/utils/media.js` | Session checks, scope permissions, paths and stream size limits. |
 | `server/api/media/index.get.js` | Paginated authorized catalog. |
 | `server/api/media/index.post.js` | Decode, normalize, save and register uploads; clean up failed writes. |

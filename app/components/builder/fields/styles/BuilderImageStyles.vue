@@ -53,7 +53,7 @@
 import { computed, defineComponent } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
 import { literalClasses, readStyleClass, readStyleImportant, setStyleImportant, replaceStyleClass, readPositionValue, positionValueClass } from '../../../../../domain/node-styles.js';
-import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/image-style-controls.js';
+import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
 import BuilderStyleSelect from './BuilderStyleSelect.vue';
 import BuilderStyleChoices from './BuilderStyleChoices.vue';
 import BuilderInput from '../BuilderInput.vue';

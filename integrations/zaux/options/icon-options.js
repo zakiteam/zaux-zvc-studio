@@ -1,7 +1,7 @@
-import tokens from '../../vendor/zaux/style/tokens/icons.json';
+import tokens from '../../../vendor/zaux/style/tokens/icons.json';
 
 // Read the actual symbol IDs used by Icon.vue, including any bundled icon sets.
-const sprites = import.meta.glob('../../vendor/zaux/public/assets/icon/*/symbol-defs.svg', {
+const sprites = import.meta.glob('../../../vendor/zaux/public/assets/icon/*/symbol-defs.svg', {
   query: '?raw', import: 'default', eager: true
 });
 export const iconSets = Object.fromEntries(Object.entries(sprites).map(([path, svg]) => [

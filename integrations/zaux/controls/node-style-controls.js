@@ -1,12 +1,12 @@
-import containers from '../../vendor/zaux/style/tokens/containers.json';
-import spacing from '../../vendor/zaux/style/tokens/spacing.json';
-import colors from '../../vendor/zaux/style/tokens/colors.json';
-import overlays from '../../vendor/zaux/style/tokens/overlays.json';
-import gradients from '../../vendor/zaux/style/tokens/gradients.json';
-import borders from '../../vendor/zaux/style/tokens/borders.json';
-import radius from '../../vendor/zaux/style/tokens/radius.json';
-import breakpoints from '../../vendor/zaux/style/tokens/breakpoints.json';
-import typography from '../../vendor/zaux/style/tokens/typography.json';
+import containers from '../../../vendor/zaux/style/tokens/containers.json';
+import spacing from '../../../vendor/zaux/style/tokens/spacing.json';
+import colors from '../../../vendor/zaux/style/tokens/colors.json';
+import overlays from '../../../vendor/zaux/style/tokens/overlays.json';
+import gradients from '../../../vendor/zaux/style/tokens/gradients.json';
+import borders from '../../../vendor/zaux/style/tokens/borders.json';
+import radius from '../../../vendor/zaux/style/tokens/radius.json';
+import breakpoints from '../../../vendor/zaux/style/tokens/breakpoints.json';
+import typography from '../../../vendor/zaux/style/tokens/typography.json';
 
 function leaves(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {

@@ -78,7 +78,7 @@ Source and diffs were reviewed. No automated tests, validators, browser checks o
 | `domain/starter-export.js` | Partial entries, folders and dependency identity. |
 | `domain/validation.js` | Optional partial kind and nested definitions. |
 | `domain/workspace.js` | Partial creation and naming. |
-| `integrations/zaux/partial-renderer.js` | Portable dynamic descriptor resolver. |
+| `integrations/zaux/renderers/partial-renderer.js` | Portable dynamic descriptor resolver. |
 | `integrations/zaux/source-library.js` | Read-only upstream partial discovery. |
 | `docs/architecture.md` | Ownership and runtime integration. |
 | `docs/code-components.md` | Updated source-library conventions. |

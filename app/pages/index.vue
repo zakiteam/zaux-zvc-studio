@@ -32,11 +32,11 @@
           <NuxtLink :to="'/editor/' + project.id" class="py-1 mr-auto underline rounded-xxs text-zaux-accent">
             {{ translate('zx_builder_hub_open') }}
           </NuxtLink>
-          <BuilderButton v-if="['owner', 'editor'].includes(project.role)" icon="duplicate" iconOnly
+          <BuilderButton variant="alt1" v-if="['owner', 'editor'].includes(project.role)" icon="duplicate" iconOnly
             :label="translate('zx_builder_duplicate') + ': ' + project.name" :disabled="busy || loading"
             @click="duplicateProject(project)" />
-          <BuilderButton v-if="['owner', 'editor'].includes(project.role)" icon="edit" iconOnly :label="translate('zx_builder_rename_project')" :disabled="busy" @click="openAction('rename', project)" />
-          <BuilderButton v-if="project.role === 'owner'" icon="delete" iconOnly :label="translate('zx_builder_delete_project')" :disabled="busy" @click="openAction('delete', project)" />
+          <BuilderButton variant="alt1" v-if="['owner', 'editor'].includes(project.role)" icon="edit" iconOnly :label="translate('zx_builder_rename_project')" :disabled="busy" @click="openAction('rename', project)" />
+          <BuilderButton variant="alt1" v-if="project.role === 'owner'" icon="delete" iconOnly :label="translate('zx_builder_delete_project')" :disabled="busy" @click="openAction('delete', project)" />
         </div>
       </article>
     </div>

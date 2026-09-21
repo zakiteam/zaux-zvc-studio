@@ -25,6 +25,16 @@
 			↗ {{ value.$bind }}
 		</div>
 		<div
+			v-else-if="descriptor?.media"
+			class="border-l-slim border-zaux-light-grey pl-1.5"
+		>
+			<BuilderMediaInput
+				:modelValue="value"
+				:label="property"
+				@update:modelValue="$emit('change', $event)"
+			/>
+		</div>
+		<div
 			v-else-if="objectProperties"
 			class="border-l-slim border-zaux-light-grey pl-1.5"
 		>
@@ -116,11 +126,12 @@ import { isBinding, clone } from "../../../../domain/nodes.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
 import BuilderValue from "./BuilderValue.vue";
 import BuilderInput from "./BuilderInput.vue";
+import BuilderMediaInput from "./BuilderMediaInput.vue";
 import BuilderButton from "../BuilderButton.vue";
 import { propertyValueType } from "../../../../domain/properties.js";
 export default defineComponent({
 	name: "BuilderProperty",
-	components: { BuilderValue, BuilderInput, BuilderButton },
+	components: { BuilderValue, BuilderInput, BuilderMediaInput, BuilderButton },
 	props: {
 		property: String,
 		path: String,

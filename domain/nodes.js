@@ -1,6 +1,6 @@
 import { sourceModule } from './source-runtime.js';
 import { sourceTree } from './source-zvc.js';
-import { resolvePartials } from '../integrations/zaux/partial-renderer.js';
+import { resolvePartials } from '../integrations/zaux/renderers/partial-renderer.js';
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const uid = () => globalThis.crypto.randomUUID();
 export const bind = key => ({ $bind: key });
@@ -24,6 +24,14 @@ export function findNode(nodes, id) {
     if (node.id === id) return node;
     const child = findNode(node.children, id);
     if (child) return child;
+  }
+  return null;
+}
+export function ancestorIds(nodes, id) {
+  for (const node of nodes) {
+    if (node.id === id) return [];
+    const ancestors = ancestorIds(node.children, id);
+    if (ancestors) return [node.id, ...ancestors];
   }
   return null;
 }

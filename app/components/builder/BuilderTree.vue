@@ -1,6 +1,6 @@
 <template>
   <ul class="zb-tree my-0.5 list-none p-0 [&.zb-tree--nested]:ml-1 [&.zb-tree--nested]:border-l-slim [&.zb-tree--nested]:border-zaux-light-grey [&.zb-tree--nested]:pl-0.75" :class="{ 'zb-tree--nested': depth }">
-    <li v-for="node in nodes" :key="node.id" class="relative">
+    <li v-for="node in nodes" :key="node.id" class="relative" :data-zb-outline-node="node.id">
       <BuilderDropdown
         :context-menu="true"
         content-class="!w-max !max-w-max !pb-1"

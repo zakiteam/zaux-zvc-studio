@@ -5,7 +5,7 @@ The Elements palette includes SliderSingle and SliderMultiple. Select a slider t
 ## File map
 
 - `app/data/catalog/slide-components.js`: allowed slide content, initial props, translated labels, field paths. Includes Zimg, Card and CardPic. Card themes come from the upstream component metadata.
-- `integrations/zaux/slider-controls.js`: slider presets, supported controls and Zaux breakpoints.
+- `integrations/zaux/controls/slider-controls.js`: slider presets, supported controls and Zaux breakpoints.
 - `app/components/builder/BuilderSlider.vue`: connects controls to the selected node and existing builder mutations.
 - `BuilderSliderSlides.vue`: list, add, duplicate, remove, reorder and selected slide form.
 - `BuilderSliderFields.vue`: shared rendering of configured fields.

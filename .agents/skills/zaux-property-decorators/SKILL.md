@@ -15,16 +15,16 @@ for the current contract and call chain.
 
 - Inspect the actual Vue prop, source metadata and nearest existing decoration.
   Treat vendor/zaux as read-only. Use actual registered names, e.g. Icon.
-- Add rules in integrations/zaux/property-decorators.js under component -> prop.
+- Add rules in integrations/zaux/descriptors/property-decorators.js under component -> prop.
   Prefer selectOptions for typed enumerations; use existing image/control metadata
   for other supported editors.
 - Use synchronous context functions for dependencies on props or trees. Do not
   mutate their inputs, execute component defaults, resolve bindings as literals
   or perform IO. Functions return metadata patches, never authored prop updates.
 - Source choices from upstream metadata, tokens or bundled assets when possible.
-  Icon symbols and sizes are already exposed by integrations/zaux/icon-options.js.
+  Icon symbols and sizes are already exposed by integrations/zaux/options/icon-options.js.
 - Keep component-specific descriptor construction out of the Inspector. It passes
-  current props/trees to catalog.propertyInfo; property-descriptors applies the
+  current props/trees to catalog.propertyInfo; descriptors/property-descriptors applies the
   registry after upstream metadata. If adding another context input, document
   and wire it through those same layers.
 - Merge existing rules for a component. An explicit prop rule takes precedence

@@ -12,8 +12,8 @@ Maintain concrete, editable samples of the actual Zaux components. A theme style
 Use the active Zaux Studio repository (normally `C:/xampp/htdocs/zaki/zaux-builder`). Read its `AGENTS.md`, `docs/ai/INDEX.md`, session state and the relevant architecture section. The project skill `zaux-builder-work` contains ownership constraints.
 
 Start with:
-- `integrations/zaux/theme-preview-presets.js`: explicit sample props, children, select choices and sample sizes.
-- `integrations/zaux/theme-preview.js`: stylesheet/component aliases and typed field descriptors.
+- `integrations/zaux/theme/theme-preview-presets.js`: explicit sample props, children, select choices and sample sizes.
+- `integrations/zaux/theme/theme-preview.js`: stylesheet/component aliases and typed field descriptors.
 - `app/components/builder/BuilderThemeProps.vue`: shared prop controls and advanced JSON.
 - `app/components/builder/BuilderThemeEditor.vue`: sample selection and transient theme/size controls.
 - `integrations/zaux/generated/component-themes.json`: the currently available stylesheet IDs and actual CSS selectors. This is generated data, not the edit destination.

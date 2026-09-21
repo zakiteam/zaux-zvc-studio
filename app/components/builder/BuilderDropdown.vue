@@ -15,7 +15,7 @@
 			<div ref="trigger" @keydown="triggerKeydown" @keyup.stop @click="triggerClick" @contextmenu="contextMenuOpen">
 				<slot name="trigger" :open="open" :menu-id="menuId">
 				<BuilderButton
-					:size="btnSize ?? 's'"
+					size="xs"
 					:variant="btnTheme ?? 'primary'"
 					:label="label"
 					:swatch="swatch"
@@ -59,7 +59,7 @@
 				>
 					<slot name="header" />
 				</div>
-				<div v-if="filterItems" ref="filterWrap" role="presentation" class="px-2 pb-2 pt-1">
+				<div v-if="filterItems" ref="filterWrap" role="presentation" class="px-2 pt-1 pb-2">
 					<BuilderInput
 						v-model="query"
 						type="search"
