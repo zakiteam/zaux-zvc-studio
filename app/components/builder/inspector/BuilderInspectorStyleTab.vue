@@ -27,13 +27,20 @@
 				tabindex="-1"
 				class="zb-field [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
-				<label>{{ translate("zx_builder_classes") }}</label
-				><BuilderValue
+				<label>{{ translate("zx_builder_classes") }}</label>
+				<BuilderStyleInput
+					v-if="selectedNode.props.class == null || typeof selectedNode.props.class === 'string'"
+					:key="selectedNode.id"
+					:modelValue="selectedNode.props.class ?? ''"
+					:label="translate('zx_builder_classes')"
+					:disabled="!canEditRemote"
+					@update:modelValue="setProperty('class', $event)"
+				/>
+				<BuilderValue v-else
 					:modelValue="selectedNode.props.class ?? ''"
 					label="CSS class"
-					:type="
-						Array.isArray(selectedNode.props.class) ? 'json' : 'text'
-					"
+					type="json"
+					:disabled="!canEditRemote"
 					@update:modelValue="setProperty('class', $event)"
 				/>
 			</div>
@@ -73,9 +80,10 @@ import { styleVisibility, visibleStyleSections } from "../../../../integrations/
 import { nodeStyleSections } from "../../../../integrations/zaux/controls/node-style-controls.js";
 import { imageStyleTarget } from "../../../../integrations/zaux/controls/image-style-controls.js";
 import BuilderValue from "../fields/BuilderValue.vue";
+import BuilderStyleInput from "../fields/BuilderStyleInput.vue";
 import BuilderNodeStyles from "../fields/styles/BuilderNodeStyles.vue";
 export default defineComponent({
-	components: { BuilderValue, BuilderNodeStyles },
+	components: { BuilderValue, BuilderStyleInput, BuilderNodeStyles },
 	props: { active: Boolean },
 	setup() {
 		const builder = useBuilder();

@@ -764,5 +764,12 @@
   "zx_builder_bridge_part_imported": "Imported ZVCs (from code)",
   "zx_builder_bridge_part_templates": "Templates",
   "zx_builder_bridge_part_styles": "Styles (tokens and CSS)",
-  "zx_builder_bridge_part_fonts": "Fonts"
+  "zx_builder_bridge_part_fonts": "Fonts",
+  "zx_builder_class_help_on": "Tailwind suggestions: on",
+  "zx_builder_class_help_off": "Tailwind suggestions: off",
+  "zx_builder_class_suggestions": "Tailwind classes",
+  "zx_builder_class_loading": "Loading CSS…",
+  "zx_builder_class_unavailable": "Suggestions or CSS unavailable. You can keep typing freely.",
+  "zx_builder_class_no_css": "No utility CSS for this candidate. Custom classes remain valid; CSS variables resolve in the preview.",
+  "zx_builder_class_keys": "↑ ↓ select · Tab / Enter insert · Esc close · Ctrl+Space suggest. Enter with suggestions closed or leaving the field applies changes."
 }

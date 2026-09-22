@@ -18,6 +18,7 @@ export default defineNuxtConfig({
     mediaStorageDir: '',
     mediaPublicBaseUrl: '',
     public: {
+      tailwindAssistance: true,
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabasePublishableKey: process.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     }
@@ -52,8 +53,8 @@ export default defineNuxtConfig({
     resolve: { dedupe: ['vue', 'pinia'] }
   },
   nitro: {
-    // Bundle local Tailwind config, tokens and plugins in dev as well as production.
-    externals: { inline: [path('./integrations/zaux/'), path('./vendor/zaux/')] },
+    // Bundle local adapters and their domain helpers in dev as well as production.
+    externals: { inline: [path('./integrations/zaux/'), path('./vendor/zaux/'), path('./domain/')] },
     publicAssets: [{ dir: path('./vendor/zaux/public'), baseURL: '/' }]
   },
   app: { head: { title: 'Zaux Studio — Virtual Component Builder', htmlAttrs: { lang: 'it' }, link: [

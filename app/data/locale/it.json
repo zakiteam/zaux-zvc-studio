@@ -764,5 +764,12 @@
   "zx_builder_bridge_part_imported": "ZVC importati da codice",
   "zx_builder_bridge_part_templates": "Template",
   "zx_builder_bridge_part_styles": "Stili (token e CSS)",
-  "zx_builder_bridge_part_fonts": "Font"
+  "zx_builder_bridge_part_fonts": "Font",
+  "zx_builder_class_help_on": "Suggerimenti Tailwind: attivi",
+  "zx_builder_class_help_off": "Suggerimenti Tailwind: disattivati",
+  "zx_builder_class_suggestions": "Classi Tailwind",
+  "zx_builder_class_loading": "Caricamento CSS…",
+  "zx_builder_class_unavailable": "Suggerimenti o CSS non disponibili. Puoi continuare a scrivere liberamente.",
+  "zx_builder_class_no_css": "Nessun CSS utility per questa voce. Le classi personalizzate restano valide; le variabili CSS si risolvono nella preview.",
+  "zx_builder_class_keys": "↑ ↓ seleziona · Tab / Invio inserisce · Esc chiude · Ctrl+Spazio suggerisce. Invio a suggerimenti chiusi o uscire dal campo applica le modifiche."
 }

@@ -128,6 +128,12 @@ The central extension point is **integrations/zaux/descriptors/property-decorato
 
 ## Visual node styling
 
+Literal class strings in the Style tab use the isolated `BuilderStyleInput` with optional
+Tailwind completions and compiled CSS details. The server-only Zaux adapter uses the
+pinned compiler and project configuration; shared generic inputs remain unchanged.
+See [Tailwind assistance](tailwind-assistance.md) for ownership, keyboard interaction,
+limitations and session/deployment disable switches. Runtime verification remains manual.
+
 The inspector has a dedicated Style tab containing BuilderNodeStyles, the class editor and the inline-style editor for editable visual nodes. Properties retains component props and the advanced JSON editor. The Zaux adapter in integrations/zaux/controls/node-style-controls.js reads spacing, colors, overlays, gradients, border widths, radii and breakpoints directly from the pinned dependency. Layout controls offer block, flex and grid as illustrated choices, plus direction, alignment, wrapping, columns, column span, order and separate horizontal/vertical gaps. BuilderStyleChoices renders labelled button groups with pressed states and a reset action. SVG assets live in public/assets/builder; alignment illustrations follow the authored responsive flex direction. Older display utilities remain recognizable and replaceable even when absent from the three-choice display control. Padding and margin expose four independent sides. Spacing labels show the token key and its pixel equivalent at a standard 16px root size; saved classes still use the original spacing tokens.
 
 The pure transformations in domain/node-styles.js read and update props.class; there is no additional persisted styling model. Edits use the inspector's existing updateNode/commit path for undo, persistence, preview compilation and exports. Literal string arrays normalize to a class string on editing. Bound classes and conditional maps remain editable through the existing property editor and disable visual controls.
