@@ -134,6 +134,131 @@ export function componentFiles(definition) {
   if (definition.css.trim()) files[`style/${name}.css`] = definition.css;
   return files;
 }
+// ── Vue SFC export ─────────────────────────────────────────────────────────
+// Translates the node tree into a single-file component following the Zaux
+// component conventions: ordinary <script> with Composition API (setup()),
+// no <script setup> and no TypeScript. Field keys become component props and
+// $bind markers become prop references; literal values stay inline.
+
+const HTML_ELEMENT_RE = /^[a-z]/;
+const CONTENT_SLOT_COMPONENTS = ['Accordion', 'OffCanvas', 'ZModal'];
+const JS_IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function vueEscapeText(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// Escapes a static attribute value kept inside double quotes.
+function vueEscapeAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+// A JS string literal using single quotes, so the surrounding double-quoted
+// attribute stays free of entity noise. `&` is entity-escaped and decoded back
+// by the Vue compiler before the expression is evaluated.
+function vueString(value) {
+  return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/&/g, '&amp;') + "'";
+}
+// Serializes a value as a JS expression with single-quoted strings.
+function vueExpr(value) {
+  if (isBinding(value)) return value.$bind;
+  if (value === null) return 'null';
+  if (typeof value === 'boolean' || typeof value === 'number') return String(value);
+  if (typeof value === 'string') return vueString(value);
+  if (Array.isArray(value)) return '[' + value.map(vueExpr).join(', ') + ']';
+  if (typeof value === 'object') return '{ ' + Object.entries(value).map(([key, item]) => `${vueKey(key)}: ${vueExpr(item)}`).join(', ') + ' }';
+  return JSON.stringify(value);
+}
+function vueKey(key) {
+  return JS_IDENTIFIER_RE.test(key) ? key : JSON.stringify(key);
+}
+function vueAttr(key, value) {
+  if (isBinding(value)) return `:${key}="${value.$bind}"`;
+  if (value === true) return key;
+  if (value === false) return `:${key}="false"`;
+  if (value === null) return `:${key}="null"`;
+  if (typeof value === 'number') return `:${key}="${value}"`;
+  if (typeof value === 'string') return `${key}="${vueEscapeAttr(value)}"`;
+  return `:${key}="${vueExpr(value)}"`;
+}
+function vueNode(node, depth) {
+  if (!node || typeof node.name !== 'string' || !node.name.trim()) return '';
+  const pad = '  '.repeat(depth);
+  const name = node.name;
+  const html = HTML_ELEMENT_RE.test(name);
+  const props = { ...(node.props ?? {}) };
+  const children = (node.children ?? []).filter(Boolean);
+
+  let textContent = '';
+  let innerHTML = '';
+  if (html) {
+    if (props.textContent != null && typeof props.textContent !== 'object') {
+      textContent = String(props.textContent);
+      delete props.textContent;
+    }
+    if (typeof props.innerHTML === 'string') {
+      innerHTML = props.innerHTML;
+      delete props.innerHTML;
+    }
+  }
+
+  const attrs = Object.entries(props).map(([key, value]) => vueAttr(key, value)).filter(Boolean);
+  const attrString = attrs.length ? ' ' + attrs.join(' ') : '';
+
+  if (CONTENT_SLOT_COMPONENTS.includes(name) && children.length) {
+    const content = children.map(child => vueNode(child, depth + 2)).filter(Boolean).join('\n');
+    return `${pad}<${name}${attrString}>\n${pad}  <template #content>\n${content}\n${pad}  </template>\n${pad}</${name}>`;
+  }
+  if (innerHTML) {
+    return `${pad}<${name}${attrString} v-html="${vueExpr(innerHTML)}" />`;
+  }
+  if (children.length) {
+    const inner = [
+      textContent ? '  '.repeat(depth + 1) + vueEscapeText(textContent) : '',
+      ...children.map(child => vueNode(child, depth + 1)).filter(Boolean),
+    ].filter(Boolean).join('\n');
+    return `${pad}<${name}${attrString}>\n${inner}\n${pad}</${name}>`;
+  }
+  if (textContent) {
+    return `${pad}<${name}${attrString}>${vueEscapeText(textContent)}</${name}>`;
+  }
+  return `${pad}<${name}${attrString} />`;
+}
+function vuePropType(field) {
+  if (field.type === 'switch') return 'Boolean';
+  if (field.type === 'number') return 'Number';
+  const value = field.default;
+  if (typeof value === 'boolean') return 'Boolean';
+  if (typeof value === 'number') return 'Number';
+  if (Array.isArray(value)) return 'Array';
+  if (value && typeof value === 'object') return 'Object';
+  return 'String';
+}
+function vuePropDefault(field) {
+  const value = field.default;
+  if (value === undefined || value === null) return 'null';
+  if (Array.isArray(value)) return `() => ${JSON.stringify(value)}`;
+  if (value && typeof value === 'object') return `() => (${JSON.stringify(value)})`;
+  return JSON.stringify(value);
+}
+function vueProps(fields) {
+  const list = (fields ?? []).filter(field => field && typeof field.key === 'string' && field.key.trim());
+  if (!list.length) return '{}';
+  return '{\n' + list.map(field => {
+    const type = vuePropType(field);
+    const declaration = type === 'String'
+      ? `default: ${vuePropDefault(field)}`
+      : `type: ${type},\n      default: ${vuePropDefault(field)}`;
+    return `    ${vueKey(field.key)}: {\n      ${declaration},\n    }`;
+  }).join(',\n') + ',\n  }';
+}
+export function vueComponent(definition) {
+  validateDefinition(definition);
+  const body = (definition.tree ?? []).map(node => vueNode(node, 1)).filter(Boolean).join('\n') || '  <div />';
+  const css = (definition.css ?? '').trim();
+  let source = `<template>\n${body}\n</template>\n\n<script>\nexport default {\n  props: ${vueProps(definition.fields)},\n  setup() {\n    return {};\n  },\n};\n</script>\n`;
+  if (css) source += `\n<style scoped>\n${css}\n</style>\n`;
+  return source;
+}
+
 export function templateRuntime(template) {
   return template.instances.flatMap(instance =>
     runtimeNodes(instance.definition, instance.data).map(node => ({

@@ -17,11 +17,11 @@
 			</dialog>
 		</Teleport>
 		<Teleport :to="expandedHost || 'body'" :disabled="!expanded">
-			<div :class="{ 'zb-code-expanded flex h-full min-h-0 flex-col': expanded }" @keydown="editorKeydown" @keyup="editorKeydown" class="min-w-0 overflow-hidden rounded-xxs border-slim border-zaux-light-grey focus-within:outline focus-within:outline-2 focus-within:outline-zaux-accent">
+			<div :class="{ 'zb-code-expanded flex h-full min-h-0 flex-col': fillMode }" @keydown="editorKeydown" @keyup="editorKeydown" class="min-w-0 overflow-hidden rounded-xxs border-slim border-zaux-light-grey focus-within:outline focus-within:outline-2 focus-within:outline-zaux-accent">
 				<div class="flex items-center justify-end gap-1 p-1 shrink-0 border-b-slim border-zaux-light-grey bg-zaux-white">
 					<BuilderButton size="xs" variant="secondary" icon="sort"
 						:label="translate('zx_builder_format_code')"
-						:disabled="readonly || disabled || formatting || !modelValue.trim()"
+						:disabled="disabled || formatting || !modelValue.trim()"
 						:aria-busy="formatting"
 						@mousedown.prevent
 						@click="format" />
@@ -32,14 +32,14 @@
 				<p v-if="formatError" role="alert" class="border-b-slim border-zaux-light-grey p-2 text-[11px] text-utility-error">
 					{{ translate('zx_builder_format_code_error') }}
 				</p>
-				<div ref="host" :class="{ 'min-h-0 flex-1': expanded }" />
+				<div ref="host" :class="{ 'min-h-0 flex-1': fillMode }" />
 			</div>
 		</Teleport>
 	</div>
 </template>
 <script>
 
-	import { defineComponent, ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+	import { computed, defineComponent, ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 	import { basicSetup } from "codemirror";
 	import { oneDark } from "@codemirror/theme-one-dark";
 	import { EditorState, Compartment, Transaction } from "@codemirror/state";
@@ -61,6 +61,7 @@
 			readonly: Boolean,
 			disabled: Boolean,
 			rows: { default: 12 },
+			fill: Boolean,
 		},
 		emits: ["update:modelValue", "change"],
 		setup(props, { emit }) {
@@ -68,6 +69,7 @@
 			const dialog = ref(null);
 			const expandedHost = ref(null);
 			const expanded = ref(false);
+			const fillMode = computed(() => props.fill || expanded.value);
 			let previousFocus;
 			async function openExpanded() {
 				if (props.disabled || expanded.value) return;
@@ -108,7 +110,7 @@
 				}
 			}
 			async function format() {
-				if (!view || props.readonly || props.disabled || formatting.value) return;
+				if (!view || props.disabled || formatting.value) return;
 				const source = view.state.doc.toString();
 				if (!source.trim()) return;
 				const currentRevision = revision;
@@ -116,7 +118,7 @@
 				formatError.value = false;
 				try {
 					const { formatted, cursorOffset } = await formatCode(source, props.language, view.state.selection.main.head);
-					if (!view || revision !== currentRevision || props.readonly || props.disabled) return;
+					if (!view || revision !== currentRevision || props.disabled) return;
 					if (formatted !== source) {
 						view.dispatch({
 							changes: { from: 0, to: view.state.doc.length, insert: formatted },
@@ -136,7 +138,7 @@
 			function extensions() {
 				const locked = props.readonly || props.disabled;
 				return [
-					props.language === "html"
+					props.language === "html" || props.language === "vue"
 						? html()
 						: props.language === "css"
 							? css()
@@ -223,7 +225,7 @@
 				view?.destroy();
 				view = null;
 			});
-			return { host, dialog, expandedHost, expanded, openExpanded, closeExpanded, editorKeydown, translate, formatting, formatError, format };
+			return { host, dialog, expandedHost, expanded, fillMode, openExpanded, closeExpanded, editorKeydown, translate, formatting, formatError, format };
 		},
 	});
 	

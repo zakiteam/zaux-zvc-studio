@@ -100,7 +100,7 @@
 						</div>
 						<BuilderDropdown
 							:label="translate('zx_builder_create')"
-							icon="add"
+							icon="plus"
 							align="end"
 							:popOverProps="{
 								dropdown: { class: '!max-w-[150px]' },
@@ -190,7 +190,7 @@
 						"
 					>
 						<button
-							class="zb-library-thumb relative grid group h-[88px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
+							class="zb-library-thumb relative grid group h-[120px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
 							:class="`zb-library-thumb--${index % 3}`"
 							:aria-label="`${translate('zx_builder_edit_library')}: ${definition.name}`"
 							@click="

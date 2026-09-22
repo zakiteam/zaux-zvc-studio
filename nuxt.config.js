@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import AutoImport from 'unplugin-auto-import/vite';
 const path = value => fileURLToPath(new URL(value, import.meta.url));
+const zauxPackage = JSON.parse(readFileSync(path('./vendor/zaux/package.json'), 'utf8'));
 const aliases = {};
 for (const area of ['core', 'project']) {
   for (const kind of ['common', 'shared', 'utils', 'overrides', 'virtual', 'templates']) {
@@ -45,7 +47,7 @@ export default defineNuxtConfig({
   postcss: { plugins: { tailwindcss: { config: path('./integrations/zaux/tailwind.config.js') } } },
   vite: {
     plugins: [AutoImport({ include: [/vendor[\\/]zaux[\\/].*\.[jt]s$/, /vendor[\\/]zaux[\\/].*\.vue/, /vendor[\\/]zaux[\\/].*\.vue\?vue/], imports: ['vue'], dts: false })],
-    define: { ZAUX_CORE_VERSION: JSON.stringify('2.3.4'), ZAUX_PJ_VERSION: JSON.stringify('0.1.0') },
+    define: { ZAUX_CORE_VERSION: JSON.stringify(zauxPackage.coreVersion), ZAUX_PJ_VERSION: JSON.stringify('0.1.0') },
     vue: { template: { compilerOptions: { isCustomElement: tag => tag.startsWith('swiper-') } } },
     resolve: { dedupe: ['vue', 'pinia'] }
   },

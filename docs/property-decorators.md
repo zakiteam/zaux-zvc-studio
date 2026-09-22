@@ -121,7 +121,7 @@ Out-of-list values keep a "custom value" entry and remain editable.
 ## Existing examples
 
 - Icon.iconName: actual bundled SVG symbol IDs.
-- Icon.iconSet: bundled asset folders; unknown sets retain custom editing.
+- Icon.iconSet: bundled asset folders; unknown sets retain custom editing. Since Zaux 2.4.0 the global `uiSettings.global.iconSet` setting wins over this per-instance prop when they differ; the Studio UI settings panel exposes that global value.
 - Icon.size: fontSize token keys from vendor/zaux/style/tokens/icons.json, prefixed with text- (for example text-icon-m). Icon.vue applies size directly as a CSS class; raw icon-m is not a utility.
 - Zimg.src, Zimg.fallbackSrc, img.src, video.poster: image picker metadata.
 - OffCanvasTrigger.offCanvasId, ZModalTrigger.modalId: options from the current

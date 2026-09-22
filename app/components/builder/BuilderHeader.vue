@@ -140,6 +140,11 @@
 					/>
 					<BuilderButton
 						size="xs"
+						:label="translate('zx_builder_bridge')"
+						@click="bridgeOpen = true"
+					/>
+					<BuilderButton
+						size="xs"
 						variant="primary"
 						icon="play"
 						:extraProps="{ actionIcon: false }"
@@ -167,6 +172,7 @@
 			@close="fontsOpen = false"
 			@apply="applyFonts"
 		/>
+		<BuilderProjectBridge v-if="bridgeOpen" @close="bridgeOpen = false" />
 	</header>
 </template>
 <script>
@@ -180,6 +186,7 @@ import BuilderButton from "./BuilderButton.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
 import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 import BuilderFontLibrary from "./BuilderFontLibrary.vue";
+import BuilderProjectBridge from "./BuilderProjectBridge.vue";
 
 export default defineComponent({
 	components: {
@@ -187,6 +194,7 @@ export default defineComponent({
 		BuilderDropdown,
 		BuilderMediaPicker,
 		BuilderFontLibrary,
+		BuilderProjectBridge,
 	},
 	setup() {
 		const builder = useBuilder();
@@ -206,6 +214,7 @@ export default defineComponent({
 		const projectOpening = ref(false);
 		const mediaMode = ref("");
 		const fontsOpen = ref(false);
+		const bridgeOpen = ref(false);
 		function applyFonts(fonts) {
 			builder.updateProjectFonts(fonts);
 			fontsOpen.value = false;
@@ -325,6 +334,7 @@ export default defineComponent({
 			selectMedia,
 			fontsOpen,
 			applyFonts,
+			bridgeOpen,
 			projectMenuItems,
 			projectAction,
 			accountMenuItems,

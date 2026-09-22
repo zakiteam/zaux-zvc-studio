@@ -15,6 +15,10 @@
 | app/pages/preview.vue | Actual Zaux rendering in a separate browser viewport |
 | app/assets/styles | Studio chrome and Zaux stylesheet entry |
 | domain | Pure JSON model, tree operations, validation and export generation |
+| domain/zaux-bridge.js | Bridge version check, starter-file filtering, preview-head font merge |
+| app/services/zaux-bridge.js | File System Access API IO: picker, listing, detection and writes |
+| app/components/builder/BuilderProjectBridge.vue | Filesystem picker modal and project-link export |
+| integrations/zaux/version.js | Builder's pinned Zaux core version |
 | integrations/zaux | Read-only dependency adapter and generated files |
 | scripts/zaux | Generate registries and stylesheet imports outside Zaux |
 | server/api/preview-css.post.js | Compile Tailwind classes authored at runtime |
@@ -203,3 +207,7 @@ The shared slide catalog includes HeroSection with media-library image selection
 ### Preview backgrounds and standalone page
 
 `BuilderPreviewControls.vue` groups project body color and session-only canvas controls below the Design toolbar through `useBuilder.js`. `BuilderDesignView.vue` places the header toggle beside Design/Preview; `BuilderHeader.vue` hosts the primary standalone preview action beside Import/Export. `domain/styles.js` exports the body rule; the style bridge applies it only inside preview documents. `/view/[id]` reuses `/preview` without Studio controls, checks remote project access and follows local saved drafts through `app/services/preview-page.js`. Both routes omit Studio theme overrides. See [preview usage and file inventory](preview.md). Runtime verification remains manual.
+
+### Project bridge (filesystem export)
+
+`BuilderProjectBridge.vue` is a dedicated `<dialog>` modal that lists the contents of a user-granted directory through the File System Access API and links a local Zaux repository as the export destination. It reuses the starter export (`projectStarterFiles`) but, instead of downloading a ZIP, writes component/template/style files straight into the destination's dedicated paths (`project/components/virtual/…`, `project/templates/…`, `style/…`). `domain/zaux-bridge.js` owns the pure logic: version comparison (`compareZauxVersions`), filtering the ZIP-only artifacts out of the direct write (`bridgeFiles`, which drops `README.md`, `studio/*`, `fonts.html`, `fonts.json`) and the idempotent font merge into `.storybook/preview-head.html` (`mergePreviewHead`). `app/services/zaux-bridge.js` performs the browser IO (picker, listing, detection, writes); `integrations/zaux/version.js` exposes the builder's pinned Zaux core version (`vendor/zaux/package.json#coreVersion`). A mismatch between the destination `package.json#coreVersion` and the builder's version requires explicit acceptance before writing. Chromium (Chrome/Edge) on a secure context (localhost) is required; there is no server endpoint and no arbitrary path access. `BuilderProjectBridge.vue` exposes a "Parts to sync" selection (project components, imported ZVCs, templates, styles, fonts) forwarded through `projectStarterFiles` into `starterFiles`; imported (code) ZVCs are excluded by default, so only editor-authored project components are written unless the user opts in.

@@ -39,6 +39,9 @@
         </details>
         <details class="pt-2 mt-0 border-t-slim border-zaux-light-grey">
           <summary class="mb-0 cursor-pointer text-[13px] font-semibold">{{ translate('zx_builder_ui_settings') }}</summary>
+          <div class="mt-1 mb-1.5">
+            <BuilderInput type="select" :modelValue="getValue(uiSettings, 'global.iconSet')" :options="iconSetOptions" :label="translate('zx_builder_ui_icon_set')" :disabled="!canEditRemote" @update:modelValue="value => value && updateStyleUI('global.iconSet', value)" />
+          </div>
           <label v-for="[path, label] in uiControls" :key="path" class="mt-1 flex cursor-pointer items-center justify-between gap-2 rounded-xxs bg-zaux-light py-1 pr-1 pl-1.5 text-[11px]">
             {{ translate(label) }}<input type="checkbox" class="!w-auto accent-zaux-accent" :checked="getValue(uiSettings, path)" @change="updateStyleUI(path, $event.target.checked)" />
           </label>
@@ -62,6 +65,7 @@
 import { defineComponent, computed, ref, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
 import { tokenGroups, uiControls, colorHex, colorValue } from '../../data/styles/tokens.js';
+import { iconSets } from '@integration/options/icon-options.js';
 import { defaultUISettings } from '../../services/styles.js';
 import { mergeUISettings, validateStylePreset, presetCss } from '../../../domain/styles.js';
 import { getValue, clone } from '../../../domain/nodes.js';
@@ -82,6 +86,7 @@ export default defineComponent({
     const localError = ref(''); const status = ref('');
     const preset = computed(() => builder.document.value.styles);
     const uiSettings = computed(() => mergeUISettings(defaultUISettings, preset.value.uiSettings));
+    const iconSetOptions = Object.keys(iconSets).sort().map(name => ({ value: name, label: name }));
     const visibleGroups = computed(() => tokenGroups.map(group => ({ ...group, variables: group.variables.filter(variable => variable.name.toLowerCase().includes(search.value.toLowerCase())) })).filter(group => group.variables.length));
     watch(preset, value => { draft.value = JSON.stringify(value, null, 2); }, { immediate: true, deep: true });
     function override(name) { return preset.value.cssVars.find(group => group.selector === ':root')?.vars.find(variable => variable.name === name); }
@@ -110,7 +115,7 @@ export default defineComponent({
     function exportUI() { downloadText('zaux-ui-settings.json', JSON.stringify(uiSettings.value, null, 2)); }
     function exportCss() { downloadText('zaux-tokens.css', presetCss(preset.value)); }
     async function copyCss() { try { await navigator.clipboard.writeText(presetCss(preset.value)); status.value = 'zx_builder_copied'; } catch { localError.value = 'zx_builder_clipboard_error'; } }
-    return { ...builder, preset, fontsOpen, applyFonts, search, draft, fileInput, uiFileInput, localError, status, visibleGroups, uiControls, uiSettings, colorHex, currentValue, hasOverride: name => !!override(name), changeVariable, applyDraft, importPreset, importUI, exportPreset, exportUI, exportCss, copyCss, getValue };
+    return { ...builder, preset, fontsOpen, applyFonts, search, draft, fileInput, uiFileInput, localError, status, visibleGroups, uiControls, iconSetOptions, uiSettings, colorHex, currentValue, hasOverride: name => !!override(name), changeVariable, applyDraft, importPreset, importUI, exportPreset, exportUI, exportCss, copyCss, getValue };
   }
 });
 </script>

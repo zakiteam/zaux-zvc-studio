@@ -80,7 +80,13 @@ ${name}.parameters = {
   return { [`${directory}/${name}.tpl.js`]: source, [`${directory}/${name}.stories.js`]: story };
 }
 
-export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenDocuments, defaultUISettings, templateId }) {
+const ALL_PARTS = Object.freeze({ components: true, imported: true, templates: true, styles: true, fonts: true });
+
+export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenDocuments, defaultUISettings, templateId, parts = {} }) {
+  const selection = { ...ALL_PARTS, ...parts };
+  // Project components are authored in the editor; imported components carry a
+  // sourceKey and resolve their implementation from the native source catalog.
+  const includeDefinition = definition => Boolean(definition.sourceKey ? selection.imported : selection.components);
   if (templateId !== undefined) {
     const template = workspace.templates.find(item => item.id === templateId);
     if (!template) throw new Error('zx_builder_invalid_document');
@@ -93,6 +99,7 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
   const components = [];
   const templates = [];
   function addDefinition(definition) {
+    if (!includeDefinition(definition)) return definition.exportName;
     const key = definitionKey(definition);
     if (definitions.has(key)) return definitions.get(key);
     const name = uniqueName(definition.exportName.slice(3), names);
@@ -105,26 +112,31 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
     components.push({ kind: definition.kind ?? 'zvc', name: exported.exportName, originalName: definition.exportName, directory });
     return exported.exportName;
   }
-  workspace.library.forEach(addDefinition);
+  workspace.library.forEach(definition => { if (includeDefinition(definition)) addDefinition(definition); });
   const templateNames = new Set();
-  for (const template of workspace.templates) {
-    const base = exportName(template.name).slice(3);
-    const name = uniqueName(/^[A-Za-z]/.test(base) ? base : 'Template' + base, templateNames);
-    const blocks = template.instances.map(instance => ({
-      blockName: addDefinition(instance.definition), data: clone(instance.data)
-    }));
-    Object.assign(files, templateFiles(template, name, blocks));
-    templates.push({ id: template.id, name, directory: `project/templates/${name.toLowerCase()}` });
+  if (selection.templates) {
+    for (const template of workspace.templates) {
+      const base = exportName(template.name).slice(3);
+      const name = uniqueName(/^[A-Za-z]/.test(base) ? base : 'Template' + base, templateNames);
+      const blocks = template.instances.map(instance => ({
+        blockName: addDefinition(instance.definition), data: clone(instance.data)
+      }));
+      Object.assign(files, templateFiles(template, name, blocks));
+      templates.push({ id: template.id, name, directory: `project/templates/${name.toLowerCase()}` });
+    }
   }
   const styles = workspace.styles ?? { cssVars: [], uiSettings: {} };
-  Object.assign(files, tokenFiles(styles, tokenGroups, tokenDocuments), fontFiles(styles.fonts));
-  const css = presetCss(styles);
-  if (css) files['style/studio-tokens.css'] = css;
-  const themeCss = componentThemesCss(workspace.componentThemes);
-  if (themeCss) files['style/component-themes.css'] = themeCss;
-  if (Object.keys(styles.uiSettings ?? {}).length) {
-    files['style/ui.config.js'] = 'export default ' + json(mergeUISettings(defaultUISettings, styles.uiSettings)).trimEnd() + ';\n';
+  if (selection.styles) {
+    Object.assign(files, tokenFiles(styles, tokenGroups, tokenDocuments));
+    const css = presetCss(styles);
+    if (css) files['style/studio-tokens.css'] = css;
+    const themeCss = componentThemesCss(workspace.componentThemes);
+    if (themeCss) files['style/component-themes.css'] = themeCss;
+    if (Object.keys(styles.uiSettings ?? {}).length) {
+      files['style/ui.config.js'] = 'export default ' + json(mergeUISettings(defaultUISettings, styles.uiSettings)).trimEnd() + ';\n';
+    }
   }
+  if (selection.fonts) Object.assign(files, fontFiles(styles.fonts));
   files['studio/workspace.json'] = json(documentEnvelope('workspace', workspace));
   files['studio/manifest.json'] = json({ components, templates });
   const cssPaths = Object.keys(files).filter(path => /\.(css|scss)$/.test(path));

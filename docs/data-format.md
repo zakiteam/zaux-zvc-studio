@@ -77,7 +77,11 @@ Native JS export preserves the original source folder, patches conventional defa
 
 For installation in another Zaux project, place the component folder under `project/components/virtual/`, include any CSS and regenerate its component index through that project's normal workflow. The builder itself never runs those scripts in its read-only submodule.
 
-The component export dialog offers JSON Zaux for a runtime snapshot, alongside editable JSON and JavaScript. `runtimeRoot` and `templateRuntime` expose compiled snapshots for downstream JSON rendering. They intentionally resolve all bindings. Keep the editable envelope as the source for future editing.
+### Vue SFC export
+
+A selected component can also be exported as a single-file `.vue` component (`vueComponent` in `domain/export.js`). The node tree is translated into `<template>` markup: each node renders as its component/HTML tag with inline attributes, `$bind` markers become references to the component props and literal values stay inline. HTML elements translate `textContent` into text content and `innerHTML` into `v-html`; `Accordion`, `OffCanvas` and `ZModal` place their children in the `#content` slot. Field keys become component props with defaults inferred from the field type/default (Boolean/Number/String/Array/Object), and the component uses the classic Composition API (`export default { props, setup() }`, no `<script setup>` and no TypeScript), matching Zaux conventions. Authored CSS is emitted in a scoped `<style>` block. Virtual partial references are rendered as component tags rather than inlined.
+
+The component export dialog offers JSON Zaux for a runtime snapshot, alongside editable JSON, JavaScript and Vue SFC. `runtimeRoot` and `templateRuntime` expose compiled snapshots for downstream JSON rendering. They intentionally resolve all bindings. Keep the editable envelope as the source for future editing.
 
 ## Invariants
 - Browser save and transport share the same schema.
@@ -167,3 +171,7 @@ JavaScript exports use `.zvp.js`, defaults, fields metadata and buildNode/render
 ## Project body background
 
 Optional `workspace.styles.bodyBackground` stores a Zaux color reference such as `rgb(var(--zx-color-set1-white))`, a legacy hexadecimal color or `transparent`; absent or empty means no authored body override. It participates in workspace/style-preset persistence and undo. CSS presets and starter/template `style/studio-tokens.css` include the body rule; individual JavaScript exports include `body-background.css`. Canvas light/dark mode and preview header visibility are session-only and excluded from exports. See [preview](preview.md).
+
+## Project bridge export
+
+The filesystem bridge produces the same file map as the starter ZIP, then writes it directly into a linked Zaux repository. It drops the ZIP-only artifacts (`README.md`, `studio/*`, `fonts.html`, `fonts.json`) and routes the project font `<link>` elements into `.storybook/preview-head.html` through an idempotent marked block (`mergePreviewHead`). No workspace JSON changes are involved; the destination is detected from `package.json#coreVersion` and the `project/` folder.

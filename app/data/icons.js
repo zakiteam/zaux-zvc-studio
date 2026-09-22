@@ -2,6 +2,7 @@
 export const iconAliases = {
   duplicate: 'stack',
   copy: 'stack',
+  'add' : 'plus',
   visibility: 'visibility-on',
   'arrow-up-right': 'arrow-right'
 };

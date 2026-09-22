@@ -149,11 +149,16 @@
 							{{ translate("zx_builder_json_runtime") }}
 						</option>
 						<option value="js">JavaScript</option>
+						<option v-if="scope === 'component'" value="vue">Vue SFC</option>
 					</select>
 				</div>
 				<p v-if="scope === 'starter'" class="mb-2 text-[12px] text-zaux-dark-grey">
 					{{ translate('zx_builder_starter_hint') }}
 				</p>
+				<label v-if="scope === 'starter'" class="mb-2 flex cursor-pointer items-center gap-1.5 text-[12px] text-zaux-dark">
+					<input v-model="includeImported" type="checkbox" class="!w-auto accent-zaux-accent" />
+					<span>{{ translate("zx_builder_starter_include_imported") }}</span>
+				</label>
 				<p v-if="packageResult.error" role="alert" class="mb-2 text-[12px] text-utility-error">
 					{{ translate(packageResult.error) }}
 				</p>
@@ -173,38 +178,26 @@
 				>
 					{{ translate("zx_builder_runtime_hint") }}
 				</p>
-				<details
-					v-if="isPackage"
-					class="zb-file-tabs mb-1.5"
+				<p
+					v-if="format === 'vue'"
+					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
 				>
-					<summary class="cursor-pointer text-[11px] text-zaux-dark-grey">
-						Files
-					</summary>
-					<div
-						class="max-h-[180px] overflow-auto flex flex-col justify-start items-start gap-0.5 [&>button]:rounded-xxs [&>button]:p-1 [&>button]:font-mono [&>button]:text-[10px] [&>button]:text-zaux-dark-grey [&>button.active]:bg-zaux-accent/10 [&>button.active]:text-zaux-accent"
-					>
-						<button
-							v-for="file in Object.keys(jsFiles)"
-							:key="file"
-							:class="{ active: selectedFile === file }"
-							@click="selectedFile = file"
-						>
-							{{ file }}
-						</button>
-					</div>
-				</details>
+					{{ translate("zx_builder_vue_hint") }}
+				</p>
+				<BuilderFileExplorer
+					v-if="isPackage"
+					class="mb-1.5"
+					:files="jsFiles"
+					v-model:selected="selectedFile"
+				/>
 				<BuilderCodeEditor
-					:language="
-						isPackage
-							? selectedFile.endsWith('.css')
-								? 'css'
-								: selectedFile.endsWith('.html') ? 'html' : selectedFile.endsWith('.json') ? 'json' : 'javascript'
-							: 'json'
-					"
-					:modelValue="exportText"
+					v-else
+					:language="format === 'vue' ? 'vue' : 'json'"
+					:modelValue="exportPreview"
 					readonly
 					rows="18"
 					label="Export"
+					@change="exportPreview = $event"
 				/>
 				<footer>
 					<span
@@ -223,8 +216,8 @@
 					/><BuilderButton
 						v-else
 						variant="primary"
-						:label="translate('zx_builder_download_json')"
-						@click="downloadJson"
+						:label="translate(format === 'vue' ? 'zx_builder_download_vue' : 'zx_builder_download_json')"
+						@click="downloadFile"
 					/>
 				</footer>
 			</template>
@@ -360,6 +353,7 @@ import {
 	parseComponentDocument,
     parsePartialDocument,
 	parseSimpleComponentDocument,
+	vueComponent,
 } from "../../../domain/export.js";
 import { createDefinition } from "../../../domain/workspace.js";
 import { projectStarterFiles } from "../../services/starter-export.js";
@@ -369,8 +363,9 @@ import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
 import { downloadText, downloadZip } from "../../services/files.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
+import BuilderFileExplorer from "./BuilderFileExplorer.vue";
 export default defineComponent({
-	components: { BuilderCodeEditor, BuilderButton },
+	components: { BuilderCodeEditor, BuilderFileExplorer, BuilderButton },
 	setup() {
 		const builder = useBuilder();
 		const dialog = ref(null);
@@ -378,9 +373,10 @@ export default defineComponent({
 		const scope = ref(builder.modal.value.scope ?? "workspace");
 		const format = ref(builder.modal.value.format ?? "json");
 		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
+		const includeImported = ref(true);
 		const packageResult = computed(() => {
 			if (scope.value !== 'starter' && !(scope.value === 'template' && format.value === 'js')) return { files: {}, error: '' };
-			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined), error: '' }; }
+			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined, scope.value === 'starter' ? { imported: includeImported.value } : undefined), error: '' }; }
 			catch (error) { return { files: {}, error: error.message.startsWith('zx_') ? error.message : 'zx_builder_starter_error' }; }
 		});
 		const selectedFile = ref("");
@@ -523,15 +519,27 @@ export default defineComponent({
 		const json = computed(() =>
 			JSON.stringify(documentEnvelope(scope.value, data.value), null, 2),
 		);
-		const exportText = computed(() =>
-			isPackage.value
-				? (jsFiles.value[selectedFile.value] ?? Object.values(jsFiles.value)[0] ?? "")
-				: scope.value === "component" && format.value === "runtime"
-					? JSON.stringify(runtimeRoot(definition.value, builder.mode.value === "template" ? builder.activeInstance.value.data : {}), null, 2)
-					: scope.value === "template" && format.value === "runtime"
-						? JSON.stringify(templateRuntime(builder.activeTemplate.value), null, 2)
-						: json.value,
-		);
+		const exportText = computed(() => {
+			if (isPackage.value)
+				return jsFiles.value[selectedFile.value] ?? Object.values(jsFiles.value)[0] ?? "";
+			if (scope.value === "component" && format.value === "runtime")
+				return JSON.stringify(runtimeRoot(definition.value, builder.mode.value === "template" ? builder.activeInstance.value.data : {}), null, 2);
+			if (scope.value === "template" && format.value === "runtime")
+				return JSON.stringify(templateRuntime(builder.activeTemplate.value), null, 2);
+			if (scope.value === "component" && format.value === "vue")
+				return definition.value ? vueComponent(definition.value) : "";
+			return json.value;
+		});
+		// Local copy of the export text, so the readonly preview can be
+		// reformatted by the code editor without changing the source value.
+		const exportPreview = ref("");
+		watch(exportText, (value) => {
+			exportPreview.value = value;
+		}, { immediate: true });
+		// "Vue SFC" is a component-only format; drop it when the scope changes.
+		watch(scope, (next) => {
+			if (next !== "component" && format.value === "vue") format.value = "json";
+		});
 		watch(
 			jsFiles,
 			(files) => {
@@ -596,16 +604,21 @@ export default defineComponent({
 		}
 		async function copy() {
 			try {
-				await navigator.clipboard.writeText(exportText.value);
+				await navigator.clipboard.writeText(exportPreview.value);
 				copied.value = true;
 			} catch {
 				localError.value = "zx_builder_storage_error";
 			}
 		}
-		function downloadJson() {
+		function downloadFile() {
+			if (format.value === "vue") {
+				const name = (definition.value?.exportName ?? "component").replace(/^ZV[CP]/, "");
+				downloadText(`${name}.vue`, exportPreview.value, "text/plain");
+				return;
+			}
 			downloadText(
 				`zaux-${scope.value}${["component", "template"].includes(scope.value) && format.value === "runtime" ? "-runtime" : ""}.json`,
-				exportText.value,
+				exportPreview.value,
 			);
 		}
 		async function downloadJs() {
@@ -691,6 +704,7 @@ export default defineComponent({
 			scope,
 			format,
 			selectedFile,
+			includeImported,
 			localError,
 			localErrorDetail,
 			copied,
@@ -702,12 +716,13 @@ export default defineComponent({
 			packageResult,
 			jsFiles,
 			exportText,
+			exportPreview,
 			close,
 			submitName,
 			deleteProject,
 			confirmAction,
 			copy,
-			downloadJson,
+			downloadFile,
 			downloadJs,
 			readFile,
 			applyImport,
