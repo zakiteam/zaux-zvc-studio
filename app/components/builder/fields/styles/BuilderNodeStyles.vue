@@ -247,7 +247,10 @@ export default defineComponent({
         { value: '', label: translate('zx_builder_style_unset') },
         ...(value && !control.options.some(option => option.value === value)
           ? [{ value, label: value === '__mixed__' ? translate('zx_builder_style_mixed') : `${translate('zx_builder_style_custom')}: ${value}` }] : []),
-        ...control.options.map(option => ({ ...option, label: translate(option.label) }))
+        ...control.options.map(option => ({
+          ...option,
+          label: translate(option.label) + (option.modeLabel ? ' · ' + translate(option.modeLabel) : '')
+        }))
       ];
     }
     function changePositionValue(control, event) {

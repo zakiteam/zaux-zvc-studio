@@ -7,6 +7,8 @@ import borders from '../../../vendor/zaux/style/tokens/borders.json';
 import radius from '../../../vendor/zaux/style/tokens/radius.json';
 import breakpoints from '../../../vendor/zaux/style/tokens/breakpoints.json';
 import typography from '../../../vendor/zaux/style/tokens/typography.json';
+import shadows from '../../../vendor/zaux/style/tokens/shadows.json';
+import blur from '../../../vendor/zaux/style/tokens/blur.json';
 
 function leaves(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {
@@ -218,6 +220,21 @@ export const nodeStyleSections = [
     options: [0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100]
       .map(value => ({ value: `opacity-${value}`, label: `${value}%` }))
   })] },
+  { id: 'shadow', controls: [control('shadow_token', [], {
+    options: Object.entries(shadows).map(([name, value]) => ({
+      value: `shadow-${name}`,
+      label: value === 'none' ? 'zx_builder_style_shadow_none' : name,
+      modeLabel: value === 'none' ? null : /\binset\b/.test(value)
+        ? 'zx_builder_style_shadow_inset' : 'zx_builder_style_shadow_outset'
+    }))
+  })] },
+  { id: 'blur', controls: [
+    ...['blur', 'backdrop-blur'].map(prefix => control(prefix === 'blur' ? 'blur_normal' : 'blur_backdrop', [], {
+      options: Object.entries(blur).map(([name, value]) => ({
+        value: `${prefix}-${name}`, label: `${name} · ${value}`
+      }))
+    }))
+  ] },
   { id: 'text', controls: [
     control('typography', Object.keys(typography.styles).map(name => `text-${name}`)),
     colorControl('text_color', 'text')
