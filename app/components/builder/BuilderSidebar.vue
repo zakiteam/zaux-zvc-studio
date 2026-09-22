@@ -4,71 +4,6 @@
 		class="zb-sidebar flex min-h-0 w-[254px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[1200px]:w-[230px] max-[900px]:h-[80dvh] max-[900px]:!w-[210px]"
 		:style="{ width: `${width}px` }"
 	>
-		<section
-			ref="templatesEl"
-			class="shrink-0 px-1.5 py-2"
-			:aria-label="translate('zx_builder_templates')"
-		>
-			<div class="flex items-center justify-between mb-2">
-				<h3 class="mb-1 text-[11px] font-semibold">
-					{{ translate("zx_builder_templates") }}
-				</h3>
-				<BuilderButton @click="openNewTemplateModal" iconOnly size="xs" icon="add" />
-			</div>
-			<div class="max-h-[180px] overflow-y-auto">
-				<div
-					v-for="template in document.templates"
-					:key="template.id"
-					class="flex items-center gap-1"
-				>
-					<button
-						type="button"
-						class="min-w-0 flex-1 truncate py-1 text-left text-[12px]"
-						:class="{
-							'text-zaux-accent font-semibold':
-								mode === 'template' && templateId === template.id,
-						}"
-						:aria-current="
-							mode === 'template' && templateId === template.id
-								? 'true'
-								: undefined
-						"
-						@click="selectTemplate(template.id)"
-					>
-						{{ template.name }}
-					</button>
-					<div>
-						<BuilderButton
-							icon="edit"
-							iconOnly
-							size="xs"
-							variant="alt1"
-							:label="translate('zx_builder_rename') + ': ' + template.name"
-							:disabled="!canEditRemote"
-							@click="openRenameTplModal(template)"
-						/>
-						<BuilderButton
-							icon="duplicate"
-							iconOnly
-							size="xs"
-							variant="alt1"
-							:label="translate('zx_builder_duplicate') + ': ' + template.name"
-							:disabled="!canEditRemote"
-							@click="duplicate('template', template.id)"
-						/>
-						<BuilderButton
-							icon="close"
-							iconOnly
-							size="xs"
-							variant="alt1"
-							:label="translate('zx_builder_delete') + ': ' + template.name"
-							:disabled="!canEditRemote"
-							@click="remove('template', template.id)"
-						/>
-					</div>
-				</div>
-			</div>
-		</section>
 		<div
 			ref="tabsEl"
 			class="zb-tabs flex shrink-0 gap-0.5 border-y-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
@@ -653,7 +588,6 @@ export default defineComponent({
 		});
 		const outlineHeight = ref(500);
 		const asideEl = ref(null);
-		const templatesEl = ref(null);
 		const tabsEl = ref(null);
 		const footerEl = ref(null);
 		const MIN_OUTLINE_HEIGHT = 350;
@@ -663,12 +597,11 @@ export default defineComponent({
 			const aside = asideEl.value;
 			if (!aside) return;
 			const fixed =
-				(templatesEl.value?.offsetHeight ?? 0) +
 				(tabsEl.value?.offsetHeight ?? 0) +
 				(footerEl.value?.offsetHeight ?? 0) +
 				RESIZE_HANDLE_HEIGHT;
 			const max = Math.max(
-				MIN_OUTLINE_HEIGHT,
+				0,
 				aside.clientHeight - fixed - MIN_CONTENT_HEIGHT,
 			);
 			outlineHeight.value = Math.min(
@@ -751,19 +684,6 @@ export default defineComponent({
 		);
 		const drag = outlineDrag.start;
 
-		function openNewTemplateModal(){
-			builder.modal.value = { type: "new-template" };
-		}
-
-		function openRenameTplModal(template) {
-			builder.modal.value = { 
-				type: 'rename',
-				kind: "template",
-				id: template.id,
-				name: template.name,
-			};
-		}
-
 		function revealInstance(id) {
 			builder.selectInstance(id);
 			builder.reveal(id);
@@ -781,13 +701,10 @@ export default defineComponent({
 			outlineDrag,
 			previewId,
 			setPreview,
-			openNewTemplateModal,
-			openRenameTplModal,
 			revealInstance,
 			outlineHeight,
 			resizeOutline,
 			asideEl,
-			templatesEl,
 			tabsEl,
 			footerEl,
 		};
