@@ -1,6 +1,6 @@
 <template>
-  <div class="flex shrink-0 flex-col px-1 bg-zaux-white border-b-slim border-zaux-light-grey">
-    <div class="flex min-w-0 items-center gap-1.5 pb-1">
+  <div class="flex flex-col px-1 shrink-0 bg-zaux-white border-b-slim border-zaux-light-grey">
+    <div class="flex min-w-0 items-center justify-center gap-1.5 pb-1">
       <span class="shrink-0 text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_current_template') }}</span>
       <button type="button" class="min-w-0 truncate rounded-xxs px-1 py-0.5 text-left text-[12px] font-semibold text-zaux-accent hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
         :title="translate('zx_builder_manage_templates') + ': ' + activeTemplate.name"

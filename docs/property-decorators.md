@@ -235,3 +235,84 @@ separate visibility change, not a silent rewrite of their props.
 The repository skill [`zaux-palette-props`](../.agents/skills/zaux-palette-props/SKILL.md) documents this workflow and its distinction
 from property decoration. These project instructions remain the portable reference
 for other agents.
+
+## Motion wrappers
+
+The palette includes `MicroInteraction` and `ZRevealOnScroll` as containers with
+editable sample children. Their default slots use the existing renderer/export
+path; native implementations remain unchanged. The catalog explicitly includes
+these two exports from `core-utils.js`, while palette membership remains explicit.
+
+`descriptors/motion-properties.js` supplies the property rules:
+
+- MicroInteraction selects HoverMagnet, MouseParallax or ScrollParallax. The nested
+  `props` editor follows that choice and reads scalar defaults from the actual
+  interaction components. No default functions are invoked. Common switches,
+  mouse breakpoint widths, effect-specific numeric fields, CSS timing, axis and
+  optional scroll limits use existing nested editors. Unknown effects and saved
+  custom values keep their JSON/custom controls. Switching effects preserves all
+  authored settings, including settings belonging to the previous effect.
+- HoverMagnet.range and MouseParallax.transitionCSS are intentionally not suggested:
+  the pinned implementations declare them but do not use them. Positive reducer,
+  range and intensifier values avoid division by zero; the editor does not clamp
+  or silently rewrite authored numbers.
+- ZRevealOnScroll offers start/end selectors from authored element IDs and a custom
+  CSS selector fallback, top/bottom/null end boundaries, token-backed breakpoints
+  and revealClass. It reveals when scrollY reaches the start element's document
+  position. Below disableAfter the content is hidden, not shown without animation.
+  transitionName is available via Add properties with a hint: upstream applies it
+  only to the optional component prop, not children in the default slot.
+
+The generic BuilderProperty accepts optional translated `labelKey` and `hintKey`
+metadata; select options may provide `labelKey` too. These affect presentation only
+and work for nested fields. Raw property keys, binding paths, JSON and exports are
+unchanged. Other descriptors retain their existing labels and behavior.
+
+Presets affect new insertions only. No existing nodes are migrated. In edit mode,
+use the outline to select reveal content that is currently hidden; use preview
+mode to inspect the actual pointer/scroll behavior. Source/diff review only;
+runtime verification remains manual under the project validation policy.
+
+## ViewportToggle
+
+`ViewportToggle` is a palette container registered from the native core utils.
+New nodes start in `slot` mode with editable sample children, a base opacity
+transition and distinct in/out opacity classes. The preset stays visible while
+editing and does not use `display:none`, which would invalidate measurements.
+All native props are initially authored, including blank optional entry/exit
+thresholds. Existing saved nodes are not migrated.
+
+`descriptors/viewport-toggle-properties.js` owns translated labels, hints and
+source-backed choices. Modes, reference, axis, direction, wait and breakpoint
+use selects; classes, thresholds, delay and booleans use the shared property
+editors. Number/string/array thresholds, null, bindings and custom values remain
+valid. Thresholds are clamped by the native component, not rewritten by Studio.
+
+- `element` measures visible element area. `viewport-area` measures travel across
+  the viewport, despite its name; axis and horizontal direction only affect that
+  reference. `ltr` enters from the right and `rtl` enters from the left.
+- Blank `enterThreshold` inherits `threshold`; blank `exitThreshold` uses entry
+  minus 0.01, with a minimum of zero. Explicit exit values cannot exceed entry.
+- `repeat: false` retains the in-state after the first entry. A disabled
+  breakpoint or respected reduced-motion preference also forces the in-state.
+- Slot delay starts on mount; target delay starts after the optional load wait.
+  Keep transition classes on the base wrapper/target, not in both state lists.
+
+Target mode renders no wrapper or slot children. Children remain saved for a
+later switch back to slot mode and can still be selected in the outline.
+`data-zx-vp-toggle` is available through **Add properties** on nodes, following
+the existing lightbox marker convention. Blank marker values inherit the
+controller threshold; numeric strings override it. Custom `data-*` targetAttr
+values used by target controllers in the current trees are offered there too.
+Use one controller per attribute, and ensure the marked DOM elements exist when
+it mounts: the native target scan runs once, not through a MutationObserver.
+For advanced per-element overrides, the native `-in`, `-out`, `-enter`, `-exit`,
+`-repeat`, `-disable-below`, `-honor-reduced-motion`, `-wait`, `-delay`,
+`-threshold-reference`, `-threshold-axis` and `-threshold-direction` suffixes can
+be authored through the existing JSON editor.
+
+Preview remounts the owning definition after changes using its existing boundary
+key, so native mount-time configuration is reapplied. Runtime nodes and exports
+retain the original ViewportToggle name, props, default-slot children and target
+attributes. No vendor changes or editor-only runtime flags are introduced.
+Source/diff review only; browser behavior remains for manual verification.

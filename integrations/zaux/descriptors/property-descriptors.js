@@ -1,6 +1,7 @@
 import { componentVariants } from '../options/component-options.js';
 import { decorateProperties, selectOptions } from './property-decorators.js';
 import { lightboxTriggerDescriptors } from '../controls/lightbox-controls.js';
+import { viewportTargetDescriptors } from './viewport-toggle-properties.js';
 import section from '../../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
 import intro from '../../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
 import button from '../../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
@@ -37,6 +38,9 @@ export function propertyDescriptors(name, props, context = {}) {
   // "Add properties" without disturbing a component's own declared props.
   for (const [key, descriptor] of Object.entries(lightboxTriggerDescriptors)) {
     if (!Object.hasOwn(descriptors, key)) descriptors[key] = { ...descriptor };
+  }
+  for (const [key, descriptor] of Object.entries(viewportTargetDescriptors(context.trees))) {
+    if (!Object.hasOwn(descriptors, key)) descriptors[key] = descriptor;
   }
   return decorateProperties(name, descriptors, context);
 }

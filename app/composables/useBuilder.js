@@ -1,4 +1,6 @@
 import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
+import { libraryThumbnailState } from '../../domain/library-thumbnail.js';
+import { createLibraryThumbnailRenderer } from '../services/library-thumbnails.js';
 import { openPreviewPage as openPreviewWindow } from '../services/preview-page.js';
 import { partialDefinitions, partialLibraryDefinition as findPartialLibraryDefinition, restorePartialReference as restorePartial } from '../../domain/partials.js';
 import { parseThemeCss } from '../../domain/component-themes.js';
@@ -27,6 +29,74 @@ export function createBuilder({ projectId = null } = {}) {
   let disposed = false;
   const i18n = useTranslation();
   const document = ref(createWorkspace());
+  const libraryThumbnails = ref(Object.create(null));
+  const thumbnailRenderer = createLibraryThumbnailRenderer();
+  const thumbnailRequests = new Map();
+  function libraryThumbnailSource(id) {
+    const definition = document.value.library.find(item => item.id === id);
+    return definition ? JSON.stringify(libraryThumbnailState(definition, document.value, i18n.language.value)) : '';
+  }
+  function requestLibraryThumbnail(id, force) {
+    const source = libraryThumbnailSource(id);
+    if (!source || disposed || !workspaceReady.value) return Promise.resolve(null);
+    const workspaceId = document.value.id;
+    const key = JSON.stringify([workspaceId, id]);
+    const current = libraryThumbnails.value[id];
+    if (current) {
+      if (current.status === 'loading') return thumbnailRequests.get(key) ?? Promise.resolve(null);
+      if (!force) return Promise.resolve(current.url || null);
+    }
+    const entry = { source, url: current?.url ?? '', status: 'loading' };
+    libraryThumbnails.value[id] = entry;
+    const isCurrent = () => !disposed && document.value.id === workspaceId && libraryThumbnails.value[id]?.source === source
+      && thumbnailRequests.get(key) === task && document.value.library.some(item => item.id === id);
+    const task = thumbnailRenderer.render(key, JSON.parse(source), { force, isCurrent }).then(url => {
+      if (isCurrent()) libraryThumbnails.value[id] = { ...entry, url, status: 'ready' };
+      return url;
+    }).catch(exception => {
+      if (isCurrent()) libraryThumbnails.value[id] = { ...entry, url: exception.thumbnailUrl || entry.url, status: 'error', error: exception.message || 'Thumbnail capture failed' };
+      return null;
+    }).finally(() => {
+      if (thumbnailRequests.get(key) !== task) return;
+      thumbnailRequests.delete(key);
+      // A superseded capture must not leave a permanent loading state after undo.
+      if (document.value.id === workspaceId && libraryThumbnails.value[id]?.source === source && libraryThumbnails.value[id]?.status === 'loading') delete libraryThumbnails.value[id];
+    });
+    thumbnailRequests.set(key, task);
+    return task;
+  }
+  function ensureLibraryThumbnail(id) { return requestLibraryThumbnail(id, false); }
+  async function refreshLibraryThumbnail(id) {
+    const workspaceId = document.value.id;
+    const pending = thumbnailRequests.get(JSON.stringify([workspaceId, id]));
+    if (pending) await pending;
+    if (disposed || document.value.id !== workspaceId) return null;
+    return requestLibraryThumbnail(id, true);
+  }
+  const thumbnailBatch = ref({ running: false, done: 0, total: 0, failed: 0 });
+  async function refreshLibraryThumbnails({ missingOnly = false } = {}) {
+    if (thumbnailBatch.value.running || !workspaceReady.value) return;
+    const workspaceId = document.value.id;
+    const ids = document.value.library.filter(item => !item.previewImage).map(item => item.id);
+    const progress = { running: true, done: 0, total: ids.length, failed: 0 };
+    thumbnailBatch.value = progress;
+    try {
+      for (const id of ids) {
+        if (disposed || document.value.id !== workspaceId) break;
+        // A user refresh follows any pending automatic capture instead of sharing it.
+        const pending = thumbnailRequests.get(JSON.stringify([workspaceId, id]));
+        if (pending) await pending;
+        if (disposed || document.value.id !== workspaceId) break;
+        const force = !missingOnly || libraryThumbnails.value[id]?.status === 'error';
+        let result = await requestLibraryThumbnail(id, force);
+        if (!result && !force && !disposed && document.value.id === workspaceId) result = await requestLibraryThumbnail(id, true);
+        progress.done++;
+        if (!result) progress.failed++;
+        thumbnailBatch.value = { ...progress };
+      }
+    } finally { thumbnailBatch.value = { ...progress, running: false }; }
+  }
+  watch(() => document.value.id, () => { libraryThumbnails.value = Object.create(null); });
   const mode = ref('template');
   const templatesOpen = ref(false);
   const templateId = ref(document.value.templates[0].id);
@@ -380,6 +450,7 @@ export function createBuilder({ projectId = null } = {}) {
     if (!error.value) { nodeId.value = null; inspectorTab.value = 'data'; }
   }
   function insertInstance(definitionId, beforeId = null, position = 'before') {
+    if (!canEditRemote.value) return;
     const definition = document.value.library.find(item => item.id === definitionId);
     if (!definition) return;
     const instance = createInstance(definition);
@@ -387,7 +458,10 @@ export function createBuilder({ projectId = null } = {}) {
       const index = activeTemplate.value.instances.findIndex(item => item.id === beforeId);
       activeTemplate.value.instances.splice(index < 0 ? activeTemplate.value.instances.length : index + (position === 'after' ? 1 : 0), 0, instance);
     });
+    if (error.value) return;
     mode.value = 'template'; instanceId.value = instance.id; nodeId.value = null; if (isSource.value) inspectorTab.value = 'data';
+    revealOutline(instance.id);
+    reveal(instance.id);
   }
   function moveInstance(id, targetId, position = 'before') {
     if (id === targetId) return;
@@ -683,7 +757,7 @@ export function createBuilder({ projectId = null } = {}) {
       refreshRemoteProjects();
     }
   });
-  onBeforeUnmount(() => { disposed = true; styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
+  onBeforeUnmount(() => { disposed = true; thumbnailRenderer.dispose(); styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
   function collapseAllOutline() {
     const next = new Set(collapsedOutline.value);
     const walk = (nodes, prefix) => {
@@ -704,6 +778,7 @@ export function createBuilder({ projectId = null } = {}) {
     collapsedOutline.value = next;
   }
   const api = { templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   provide(key, api);
   return api;
 }

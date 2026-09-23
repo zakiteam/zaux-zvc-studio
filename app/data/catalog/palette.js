@@ -6,6 +6,27 @@ import { lightboxControls } from '../../../integrations/zaux/controls/lightbox-c
 // Order and membership of the drag-and-drop palette.
 // This does not limit components rendered by hand-written ZVCs or saved JSON.
 export default [
+  {
+    name: 'ViewportToggle', container: true,
+    props: {
+      mode: 'slot', inClass: 'opacity-100', outClass: 'opacity-25',
+      threshold: 0.1, enterThreshold: '', exitThreshold: '',
+      thresholdReference: 'element', thresholdAxis: 'y', thresholdDirection: 'ltr',
+      repeat: true, disableBelow: '', honorReducedMotion: true, wait: '', delay: 0,
+      targetAttr: 'data-zx-vp-toggle', class: 'transition-opacity duration-500',
+    },
+    createChildren: t => [{ name: 'div', props: { class: 'rounded-s bg-zaux-light p-3', textContent: t('zx_builder_vp_sample') } }]
+  },
+  {
+    name: 'MicroInteraction', container: true,
+    props: { name: 'HoverMagnet', props: { reducer: 2, magnetRange: 0, mobileBP: 768, isDisabled: false } },
+    createChildren: t => [{ name: 'div', props: { class: 'inline-block rounded-s bg-zaux-light p-3', textContent: t('zx_builder_motion_sample') } }]
+  },
+  {
+    name: 'ZRevealOnScroll', container: true,
+    props: { startSelector: '', endSelector: '', endTriggerPosition: 'bottom', disableAfter: null, revealClass: '' },
+    createChildren: t => [{ name: 'div', props: { class: 'rounded-s bg-zaux-light p-3', textContent: t('zx_builder_reveal_sample') } }]
+  },
   ...contentComponents,
   ...formComponents,
   ...Object.entries(sliderControls).map(([name, config]) => ({ name, props: config.props })),

@@ -1,4 +1,6 @@
 import { videoProperties, imageProperties } from './media-properties.js';
+import { motionDecorators } from './motion-properties.js';
+import { viewportToggleDecorators } from './viewport-toggle-properties.js';
 import { componentSelects } from '../options/component-options.js';
 import { iconSets, iconSizes } from '../options/icon-options.js';
 import palette from '../../../app/data/catalog/palette.js';
@@ -32,6 +34,8 @@ function panelOptions(trees, component, property) {
 // Extension point: component name -> prop name -> descriptor patch or context function.
 // Context functions run inside the Inspector computed, so their dependencies stay reactive.
 export const propertyDecorators = {
+  ViewportToggle: viewportToggleDecorators,
+  ...motionDecorators,
   IntroText: { subtitle: { control: 'textarea' }, ctas : { control : 'buttongroup'} },
   Icon: {
     iconSet: selectOptions(Object.keys(iconSets)),

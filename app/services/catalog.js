@@ -1,11 +1,12 @@
 import * as shared from '@integration/generated/core-shared.js';
 import * as common from '@integration/generated/core-common.js';
+import { MicroInteraction, ZRevealOnScroll, ViewportToggle } from '@integration/generated/core-utils.js';
 import { createNode, clone } from '../../domain/nodes.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import palette from '../data/catalog/palette.js';
 import { propertyDescriptors } from '../../integrations/zaux/descriptors/property-descriptors.js';
 
-const registry = { ...shared, ...common };
+const registry = { ...shared, ...common, MicroInteraction, ZRevealOnScroll, ViewportToggle };
 export const containers = palette.filter(entry => entry.container).map(entry => entry.name);
 export const catalog = palette.filter(entry => entry.html || registry[entry.name]).map(entry => ({
   ...entry,

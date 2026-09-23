@@ -53,6 +53,7 @@
 									)
 								}}
 							</p>
+							<BuilderThumbnailControls />
 						</template>
 					</BuilderDropdown>
 
@@ -184,12 +185,14 @@ import { useAuth } from "../../composables/useAuth.js";
 import { useStudioTheme } from "../../composables/useStudioTheme.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
+import BuilderThumbnailControls from "./BuilderThumbnailControls.vue";
 import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 import BuilderFontLibrary from "./BuilderFontLibrary.vue";
 import BuilderProjectBridge from "./BuilderProjectBridge.vue";
 
 export default defineComponent({
 	components: {
+		BuilderThumbnailControls,
 		BuilderButton,
 		BuilderDropdown,
 		BuilderMediaPicker,
@@ -231,6 +234,15 @@ export default defineComponent({
 				{ id: "media", label: t("zx_builder_media_library") },
 				{ id: "fonts", label: t("zx_builder_fonts_project") },
 				{
+					id: "thumbnails-missing", heading: t("zx_builder_thumbnails"),
+					label: t("zx_builder_thumbnails_missing"),
+					disabled: builder.thumbnailBatch.value.running || !builder.workspaceReady.value,
+				},
+				{
+					id: "thumbnails-all", label: t("zx_builder_thumbnails_all"),
+					disabled: builder.thumbnailBatch.value.running || !builder.workspaceReady.value,
+				},
+				{
 					id: "cover",
 					label: t("zx_builder_media_cover"),
 					hidden: !project || !builder.canEditRemote.value,
@@ -266,6 +278,10 @@ export default defineComponent({
 		});
 		async function projectAction(item) {
 			if (builder.remoteProjectBusy.value || projectOpening.value) return;
+			if (item.id === "thumbnails-missing" || item.id === "thumbnails-all") {
+				builder.refreshLibraryThumbnails({ missingOnly: item.id === "thumbnails-missing" });
+				return;
+			}
 			if (item.id === "fonts") {
 				fontsOpen.value = true;
 				return;

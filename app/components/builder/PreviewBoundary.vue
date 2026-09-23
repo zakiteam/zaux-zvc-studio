@@ -12,10 +12,12 @@
 import { defineComponent, onErrorCaptured, ref } from "vue";
 export default defineComponent({
 	props: { message: String },
-	setup() {
+	emits: ['error'],
+	setup(props, { emit }) {
 		const failed = ref(false);
-		onErrorCaptured(() => {
+		onErrorCaptured((error) => {
 			failed.value = true;
+			emit('error', error?.message || 'Component render failed');
 			return false;
 		});
 		return { failed };

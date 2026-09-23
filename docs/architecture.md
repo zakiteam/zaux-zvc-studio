@@ -84,6 +84,8 @@ The key is `zx_builder_workspace_v1`. Writes are debounced, flushed before unloa
 
 See [media storage setup](media-library.md) for deployment, permissions and lifecycle. Runtime and hosting integration remain unverified.
 
+Library ZVC/ZVP cards also generate local cached thumbnails through the existing preview renderer. Manual images retain precedence; `useBuilder` exposes `ensureLibraryThumbnail` and `refreshLibraryThumbnail`. See [library thumbnails](library-thumbnails.md) for capture behavior, cache scope and limitations.
+
 ## Shared builder dropdown
 
 `app/components/builder/BuilderDropdown.vue` wraps the Zaux `Popover` and uses `BuilderButton` for its trigger and menu actions. Pass a translated `label` and an `items` array (`id`, `label`, optional `icon`, `disabled`, `hidden`, `active`, `danger`, `separator`, `heading`). The `select` event returns the selected item; application actions belong to the parent. An optional `header` slot adds contextual information; `align` accepts `start` or `end`. The wrapper handles arrow/Home/End navigation, Escape, Tab, outside click and focus restoration.

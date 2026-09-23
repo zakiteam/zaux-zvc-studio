@@ -6,7 +6,7 @@
 	>
 		<div
 			ref="tabsEl"
-			class="zb-tabs flex shrink-0 gap-0.5 border-y-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
+			class="zb-tabs flex shrink-0 gap-0.5 border-b-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
 			role="tablist"
 		>
 			<button
@@ -59,7 +59,7 @@
 						:options="[
 							{ value: 'imported', label: translate('zx_builder_library_imported') },
 							{ value: 'project', label: translate('zx_builder_library_project') },
-						]"
+							]"
 					/>
 				</div>
 				<div
@@ -108,9 +108,9 @@
 					tabindex="0"
 				>
 					<article
-						v-for="(definition, index) in filteredLibrary"
+						v-for="definition in filteredLibrary"
 						:key="definition.id"
-						class="zb-library-card overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
+						class="zb-library-card group relative overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
 						:class="{
 							active: mode === 'library' && libraryId === definition.id,
 						}"
@@ -124,50 +124,19 @@
 							)
 						"
 					>
-						<button
-							class="zb-library-thumb relative grid group h-[120px] w-full place-items-center overflow-hidden bg-zaux-light [&.zb-library-thumb--1]:bg-zaux-light-grey/30 [&.zb-library-thumb--2]:bg-zaux-accent/10"
-							:class="`zb-library-thumb--${index % 3}`"
-							:aria-label="`${translate('zx_builder_edit_library')}: ${definition.name}`"
-							@click="
-								definition.kind === 'zvp'
-									? insertPartial(definition.id)
-									: insertInstance(definition.id)
-							"
+						<BuilderButton
+							:label="translate('zx_builder_add_to_template')"
+							@click="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
+							variant="light" size="xs" class="absolute z-10 !hidden -translate-x-1/2 group-hover:!block left-1/2 top-6"
 						>
-							<BuilderButton
-								class="absolute z-10 hidden top-1 left-1 group-hover:block"
-								variant="light1"
-								icon="media"
-								iconOnly
-								:label="translate('zx_builder_media_preview')"
-								size="xs"
-								:disabled="!canEditRemote"
-								@click.stop="previewId = definition.id"
-							/>
-							<img
-								v-if="definition.previewImage"
-								:src="definition.previewImage"
-								alt=""
-								loading="lazy"
-								class="absolute inset-0 object-cover w-full h-full"
-							/>
-							<span
-								v-else
-								class="zb-mini-layout relative h-[60px] w-[112px] rounded-xxs bg-zaux-white px-1.5 py-1.5 shadow-closer [&>i]:my-0.5 [&>i]:block [&>i]:h-[4px] [&>i]:w-[44px] [&>i]:rounded-[1px] [&>i]:bg-zaux-light-grey [&>i:nth-child(2)]:w-[30px] [&>i:nth-child(3)]:h-[7px] [&>i:nth-child(3)]:w-[18px] [&>i:nth-child(3)]:bg-zaux-accent [&>b]:absolute [&>b]:right-1.5 [&>b]:top-1.5 [&>b]:h-[39px] [&>b]:w-[37px] [&>b]:rounded-t-l [&>b]:rounded-b-xxs [&>b]:bg-zaux-light-accent/30"
-								><i></i><i></i><i></i><b></b></span
-							><span
-								class="zb-card-type absolute right-1 top-1 rounded-xxs bg-zaux-white/70 px-0.5 py-0.25 font-mono text-[8px] text-zaux-dark-grey"
-								>{{
-									definition.kind === "zvp"
-										? "ZVP"
-										: definition.sourceKey
-											? translate("zx_builder_from_code")
-											: "ZVC"
-								}}</span
-							>
-						</button>
+						</BuilderButton>
+						<BuilderLibraryThumbnail
+							:definition="definition"
+							@insert="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
+							@choose-image="previewId = definition.id"
+						/>
 						<div
-							class="zb-card-body px-1.5 pb-1.5 pt-1 [&>small]:mt-0.25 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
+							class="zb-card-body relative px-1.5 pb-1.5 pt-1 [&>small]:mt-0.25 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
 						>
 							<div>
 								<button
@@ -556,6 +525,7 @@ import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderDropdown from "./BuilderDropdown.vue";
+import BuilderLibraryThumbnail from "./BuilderLibraryThumbnail.vue";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
@@ -563,6 +533,7 @@ import BuilderTree from "./BuilderTree.vue";
 import BuilderInput from "./fields/BuilderInput.vue";
 export default defineComponent({
 	components: {
+		BuilderLibraryThumbnail,
 		BuilderDropdown,
 		BuilderCodeEditor,
 		BuilderButton,

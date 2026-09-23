@@ -4,11 +4,11 @@
 			class="zb-field-heading flex items-baseline justify-between gap-1 [&_label]:mb-1 [&_label]:text-[11px] [&_label]:font-medium [&>select]:w-[125px] [&>select]:border-none [&>select]:bg-transparent [&>select]:p-0.5 [&>select]:text-[9px] [&>select]:text-zaux-dark-grey"
 		>
 			<label :for="`prop-${encodeURIComponent(propertyPath)}`">{{
-				property
+				propertyLabel
 			}}</label
 			><select
 				:id="`prop-${encodeURIComponent(propertyPath)}`"
-				:aria-label="`${translate('zx_builder_binding')}: ${property}`"
+				:aria-label="`${translate('zx_builder_binding')}: ${propertyLabel}`"
 				:value="isBinding(value) ? value.$bind : ''"
 				@change="setBinding"
 			>
@@ -18,6 +18,7 @@
 				</option>
 			</select>
 		</div>
+		<p v-if="descriptor?.hintKey" class="mb-1 text-[10px] text-zaux-dark-grey">{{ translate(descriptor.hintKey) }}</p>
 		<div
 			v-if="isBinding(value)"
 			class="zb-binding-pill rounded-xxs border-slim border-zaux-accent/20 bg-zaux-accent/5 p-1.5 font-mono text-[11px] text-zaux-accent"
@@ -30,7 +31,7 @@
 		>
 			<BuilderMediaInput
 				:modelValue="value"
-				:label="property"
+				:label="propertyLabel"
 				@update:modelValue="$emit('change', $event)"
 			/>
 		</div>
@@ -54,7 +55,7 @@
 				</summary>
 				<BuilderValue
 					:modelValue="value"
-					:label="property"
+					:label="propertyLabel"
 					type="json"
 					@update:modelValue="$emit('change', $event)"
 				/>
@@ -91,7 +92,7 @@
       <template v-if="descriptor?.control == 'buttongroup'">
           <BuilderValue
             :modelValue="value"
-            :label="property"
+            :label="propertyLabel"
             :image="
               descriptor?.image && (value == null || typeof value === 'string')
             "
@@ -103,14 +104,14 @@
 				v-else-if="options.length"
 				type="select"
 				:modelValue="selectedOption"
-				:label="property"
+				:label="propertyLabel"
 				:options="selectOptions"
 				@update:modelValue="selectOption"
 			/>
 			<BuilderValue
 				v-else-if="!options.length || selectedOption === -1"
 				:modelValue="value"
-				:label="property"
+				:label="propertyLabel"
 				:image="
 					descriptor?.image && (value == null || typeof value === 'string')
 				"
@@ -145,6 +146,7 @@ export default defineComponent({
 	setup(props, { emit }) {
 		const i18n = useTranslation();
 		const custom = ref(false);
+		const propertyLabel = computed(() => props.descriptor?.labelKey ? i18n.translate(props.descriptor.labelKey) : props.property);
 		const propertyPath = computed(() => props.path ?? props.property);
 		const objectProperties = computed(() =>
 			props.descriptor?.properties &&
@@ -203,7 +205,7 @@ export default defineComponent({
 		const selectOptions = computed(() => [
 			...options.value.map((option, index) => ({
 				value: index,
-				label: option.label,
+				label: option.labelKey ? i18n.translate(option.labelKey) : option.label,
 			})),
 			{ value: -1, label: i18n.translate("zx_builder_custom_value") },
 		]);
@@ -230,6 +232,7 @@ export default defineComponent({
 		return {
 			...i18n,
 			propertyPath,
+			propertyLabel,
 			objectProperties,
 			arrayItems,
 			nestedValue,

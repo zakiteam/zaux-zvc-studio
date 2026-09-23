@@ -4,7 +4,7 @@
     <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.clean && !state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
     <section v-for="instance in state.instances" :key="instance.id" :data-zb-instance="instance.id" class="zb-stage-instance min-h-[12px]" :class="{ 'zb-stage-instance--empty': !instance.definition.tree.length }">
-      <PreviewBoundary :key="JSON.stringify([instance, state.styles?.uiSettings])" :message="translate('zx_builder_preview_error')"><ComponentsRenderer :components="previewNodes(instance, state.editable)" /></PreviewBoundary>
+      <PreviewBoundary @error="renderFailure = $event" :key="JSON.stringify([instance, state.styles?.uiSettings])" :message="translate('zx_builder_preview_error')"><ComponentsRenderer :components="previewNodes(instance, state.editable)" /></PreviewBoundary>
       <div v-if="!state.clean && !instance.definition.tree.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ instance.name }}</span><h2>{{ translate('zx_builder_empty_tree') }}</h2></div>
     </section>
     <div v-if="selection && state.editable" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick border-zaux-accent" :style="selection.style" />
@@ -41,6 +41,7 @@ export default defineComponent({
     const themeLifecycle = createThemePreviewLifecycle();
     let receiveGeneration = 0;
     const fontErrors = ref([]);
+    const renderFailure = ref('');
     const fontLoader = createFontLoader(errors => { fontErrors.value = errors; });
     const state = ref({ instances: [], editable: true, css: '', selectedNodeId: null, selectedInstanceId: null });
     useHead(() => ({ bodyAttrs: { style: 'background-color: ' + (state.value.styles?.bodyBackground || (state.value.canvasDark ? '#18181b' : '#ffffff')) } }));
@@ -52,28 +53,50 @@ export default defineComponent({
     let observer;
     let hoverElement = null;
     let hideTimer = null;
+    let pendingReveal = null;
+    let renderedGeneration = 0;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
     function revealElement(message) {
+      pendingReveal = message;
+      // State messages render asynchronously; insertion may request scrolling
+      // before the new instance exists in this document.
+      if (renderedGeneration !== receiveGeneration) return;
       const selector = message.nodeId
         ? `[data-zb-node="${CSS.escape(message.nodeId)}"]`
         : `[data-zb-instance="${CSS.escape(message.instanceId ?? '')}"]`;
-      document.querySelector(selector)?.scrollIntoView({ block: 'center' });
+      const element = document.querySelector(selector);
+      if (!element) return;
+      element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      pendingReveal = null;
     }
     async function receive(event) {
       if (event.source !== window.parent || event.origin !== window.location.origin || event.data?.channel !== 'zaux-studio') return;
       if (event.data.type === 'reveal') { revealElement(event.data); return; }
       if (event.data.type !== 'state') return;
       const generation = ++receiveGeneration;
-      const showThemeSample = await themeLifecycle.prepare(event.data);
-      if (generation !== receiveGeneration) return;
-      if (event.data.styles) styleBridge.apply(event.data.styles, { preview: true });
-      fontLoader.apply(event.data.styles?.fonts ?? []);
-      state.value = event.data;
-      translation.language.value = event.data.language;
-      await nextTick();
-      if (generation !== receiveGeneration) return;
-      showThemeSample?.();
-      measureSelection();
+      try {
+        const showThemeSample = await themeLifecycle.prepare(event.data);
+        if (generation !== receiveGeneration) return;
+        if (event.data.styles) styleBridge.apply(event.data.styles, { preview: true });
+        fontLoader.apply(event.data.styles?.fonts ?? []);
+        renderFailure.value = '';
+        state.value = event.data;
+        translation.language.value = event.data.language;
+        await nextTick();
+        if (generation !== receiveGeneration) return;
+        showThemeSample?.();
+        measureSelection();
+        renderedGeneration = generation;
+        if (pendingReveal) revealElement(pendingReveal);
+        if (event.data.thumbnailRequest) {
+          const { captureThumbnail } = await import('../services/capture-thumbnail.js');
+          const url = await captureThumbnail();
+          if (generation === receiveGeneration) post({ type: 'thumbnail', requestId: event.data.thumbnailRequest, url });
+        }
+      } catch (error) {
+        if (!event.data.thumbnailRequest) throw error;
+        if (generation === receiveGeneration) post({ type: 'thumbnail', requestId: event.data.thumbnailRequest, error: renderFailure.value || error?.message || 'Component render failed' });
+      }
     }
     function context(target) {
       const element = target.closest('[data-zb-node]');
@@ -160,7 +183,7 @@ export default defineComponent({
       post({ type: 'ready' });
     });
     onBeforeUnmount(() => { receiveGeneration++; themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose(); window.removeEventListener('message', receive); window.removeEventListener('resize', measureSelection); window.removeEventListener('scroll', measureSelection); observer?.disconnect(); document.body.classList.remove('zb-preview-body'); });
-    return { ...translation, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
+    return { ...translation, renderFailure, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>
