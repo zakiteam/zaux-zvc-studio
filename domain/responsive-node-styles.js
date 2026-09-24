@@ -3,7 +3,7 @@ import { literalClasses, readStyleClass, readStyleImportant, replaceStyleClass, 
 
 // A small adapter over the native class editor; no second persisted style model.
 function valuesFor(value, control) {
-  let current = readStyleClass(value, control);
+  let current = readStyleClass(value, control) || control.responsiveDefault || '';
   return styleScreens.map(screen => {
     const local = readStyleClass(value, control, screen.value);
     if (local && (!current.startsWith('!') || local.startsWith('!'))) current = local;
@@ -29,7 +29,12 @@ export function readResponsiveImportant(value, control, scope = '') {
 }
 
 export function needsResponsiveBase(value, control, scope) {
-  return descendingStyles && !!scope && (control.globalSides ?? [control]).some(side => !readStyleClass(value, side));
+  if (!descendingStyles || !scope) return false;
+  const index = styleScreens.findIndex(screen => screen.value === scope);
+  // We only need a known value above the edited range to preserve larger screens.
+  // It may come from Base or an existing breakpoint (e.g. lg:grid), not just Base.
+  if (index < 0 || index === styleScreens.length - 1) return false;
+  return (control.globalSides ?? [control]).some(side => !valuesFor(value, side)[index + 1]);
 }
 
 function writeValues(value, control, values) {

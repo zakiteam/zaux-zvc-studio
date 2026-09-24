@@ -50,10 +50,19 @@ const options = values => values.map(value => ({
 }));
 const prefixed = (prefix, values) => options(values.map(value => `${prefix}-${value}`));
 const control = (id, values, extra = {}) => ({ id, label: `zx_builder_style_${id}`, options: options(values), ...extra });
+// Editor baselines for layout controls without an explicit authored utility.
+// These become ordinary Tailwind classes only when a responsive edit needs them.
+const responsiveLayoutDefaults = {
+  direction: 'flex-row',
+  wrap: 'flex-nowrap',
+  align: 'items-stretch',
+  justify: 'justify-normal'
+};
 function illustratedControl(id, values, matchValues = values) {
   return control(id, values, {
     illustrated: true,
     matchValues,
+    responsiveDefault: responsiveLayoutDefaults[id],
     options: options(values).map(option => ({
       ...option,
       icon: `/assets/builder/layout-${option.value}.svg`

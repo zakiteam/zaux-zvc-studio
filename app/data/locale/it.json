@@ -481,7 +481,7 @@
   "zx_builder_style_descending_base": "Base - viewport più grandi",
   "zx_builder_style_descending_scope": "Modifica dalla fascia verso il basso",
   "zx_builder_style_descending_hint": "Modifica la fascia selezionata e quelle inferiori fino al prossimo valore diverso. Le etichette mostrano il limite nominale; il canvas è largo 1 px in meno: selezionando 768 px, la preview misura 767 px. Le classi mantengono i breakpoint Zaux originali.",
-  "zx_builder_style_responsive_base_hint": "I campi disabilitati richiedono prima un valore Base, da conservare sui viewport più grandi.",
+  "zx_builder_style_responsive_base_hint": "Direzione, ritorno a capo, allineamento e distribuzione sono modificabili anche senza una classe iniziale: l'editor usa riga, nessun ritorno a capo, stretch e distribuzione normale. Gli altri campi disabilitati richiedono un valore Base per preservare i viewport superiori.",
   "zx_builder_style_responsive_base": "Imposta prima il valore Base dello stile. Per i container servono anche i margini orizzontali Base.",
   "zx_builder_style_responsive_important": "Questa modifica di !important influenzerebbe altre fasce. Uniforma prima la priorità in Base o modifica le classi avanzate.",
   "zx_builder_style_responsive_clear_base": "Ripristina prima le fasce personalizzate, poi rimuovi il valore Base.",

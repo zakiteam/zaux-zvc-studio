@@ -481,7 +481,7 @@
   "zx_builder_style_descending_base": "Base - larger viewports",
   "zx_builder_style_descending_scope": "Edit from this band downward",
   "zx_builder_style_descending_hint": "Edit the selected band and smaller bands down to the next different value. Labels show the nominal limit; the canvas is 1 px narrower: selecting 768 px gives a 767 px preview. Classes retain the original Zaux breakpoints.",
-  "zx_builder_style_responsive_base_hint": "Disabled fields need a Base value first, to preserve it on larger viewports.",
+  "zx_builder_style_responsive_base_hint": "Direction, wrapping, alignment and distribution are editable without an initial class: the editor uses row, no wrapping, stretch and normal distribution. Other disabled fields need a Base value to preserve larger viewports.",
   "zx_builder_style_responsive_base": "Set the Base style value first. Containers also need Base horizontal margins.",
   "zx_builder_style_responsive_important": "This !important change would affect other bands. Align priority in Base first or edit advanced classes.",
   "zx_builder_style_responsive_clear_base": "Reset customized bands before removing the Base value.",
