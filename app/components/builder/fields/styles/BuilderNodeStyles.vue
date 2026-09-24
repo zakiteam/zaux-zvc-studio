@@ -2,8 +2,8 @@
   <section class="py-2 my-2 border-y-slim border-zaux-light-grey">
     <h3 class="text-[12px] font-semibold">{{ translate('zx_builder_style_title') }}</h3>
     <label data-style-section="breakpoint" tabindex="-1" class="block mb-2">
-      <span class="mb-1 block text-[11px]">{{ translate('zx_builder_style_breakpoint') }}</span>
-      <BuilderInput type="select" :modelValue="scope" @update:modelValue="selectScope" :label="translate('zx_builder_style_breakpoint')" :options="scopeOptions" class="w-full" />
+      <span class="mb-1 block text-[11px]">{{ translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint') }}</span>
+      <BuilderInput type="select" :modelValue="scope" @update:modelValue="selectScope" :label="translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint')" :options="scopeOptions" class="w-full" />
     </label>
     <div v-if="configuredScopes.length" class="flex flex-wrap gap-1 mb-2">
       <span v-for="viewport in configuredScopes" :key="viewport.value" class="inline-flex items-center rounded-xxs border-slim" :class="scope === viewport.value ? 'border-zaux-accent bg-zaux-accent/15' : 'border-zaux-light-grey'">
@@ -13,12 +13,18 @@
         </button>
       </span>
     </div>
-    <p class="mb-2 text-[10px] text-zaux-dark-grey">{{ translate(visibility.hint) }}</p>
+    <p class="mb-2 text-[10px] text-zaux-dark-grey">{{ translate(descendingStyles && visibility.hint === 'zx_builder_style_hint' ? 'zx_builder_style_descending_hint' : visibility.hint) }}</p>
+    <p v-if="descendingStyles && scope" class="mb-2 text-[10px] text-zaux-dark-grey">
+      {{ translate('zx_builder_style_responsive_base_hint') }}
+      <button type="button" class="underline" @click="selectScope('')">{{ translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }}</button>
+    </p>
+    <p v-if="editError" role="status" class="mb-2 text-[11px] text-zaux-accent">{{ translate(editError) }}</p>
     <p v-if="!editable" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_style_dynamic') }}</p>
     <BuilderImageStyles
       v-if="imageTarget && visibility.image"
       data-style-section="image"
       :nodeName="nodeName"
+      @edit-error="editError = $event"
       :modelValue="imageTarget.array ? imgClasses : modelValue"
       :scope="scope"
       :disabled="disabled"
@@ -51,7 +57,7 @@
               :value="current(control)"
               :important="important(control)"
               :label="controlLabel(control)"
-              :disabled="disabled || !editable"
+              :disabled="controlDisabled(control)"
               @update:important="changeImportant(control, $event)"
               class="[&_.zb-builder-important-btn]:-top-0.5"
             >
@@ -59,7 +65,7 @@
                 :modelValue="current(control)"
                 :label="controlLabel(control)"
                 :options="illustratedOptions(control)"
-                :disabled="!editable || disabled"
+                :disabled="controlDisabled(control)"
                 :showLabels="control.id === 'display'"
                 :iconClass="alignmentIconClass(control.id)"
                 @update:modelValue="change(control, $event)"
@@ -71,7 +77,7 @@
                 :value="current(control)"
                 :important="important(control)"
                 :label="controlLabel(control)"
-                :disabled="disabled || !editable"
+                :disabled="controlDisabled(control)"
                 @update:important="changeImportant(control, $event)"
               >
                 <BuilderStyleSelect
@@ -80,7 +86,7 @@
                   :modelValue="current(control)"
                   :options="controlOptions(control)"
                   :label="controlLabel(control)"
-                  :disabled="!editable || disabled"
+                  :disabled="controlDisabled(control)"
                   class="w-full min-w-0 text-[11px]"
                   @update:modelValue="change(control, $event)"
                 />
@@ -90,7 +96,7 @@
                 :value="readPositionValue(current(control), control)"
                 :important="important(control)"
                 :label="controlLabel(control)"
-                :disabled="disabled || !editable"
+                :disabled="controlDisabled(control)"
                 @update:important="changeImportant(control, $event)"
               >
                 <BuilderInput
@@ -99,7 +105,7 @@
                   highlightWhenSet
                   :label="controlLabel(control) + ': ' + translate('zx_builder_style_custom')"
                   :placeholder="translate(control.nonNegative ? 'zx_builder_style_dimension_placeholder' : control.integer ? 'zx_builder_style_integer_placeholder' : control.depth ? 'zx_builder_style_depth_placeholder' : 'zx_builder_style_length_placeholder')"
-                  :disabled="!editable || disabled"
+                  :disabled="controlDisabled(control)"
                   class="mt-1 w-full min-w-0 text-[11px]"
                   @input="$event.target.setCustomValidity('')"
                   @change="changePositionValue(control, $event)"
@@ -116,7 +122,9 @@
 <script>
 import { computed, defineComponent, ref, watch } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
-import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses, readStyleClass, readStyleImportant, setStyleImportant, replaceStyleClass, positionValueClass, readPositionValue } from '../../../../../domain/node-styles.js';
+import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses, readStyleClass, positionValueClass, readPositionValue } from '../../../../../domain/node-styles.js';
+import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
+import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, setResponsiveImportant, needsResponsiveBase, hasResponsiveStyle, resetResponsiveStyles } from '../../../../../domain/responsive-node-styles.js';
 import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
 import { nodeStyleSections, styleBreakpoints } from '../../../../../integrations/zaux/controls/node-style-controls.js';
 import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
@@ -133,6 +141,8 @@ export default defineComponent({
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const scope = ref('');
+    const editError = ref('');
+    watch([scope, () => props.nodeId], () => { editError.value = ''; });
     const visibility = computed(() => styleVisibility(scope.value));
     const filteredSections = computed(() => visibleStyleSections(nodeStyleSections, visibility.value));
     watch(scope, value => emit('update:scope', value), { immediate: true });
@@ -144,12 +154,17 @@ export default defineComponent({
     const granular = ref({ border: false, rounding: false, padding: false, margin: false });
     const imageTarget = computed(() => imageStyleTarget(props.nodeName));
     const editable = computed(() => literalClasses(props.modelValue) !== null);
-    const scopeOptions = computed(() => [{ value: '', label: translate('zx_builder_style_base') }, ...styleBreakpoints]);
+    const scopeOptions = computed(() => [{ value: '', label: translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }, ...(descendingStyles ? [...styleBreakpoints].reverse() : styleBreakpoints)]);
+    const styleControls = computed(() => [
+      ...nodeStyleSections.flatMap(section => section.controls),
+      ...(imageTarget.value && !imageTarget.value.array ? [imageFitControl, imagePositionControl] : [])
+    ]);
+    const hasScope = (value, controls, prefix) => descendingStyles ? hasResponsiveStyle(value, controls, prefix) : hasStyleScope(value, prefix);
     const configuredScopes = computed(() => styleBreakpoints.filter(({ value }) =>
-      hasStyleScope(props.modelValue, value) || (imageTarget.value?.array && hasStyleScope(props.imgClasses, value))
+      hasScope(props.modelValue, styleControls.value, value) || (imageTarget.value?.array && hasScope(props.imgClasses, [imageFitControl, imagePositionControl], value))
     ));
     function selectScope(next) {
-      if (next && !props.viewportChosen && !scope.value && !configuredScopes.value.length && !props.disabled) {
+      if (!descendingStyles && next && !props.viewportChosen && !scope.value && !configuredScopes.value.length && !props.disabled) {
         const controls = nodeStyleSections.flatMap(section => section.controls);
         if (imageTarget.value && !imageTarget.value.array) controls.push(imageFitControl, imagePositionControl);
         const patch = { class: transferBaseStyles(props.modelValue, next, controls) };
@@ -163,21 +178,35 @@ export default defineComponent({
     }
     function resetScope(value) {
       if (props.disabled) return;
+      if (descendingStyles) {
+        const classes = resetResponsiveStyles(props.modelValue, styleControls.value, value);
+        const images = imageTarget.value?.array && props.imgClasses != null
+          ? resetResponsiveStyles(props.imgClasses, [imageFitControl, imagePositionControl], value) : null;
+        editError.value = classes.error || images?.error || '';
+        if (editError.value) return;
+        emit('update:viewportStyles', { class: classes.value, ...(images ? { imgClasses: literalClasses(images.value) } : {}) });
+        return;
+      }
       const patch = { class: removeStyleScope(props.modelValue, value) };
       if (imageTarget.value?.array && props.imgClasses != null) patch.imgClasses = removeStyleScope(props.imgClasses, value);
       emit('update:viewportStyles', patch);
       if (scope.value === value) scope.value = '';
     }
-    const current = control => readStyleClass(props.modelValue, control, scope.value).replace(/^!/, '');
-    const important = control => readStyleImportant(props.modelValue, control, scope.value);
+    const current = control => readResponsiveStyle(props.modelValue, control, scope.value).replace(/^!/, '');
+    const important = control => readResponsiveImportant(props.modelValue, control, scope.value);
+    const controlDisabled = control => props.disabled || !editable.value || needsResponsiveBase(props.modelValue, control, scope.value);
+    function applyEdit(result) {
+      editError.value = result.error || '';
+      if (!result.error && result.value !== props.modelValue) emit('update:modelValue', result.value);
+    }
     function changeImportant(control, enabled) {
       if (props.disabled || !editable.value) return;
-      const result = setStyleImportant(props.modelValue, control, enabled, scope.value);
-      emit('update:modelValue', result);
+      applyEdit(setResponsiveImportant(props.modelValue, control, enabled, scope.value));
     }
     function inheritedLayoutClass(id) {
       const layout = nodeStyleSections.find(section => section.id === 'layout');
       const control = layout.controls.find(item => item.id === id);
+      if (descendingStyles) return readResponsiveStyle(props.modelValue, control, scope.value).replace(/^!/, '');
       const breakpointIndex = styleBreakpoints.findIndex(item => item.value === scope.value);
       const scopes = ['', ...styleBreakpoints.slice(0, breakpointIndex + 1).map(item => item.value)];
       let value = '';
@@ -190,6 +219,8 @@ export default defineComponent({
     function visibleControls(section) {
       if (section.globalControls) return granular.value[section.id] ? section.controls : section.globalControls;
       if (section.id !== 'layout') return section.controls;
+      // Seed flex/grid baselines even when only smaller viewports use that layout.
+      if (descendingStyles && !scope.value) return section.controls;
       const display = inheritedLayoutClass('display');
       // Show layout-specific controls only for an authored flex/grid layout.
 
@@ -244,7 +275,7 @@ export default defineComponent({
     function controlOptions(control) {
       const value = current(control);
       return [
-        { value: '', label: translate('zx_builder_style_unset') },
+        { value: '', label: translate(descendingStyles && scope.value ? 'zx_builder_style_responsive_reset' : 'zx_builder_style_unset') },
         ...(value && !control.options.some(option => option.value === value)
           ? [{ value, label: value === '__mixed__' ? translate('zx_builder_style_mixed') : `${translate('zx_builder_style_custom')}: ${value}` }] : []),
         ...control.options.map(option => ({
@@ -263,10 +294,10 @@ export default defineComponent({
       change(control, value);
     }
     function change(control, value) {
-      if (!editable.value || props.disabled || current(control) === value) return;
-      emit('update:modelValue', replaceStyleClass(props.modelValue, control, value, scope.value));
+      if (!editable.value || props.disabled) return;
+      applyEdit(replaceResponsiveStyle(props.modelValue, control, value, scope.value));
     }
-    return { visibility, filteredSections, configuredScopes, selectScope, resetScope, important, changeImportant, granular, imageTarget, translate, scope, scopeOptions, visibleControls, controlLabel, illustratedOptions, alignmentIconClass, editable, nodeStyleSections, current, controlOptions, change, changePositionValue, readPositionValue };
+    return { descendingStyles, editError, controlDisabled, visibility, filteredSections, configuredScopes, selectScope, resetScope, important, changeImportant, granular, imageTarget, translate, scope, scopeOptions, visibleControls, controlLabel, illustratedOptions, alignmentIconClass, editable, nodeStyleSections, current, controlOptions, change, changePositionValue, readPositionValue };
   }
 });
 </script>

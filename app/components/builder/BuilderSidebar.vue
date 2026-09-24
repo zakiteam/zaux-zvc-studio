@@ -85,7 +85,7 @@
 						@click="libraryKind = kind"
 						@keydown="libraryKindKeydown"
 					>
-						{{ translate("zx_builder_" + kind) }}
+						{{ translate("zx_builder_" + kind + "_pretty_name") }}
 					</button>
 				</div>
 				<p

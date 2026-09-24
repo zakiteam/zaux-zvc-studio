@@ -10,10 +10,10 @@
           :value="current(imageFitControl)"
           :important="important(imageFitControl)"
           :label="translate('zx_builder_style_object_fit')"
-          :disabled="disabled || !editable"
+          :disabled="controlDisabled(imageFitControl)"
           @update:important="changeImportant(imageFitControl, $event)"
         >
-          <BuilderStyleSelect :modelValue="current(imageFitControl)" :options="fitOptions" :label="translate('zx_builder_style_object_fit')" :disabled="disabled || !editable" @update:modelValue="change(imageFitControl, $event)" />
+          <BuilderStyleSelect :modelValue="current(imageFitControl)" :options="fitOptions" :label="translate('zx_builder_style_object_fit')" :disabled="controlDisabled(imageFitControl)" @update:modelValue="change(imageFitControl, $event)" />
         </BuilderStyleField>
       </div>
       <div class="min-w-0">
@@ -21,16 +21,16 @@
           :value="current(imagePositionControl)"
           :important="important(imagePositionControl)"
           :label="translate('zx_builder_style_object_position')"
-          :disabled="disabled || !editable"
+          :disabled="controlDisabled(imagePositionControl)"
           @update:important="changeImportant(imagePositionControl, $event)"
         >
-          <BuilderStyleChoices :modelValue="current(imagePositionControl)" :options="positionOptions" :columns="3" :label="translate('zx_builder_style_object_position')" :disabled="disabled || !editable" @update:modelValue="change(imagePositionControl, $event)" />
+          <BuilderStyleChoices :modelValue="current(imagePositionControl)" :options="positionOptions" :columns="3" :label="translate('zx_builder_style_object_position')" :disabled="controlDisabled(imagePositionControl)" @update:modelValue="change(imagePositionControl, $event)" />
         </BuilderStyleField>
         <BuilderStyleField
           :value="readPositionValue(current(imagePositionControl), imagePositionControl)"
           :important="important(imagePositionControl)"
           :label="translate('zx_builder_style_object_position')"
-          :disabled="disabled || !editable"
+          :disabled="controlDisabled(imagePositionControl)"
           @update:important="changeImportant(imagePositionControl, $event)"
         >
           <BuilderInput
@@ -39,7 +39,7 @@
             highlightWhenSet
             :label="translate('zx_builder_style_object_custom')"
             :placeholder="translate('zx_builder_style_object_placeholder')"
-            :disabled="disabled || !editable"
+            :disabled="controlDisabled(imagePositionControl)"
             class="mt-2 w-full min-w-0 text-[11px]"
             @input="$event.target.setCustomValidity('')"
             @change="changePosition"
@@ -52,7 +52,9 @@
 <script>
 import { computed, defineComponent } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
-import { literalClasses, readStyleClass, readStyleImportant, setStyleImportant, replaceStyleClass, readPositionValue, positionValueClass } from '../../../../../domain/node-styles.js';
+import { literalClasses, readPositionValue, positionValueClass } from '../../../../../domain/node-styles.js';
+import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
+import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, setResponsiveImportant, needsResponsiveBase } from '../../../../../domain/responsive-node-styles.js';
 import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
 import BuilderStyleSelect from './BuilderStyleSelect.vue';
 import BuilderStyleChoices from './BuilderStyleChoices.vue';
@@ -62,33 +64,36 @@ import BuilderStyleField from './BuilderStyleField.vue';
 export default defineComponent({
   components: { BuilderStyleField, BuilderStyleSelect, BuilderStyleChoices, BuilderInput },
   props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, disabled: Boolean },
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'edit-error'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const target = computed(() => imageStyleTarget(props.nodeName));
     const classes = computed(() => props.modelValue ?? target.value.defaults);
     const editable = computed(() => literalClasses(classes.value) !== null);
-    const current = control => readStyleClass(classes.value, control, props.scope).replace(/^!/, '');
-    const important = control => readStyleImportant(classes.value, control, props.scope);
+    const current = control => readResponsiveStyle(classes.value, control, props.scope).replace(/^!/, '');
+    const important = control => readResponsiveImportant(classes.value, control, props.scope);
+    const controlDisabled = control => props.disabled || !editable.value || needsResponsiveBase(classes.value, control, props.scope);
+    function applyEdit(result) {
+      emit('edit-error', result.error || '');
+      if (!result.error && result.value !== classes.value) emit('update:modelValue', target.value.array ? literalClasses(result.value) : result.value);
+    }
     function changeImportant(control, enabled) {
       if (props.disabled || !editable.value) return;
-      const result = setStyleImportant(classes.value, control, enabled, props.scope);
-      emit('update:modelValue', target.value.array ? literalClasses(result) : result);
+      applyEdit(setResponsiveImportant(classes.value, control, enabled, props.scope));
     }
     const positionOptions = computed(() => imagePositionControl.options.map(option => ({ ...option, label: translate(option.label) })));
     const fitOptions = computed(() => {
       const value = current(imageFitControl);
       return [
-        { value: '', label: translate('zx_builder_style_unset') },
+        { value: '', label: translate(descendingStyles && props.scope ? 'zx_builder_style_responsive_reset' : 'zx_builder_style_unset') },
         ...(value && !imageFitControl.options.some(option => option.value === value)
           ? [{ value, label: translate('zx_builder_style_custom') + ': ' + value }] : []),
         ...imageFitControl.options.map(option => ({ ...option, label: translate(option.label) }))
       ];
     });
     function change(control, value) {
-      if (props.disabled || !editable.value || current(control) === value) return;
-      const result = replaceStyleClass(classes.value, control, value, props.scope);
-      emit('update:modelValue', target.value.array ? literalClasses(result) : result);
+      if (props.disabled || !editable.value) return;
+      applyEdit(replaceResponsiveStyle(classes.value, control, value, props.scope));
     }
     function changePosition(event) {
       const value = positionValueClass(imagePositionControl, event.target.value);
@@ -99,7 +104,7 @@ export default defineComponent({
       }
       change(imagePositionControl, value);
     }
-    return { important, changeImportant, translate, editable, current, imageFitControl, imagePositionControl, fitOptions, positionOptions, change, changePosition, readPositionValue };
+    return { controlDisabled, important, changeImportant, translate, editable, current, imageFitControl, imagePositionControl, fitOptions, positionOptions, change, changePosition, readPositionValue };
   }
 });
 </script>

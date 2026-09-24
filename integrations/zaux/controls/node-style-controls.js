@@ -5,7 +5,7 @@ import overlays from '../../../vendor/zaux/style/tokens/overlays.json';
 import gradients from '../../../vendor/zaux/style/tokens/gradients.json';
 import borders from '../../../vendor/zaux/style/tokens/borders.json';
 import radius from '../../../vendor/zaux/style/tokens/radius.json';
-import breakpoints from '../../../vendor/zaux/style/tokens/breakpoints.json';
+export { styleBreakpoints } from '../responsive-styles.js';
 import typography from '../../../vendor/zaux/style/tokens/typography.json';
 import shadows from '../../../vendor/zaux/style/tokens/shadows.json';
 import blur from '../../../vendor/zaux/style/tokens/blur.json';
@@ -161,7 +161,6 @@ function spacingSection(id, prefix) {
   return { id, controls: sides, globalControls: [{ ...spaceControl(prefix, id), globalSides: sides }] };
 }
 
-export const styleBreakpoints = Object.entries(breakpoints).map(([name, min]) => ({ value: `${name}:`, label: `${name} ≥ ${min}` }));
 export const nodeStyleSections = [
   { id: 'layout', controls: [
     illustratedControl('display', ['block', 'flex', 'grid', 'hidden'], ['block', 'inline-block', 'inline', 'flex', 'inline-flex', 'grid', 'inline-grid', 'contents', 'hidden', 'flow-root', 'table', 'table-row', 'table-cell', 'list-item']),

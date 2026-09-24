@@ -12,7 +12,8 @@ import { ancestorIds, clone, uid, createNode, dataFor, findNode, locateNode, cop
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
 import { catalogNode, containers } from '../services/catalog.js';
-import { viewports, simpleViewports, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
+import { descendingStyles } from '../../integrations/zaux/responsive-styles.js';
+import { viewports, simpleViewports, previewWidth, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
 import { mergeSourceLibrary, refreshSourceSnapshots, visualSourceCopy, sourceAvailable } from '../services/source-zvc.js';
 import { setStyleVariable, setUIValue, validateStylePreset } from '../../domain/styles.js';
 import { createStyleBridge } from '../services/styles.js';
@@ -135,16 +136,17 @@ export function createBuilder({ projectId = null } = {}) {
   const simpleViewport = ref('auto');
   const viewport = ref('auto');
   const followViewportStyles = ref(true);
-  const viewportWidth = computed(() => viewportMode.value === 'simple'
+  const nominalViewportWidth = computed(() => viewportMode.value === 'simple'
     ? (simpleViewports.find(item => item.value === simpleViewport.value)?.width ?? null)
     : viewports.find(item => item.name === viewport.value)?.width ?? null);
+  const viewportWidth = computed(() => previewWidth(nominalViewportWidth.value));
   const viewportStyleScope = computed(() => styleScopeForWidth(viewportWidth.value));
-  const viewportLabel = computed(() => viewportWidth.value === null
+  const viewportLabel = computed(() => nominalViewportWidth.value === null
     ? i18n.translate('zx_builder_viewport_auto')
-    : `${viewportMode.value === 'simple' ? i18n.translate(`zx_builder_${simpleViewport.value}`) : viewport.value} - ${viewportWidth.value} PX`);
+    : `${viewportMode.value === 'simple' ? i18n.translate(`zx_builder_${simpleViewport.value}`) : viewport.value} - ${nominalViewportWidth.value} PX`);
   const simpleViewportOptions = computed(() => simpleViewports.map(item => ({
     value: item.value,
-    label: i18n.translate(item.label) + (item.minWidth === undefined ? '' : ' (≥ ' + item.minWidth + ' px)')
+    label: i18n.translate(item.label) + (item.minWidth === undefined ? '' : descendingStyles ? ' (' + item.width + ' px)' : ' (≥ ' + item.minWidth + ' px)')
   })));
   const viewportOptions = computed(() => [
     { value: 'auto', label: i18n.translate('zx_builder_viewport_auto') },

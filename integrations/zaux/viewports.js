@@ -1,8 +1,14 @@
 import breakpoints from '../../vendor/zaux/style/tokens/breakpoints.json';
+import { descendingStyles } from './responsive-styles.js';
 
 const screens = Object.entries(breakpoints)
   .map(([name, value]) => ({ name, width: Number.parseFloat(value) }))
   .sort((a, b) => a.width - b.width);
+
+// Presets and labels keep nominal widths; only the iframe sits below the boundary.
+export function previewWidth(width) {
+  return descendingStyles && Number.isFinite(width) ? Math.max(1, width - 1) : width;
+}
 
 export const simpleViewports = [
   { value: 'auto', label: 'zx_builder_viewport_auto', width: null },
