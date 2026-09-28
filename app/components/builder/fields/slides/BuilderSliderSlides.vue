@@ -35,7 +35,7 @@
   import { useBuilder } from '../../../../composables/useBuilder.js';
   import BuilderPartialFields from '../BuilderPartialFields.vue';
   import slideComponents from '../../../../data/catalog/slide-components.js';
-  import { clone, dataFor } from '../../../../../domain/nodes.js';
+  import { clone } from '../../../../../domain/nodes.js';
   import { isPlainRecord } from '../../../../../domain/slider.js';
   import { useTranslation } from '../../../../composables/useTranslation.js';
   import BuilderButton from '../../BuilderButton.vue';
@@ -59,7 +59,7 @@
       function commit(slides) { emit('change', slides); }
       async function add(item) {
         const partial = builder.availablePartials.value.find(entry => entry.exportName === item.id);
-        const entry = partial ? { name: partial.exportName, props: dataFor(partial) } : slideComponents.find(entry => entry.name === item.id);
+        const entry = partial ? { name: partial.exportName, props: {} } : slideComponents.find(entry => entry.name === item.id);
         if (!entry) return;
         const index = props.modelValue.length;
         commit([...props.modelValue, { type: 'component', name: entry.name, props: clone(entry.props) }]);

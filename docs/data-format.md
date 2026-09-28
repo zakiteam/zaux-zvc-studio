@@ -35,6 +35,56 @@ An instance contains `id`, `sourceId` (provenance only), `name`, a full independ
 
 Native definitions additionally store sourceKey and defaults. Local source keys stay relative to `app/zvc`; upstream keys use `zaux/core/components/virtual/...` or `zaux/project/components/virtual/...`. Library categories are inferred from source-base identity and are not persisted. Their tree is a cached result of buildNode, refreshed from the installed module and current instance data. Source functions are never stored in JSON. Missing modules retain their saved tree and require restoring the module or converting to visual before editing content.
 
+## Studio variants
+
+ZVC and ZVP definitions can have a single named variant axis, managed from the
+Inspector: create a copy of the current variant, select, rename or delete it.
+The final variant cannot be deleted. Imported source originals create a project
+copy on first variant creation; converting that copy to visual changes only its
+active variant. No variant parameter or automatic switching is added to Zaux.
+
+This is an optional extension to version 1; existing documents need no migration.
+`definition.activeVariant` identifies one entry in `definition.variants`:
+
+```js
+variants: [
+  { id: 'base-id', name: 'Base', content: { tree, fields, css, partials } },
+  { id: 'flipped-id', name: 'Flipped' }
+],
+activeVariant: 'flipped-id'
+```
+
+The active entry has no `content`: its content lives in the ordinary definition
+properties. Inactive entries hold only `tree`, `fields`, `css` and optional
+`defaults`, `sourceKey`, `partials`, `previewImage`. Identity, display name and
+export name are shared. Switching moves these properties between entries, so
+there is no duplicated active tree or per-edit snapshot synchronization. Each
+alternative is a complete independent content snapshot, not a patch chain.
+There are at most 50 named variants, with unique names of up to 80 characters.
+
+Template instances copy all variants independently. Explicit `instance.data`
+overrides remain shared across that instance's variants; variant defaults can
+differ. All actions use the normal commit, undo/redo and persistence lifecycle.
+Nested ZVP occurrences expose their captured variants in Properties/Data and
+slider editors. Switching one occurrence creates an internal dependency alias
+only when the dependency is shared with other occurrences. Existing captures
+do not acquire later library variants automatically; use Restore from library.
+New ZVP references start with empty props and inherit captured defaults, storing
+only explicit edits. Older explicit props remain intact, even if they happen to
+equal a previous default.
+
+`activeDefinitionOnly` projects just the active definition and active partials
+without traversing inactive content. Canvas, standalone preview, thumbnails and
+their CSS compilation use that projection. Runtime JSON, JavaScript, Vue and
+starter component output use ordinary active trees, fields and defaults. Starter
+deduplication ignores variant names and inactive content. Editable Studio JSON
+and the starter's separate `studio/workspace.json` backup retain all variants;
+the filesystem bridge already excludes `studio/*`. No variants metadata enters
+Zaux implementations or `buildNode()` data.
+
+Runtime verification is left to the user; no automated tests, browser checks,
+validators or production builds were run.
+
 ## Image references
 
 Optional `workspace.coverImage` and `definition.previewImage` strings store absolute public image URLs. Empty strings clear previews. Existing version-1 documents remain valid without these optional fields. Preview metadata survives editable JSON export/import and independent definition copies; source-library refresh preserves its own preview. Component image properties keep ordinary strings, with no binary data or media service objects in workspace JSON. Runtime/JS exports keep image URLs and do not bundle files.
@@ -175,3 +225,31 @@ Optional `workspace.styles.bodyBackground` stores a Zaux color reference such as
 ## Project bridge export
 
 The filesystem bridge produces the same file map as the starter ZIP, then writes it directly into a linked Zaux repository. It drops the ZIP-only artifacts (`README.md`, `studio/*`, `fonts.html`, `fonts.json`) and routes the project font `<link>` elements into `.storybook/preview-head.html` through an idempotent marked block (`mergePreviewHead`). No workspace JSON changes are involved; the destination is detected from `package.json#coreVersion` and the `project/` folder.
+
+## Free template components
+
+Template entries may carry `kind: 'free'`. They reuse the existing JSON instance
+and definition envelope for node trees, properties, CSS and independent partial
+snapshots, but have no `sourceId` and do not create a library ZVC. Existing entries
+without `kind` retain their ZVC behavior. Free definitions are visual and do not
+have definition variants; referenced ZVPs retain their own variants.
+
+The outline shows free trees directly. Palette clicks in template mode default to
+**Into template (free component)**; **Into selection** retains insertion within
+an existing editable ZVC. Dragging into a container nests the node, while dropping
+between blocks or on the template drop area creates/moves a free block. Root
+copy/paste and duplication create independent free entries; deleting or moving
+away the last root removes its empty free entry.
+
+**Group into ZVC** on a free root opens a name dialog. The end selector can include
+consecutive free blocks starting with that block, stopping before the next ZVC.
+Grouping preserves page order, adds no HTML wrapper, captures current property
+values and partial dependencies, and replaces the range with an independent ZVC
+instance plus a library definition in a single undoable commit. To include a
+subtree in a separate group, first drag it out to the template level.
+
+Workspace/template JSON retains the free marker. Zaux runtime JSON omits
+`ZVCName` for free entries. Starter/template JavaScript exports them as inline
+`{ node }` blocks supported by Zaux's template renderer, with partials expanded;
+free definition and dependency CSS is emitted in `style/template-<name>.css`.
+Existing ZVC exports remain component references. Runtime verification is manual.

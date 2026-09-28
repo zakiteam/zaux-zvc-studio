@@ -1,5 +1,6 @@
 import { restoreInstance } from './restore-instance.js';
 import { clone, dataFor } from './nodes.js';
+import { selectVariant } from './variants.js';
 
 export function partialDefinitions(definition, library) {
   const available = new Map((definition?.partials ?? []).map(partial => [partial.exportName, partial]));
@@ -39,6 +40,29 @@ export function definitionCss(definition) {
 
 export function partialLibraryDefinition(partial, library) {
   return partial && library.find(item => item.kind === 'zvp' && item.id === (partial.libraryId ?? partial.id));
+}
+
+// Variant choice belongs to this occurrence, never to its shared descriptor data.
+export function selectPartialVariant(owner, reference, id, library, data = {}) {
+  capturePartials(owner, library, data);
+  const partial = owner.partials?.find(item => item.exportName === reference.name);
+  if (!partial || partial.activeVariant === id) return;
+  let count = 0;
+  function visit(value) {
+    if (!value || typeof value !== 'object') return;
+    if (value.name === reference.name && value.props) count++;
+    Object.values(value).forEach(visit);
+  }
+  visit(owner.tree);
+  visit(dataFor(owner, data));
+  if (count <= 1) { selectVariant(partial, id); return; }
+  const copy = clone(partial);
+  selectVariant(copy, id);
+  copy.libraryId = partial.libraryId ?? partial.id;
+  const names = new Set([owner.exportName, ...library.map(item => item.exportName), ...owner.partials.map(item => item.exportName)]);
+  for (let suffix = 2; names.has(copy.exportName); suffix++) copy.exportName = partial.exportName + suffix;
+  owner.partials.push(copy);
+  reference.name = copy.exportName;
 }
 
 // Give the restored occurrence its own dependency, leaving sibling references intact.

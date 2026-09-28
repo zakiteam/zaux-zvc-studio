@@ -18,12 +18,16 @@ export default defineComponent({
     const dynamicCss = ref('');
     let timer;
     let generation = 0;
+    let visibilityRequest = 0;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     function receive(event) {
       if (event.origin !== window.location.origin || event.source !== frame.value?.contentWindow || event.data?.channel !== 'zaux-studio') return;
       const message = event.data;
+      if (message.type === 'outline-visibility' && message.request === visibilityRequest && Array.isArray(message.hidden)) {
+        builder.hiddenOutlineNodes.value = new Set(message.hidden);
+      }
       if (!builder.previewOnly.value && message.instanceId === (builder.mode.value === 'library' ? 'library' : builder.instanceId.value) && message.nodeId === builder.nodeId.value) {
         if (message.type === 'copy-node') builder.copySelectedNode();
         if (message.type === 'paste-node') builder.pasteNode();
@@ -50,8 +54,9 @@ export default defineComponent({
       if (!target) return;
       frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'reveal', instanceId: target.instanceId, nodeId: target.nodeId }, window.location.origin);
     });
+    watch([builder.mode, builder.libraryId, builder.templateId, builder.viewportWidth], () => { builder.hiddenOutlineNodes.value = new Set(); sendState(); });
     onMounted(() => { window.addEventListener('message', receive); compileCss(); });
-    onBeforeUnmount(() => { window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
+    onBeforeUnmount(() => { builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
     return { ...builder, frame, sendState };
   }
 });

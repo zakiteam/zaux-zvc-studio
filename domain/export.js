@@ -262,7 +262,7 @@ export function vueComponent(definition) {
 export function templateRuntime(template) {
   return template.instances.flatMap(instance =>
     runtimeNodes(instance.definition, instance.data).map(node => ({
-      ZVCName: instance.definition.exportName,
+      ...(instance.kind === 'free' ? {} : { ZVCName: instance.definition.exportName }),
       ...node
     }))
   );

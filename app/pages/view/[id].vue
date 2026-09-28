@@ -14,6 +14,7 @@ import { previewStorageKeys, readPreviewWorkspace } from '../../services/preview
 import { refreshSourceSnapshots } from '../../services/source-zvc.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { runtimeNodes } from '../../../domain/nodes.js';
+import { activeDefinitionOnly } from '../../../domain/variants.js';
 import { useTranslation } from '../../composables/useTranslation.js';
 
 export default defineComponent({
@@ -47,7 +48,8 @@ export default defineComponent({
         const component = componentId ? workspace.library.find(item => item.id === componentId) : null;
         const template = route.query.template ? workspace.templates.find(item => item.id === route.query.template) : workspace.templates[0];
         if (componentId ? !component : !template) throw new Error('zx_builder_preview_unavailable');
-        const instances = component ? [{ id: 'library', name: component.name, definition: component, data: {} }] : template.instances;
+        const instances = (component ? [{ id: 'library', name: component.name, definition: component, data: {} }] : template.instances)
+          .map(instance => ({ ...instance, definition: activeDefinitionOnly(instance.definition) }));
         const result = await $fetch('/api/preview-css', { method: 'POST', body: { content: JSON.stringify({
           instances, rendered: instances.map(instance => runtimeNodes(instance.definition, instance.data)), uiSettings: workspace.styles?.uiSettings
         }) } });

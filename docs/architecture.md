@@ -27,6 +27,17 @@
 | docs/ai | Decisions, knowledge index and resumable session state |
 | .agents/skills | Discoverable project skill |
 
+## Studio variants
+
+`domain/variants.js` owns named alternatives, content swapping and the active-only
+projection. `domain/validation.js` validates inactive content on import/save and
+`domain/workspace.js` copies all variants independently. `domain/partials.js`
+isolates variant selection for nested ZVP occurrences. `BuilderVariants.vue`
+provides Inspector controls through `useBuilder.js` commits; `BuilderPartialFields`
+provides the occurrence selector, including sliders. Preview and thumbnail paths
+omit inactive alternatives; starter and component exports operate on active
+definitions only. See [the data contract](data-format.md#studio-variants).
+
 ## Zaux study
 
 Studied the original checkout at `vendor/zaux`, including:
@@ -229,3 +240,57 @@ The shared slide catalog includes HeroSection with media-library image selection
 ### Project bridge (filesystem export)
 
 `BuilderProjectBridge.vue` is a dedicated `<dialog>` modal that lists the contents of a user-granted directory through the File System Access API and links a local Zaux repository as the export destination. It reuses the starter export (`projectStarterFiles`) but, instead of downloading a ZIP, writes component/template/style files straight into the destination's dedicated paths (`project/components/virtual/…`, `project/templates/…`, `style/…`). `domain/zaux-bridge.js` owns the pure logic: version comparison (`compareZauxVersions`), filtering the ZIP-only artifacts out of the direct write (`bridgeFiles`, which drops `README.md`, `studio/*`, `fonts.html`, `fonts.json`) and the idempotent font merge into `.storybook/preview-head.html` (`mergePreviewHead`). `app/services/zaux-bridge.js` performs the browser IO (picker, listing, detection, writes); `integrations/zaux/version.js` exposes the builder's pinned Zaux core version (`vendor/zaux/package.json#coreVersion`). A mismatch between the destination `package.json#coreVersion` and the builder's version requires explicit acceptance before writing. Chromium (Chrome/Edge) on a secure context (localhost) is required; there is no server endpoint and no arbitrary path access. `BuilderProjectBridge.vue` exposes a "Parts to sync" selection (project components, imported ZVCs, templates, styles, fonts) forwarded through `projectStarterFiles` into `starterFiles`; imported (code) ZVCs are excluded by default, so only editor-authored project components are written unless the user opts in.
+
+## Free template nodes and grouping
+
+`domain/template-elements.js` creates free instance envelopes and groups ordered
+free blocks into independent library/template ZVC copies. `useBuilder.js` owns
+insertion, root drag/drop, clipboard and grouping commits. `BuilderSidebar` shows
+free trees without a ZVC heading and offers palette insertion destinations;
+`BuilderTree` and `BuilderDialog` expose the grouping action and name/range form.
+`domain/export.js` and `domain/starter-export.js` emit direct runtime nodes and
+inline template blocks respectively. See [the data contract](data-format.md#free-template-components).
+
+## Outline range selection and drag scrolling
+
+`domain/outline.js` projects the visible outline order, removes descendant entries
+covered by selected parents, and moves a selection while retaining its order.
+`useBuilder.js` owns transient range selection and the anchor for Shift-click.
+Ordinary clicks and canvas selection return to a single layer; switching scope
+clears the range and collapsed/deleted rows are removed from it. The Inspector
+continues to edit the last clicked layer. Selection is never serialized.
+
+Dragging a selected row carries the range in one undoable commit. Whole ZVCs
+remain template blocks; editable nodes can move into compatible containers or
+out to the template. Cross-definition moves use the existing node snapshot and
+materialization contracts for values, CSS and independent ZVP dependencies.
+Selecting consecutive free roots also prefills the Group into ZVC dialog range.
+Row-local duplicate/delete and clipboard actions continue to address one node.
+
+`useBuilderOutlineDrag.js` scrolls the outline using animation frames while the
+pointer is near its top or bottom edge during a Builder drag, accounting for the
+sticky toolbar. Speed increases toward the edge and the drop marker follows the
+row beneath the pointer as the list moves. Leaving the list, drop, drag end,
+window blur and unmount stop scrolling. Source review only; browser verification
+remains with the user.
+
+### Explicit library instance synchronization
+
+`domain/sync-instances.js` applies the existing restoration semantics across the
+current workspace. The outline sidebar offers Sync instances below Copy/Paste when editing library
+ZVCs and ZVPs. ZVC copies are matched by sourceId across all templates; ZVP dependencies
+are matched by libraryId or captured id, including nested dependencies, slider
+descriptors and inactive variant content in library owners and templates.
+The source stays unchanged. The action is one undoable commit; ordinary library
+edits still do not propagate automatically. Runtime verification remains manual.
+### Outline display visibility
+
+`app/services/outline-visibility.js` reads computed display in the preview iframe,
+including ancestors, and publishes hidden node keys per instance. Measurements
+are batched per animation frame after rendering, DOM/style changes and viewport
+resizes, including automatic width. Unchanged reports are suppressed and Canvas
+rejects reports from stale state requests. `useBuilder.js` holds the result only
+in transient UI state. `BuilderTree.vue` displays the Zaux visibility-off icon
+beside hidden levels with a localized accessible label. Nodes absent from the DOM
+are not assumed to have display:none. This does not change authored visibility.
+Runtime verification remains manual.

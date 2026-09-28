@@ -2,6 +2,7 @@ import { normalizeSourceFields } from './source-zvc.js';
 import { validateStylePreset } from './styles.js';
 import { validateComponentThemes } from './component-themes.js';
 import { SCHEMA_VERSION } from './workspace.js';
+import { variantContentKeys } from './variants.js';
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 function requireValue(condition, error = 'zx_builder_invalid_document') { if (!condition) throw new Error(error); }
 export function parseJson(text) {
@@ -23,6 +24,26 @@ export function validateDefinition(definition, depth = 0) {
   if (definition.sourceKey) definition.fields = normalizeSourceFields(definition.fields);
   if (definition.defaults !== undefined) requireValue(object(definition.defaults));
   if (definition.previewImage !== undefined) requireValue(typeof definition.previewImage === 'string');
+  if (definition.variants !== undefined) {
+    requireValue(Array.isArray(definition.variants) && definition.variants.length >= 1 && definition.variants.length <= 50);
+    const ids = new Set();
+    const names = new Set();
+    let active = false;
+    for (const variant of definition.variants) {
+      requireValue(object(variant) && typeof variant.id === 'string' && variant.id && !ids.has(variant.id));
+      requireValue(typeof variant.name === 'string' && variant.name.trim() && variant.name.length <= 80 && !names.has(variant.name.toLowerCase()));
+      ids.add(variant.id);
+      names.add(variant.name.toLowerCase());
+      if (variant.id === definition.activeVariant) {
+        requireValue(variant.content === undefined);
+        active = true;
+      } else {
+        requireValue(object(variant.content) && Object.keys(variant.content).every(key => variantContentKeys.includes(key)));
+        validateDefinition({ id: definition.id, name: definition.name, exportName: definition.exportName, kind: definition.kind, ...variant.content }, depth + 1);
+      }
+    }
+    requireValue(active);
+  } else requireValue(definition.activeVariant === undefined);
   if (definition.partials !== undefined) {
     requireValue(Array.isArray(definition.partials) && definition.partials.length <= 100);
     const names = new Set();
@@ -72,6 +93,8 @@ export function validateWorkspace(workspace) {
       unique(instance.id);
       requireValue(typeof instance.name === 'string' && object(instance.data));
       validateDefinition(instance.definition);
+      requireValue(instance.kind === undefined || instance.kind === 'free');
+      if (instance.kind === 'free') requireValue(!instance.definition.sourceKey && !instance.definition.variants && !instance.sourceId);
     }
   }
   return workspace;

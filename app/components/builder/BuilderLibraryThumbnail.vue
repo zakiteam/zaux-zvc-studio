@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="zb-library-thumb group relative h-[120px] w-full overflow-hidden bg-zaux-light" :aria-busy="!definition.previewImage && entry?.status === 'loading'">
-    <button type="button" class="grid w-full h-full place-items-center focus-visible:outline focus-visible:outline-zaux-accent" :aria-label="`${translate('zx_builder_thumbnail_insert')}: ${definition.name}`" @click="$emit('insert')">
+    <button type="button" class="grid w-full h-full place-items-center focus-visible:outline focus-visible:outline-zaux-accent" :aria-label="`${translate('zx_builder_thumbnail_insert')}: ${definition.name}`" @click.stop="$emit('insert')">
       <img v-if="image" :src="image" alt="" loading="lazy" class="w-full h-full" :class="definition.previewImage ? 'object-cover' : 'object-contain object-center'" />
       <span v-else :title="entry?.error" class="px-2 text-center font-builder text-[10px] text-zaux-dark-grey">
         {{ translate(entry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}

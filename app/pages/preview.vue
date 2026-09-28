@@ -30,6 +30,7 @@ import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import PreviewInstance from '../components/builder/PreviewInstance.vue';
+import { createOutlineVisibility } from '../services/outline-visibility.js';
 export default defineComponent({
   components: { PreviewInstance },
   setup() {
@@ -38,6 +39,7 @@ export default defineComponent({
     const styleBridge = createStyleBridge();
     const themeLifecycle = createThemePreviewLifecycle();
     let receiveGeneration = 0;
+    const outlineVisibility = createOutlineVisibility(post);
     const fontErrors = ref([]);
     const renderFailure = ref('');
     const fontLoader = createFontLoader(errors => { fontErrors.value = errors; });
@@ -91,6 +93,7 @@ export default defineComponent({
         showThemeSample?.();
         measureSelection();
         renderedGeneration = generation;
+        outlineVisibility.update(event.data.outlineVisibilityRequest);
         if (pendingReveal) revealElement(pendingReveal);
         if (event.data.thumbnailRequest) {
           const { captureThumbnail } = await import('../services/capture-thumbnail.js');
@@ -219,6 +222,7 @@ export default defineComponent({
     }
     onMounted(() => {
       document.body.classList.add('zb-preview-body');
+      outlineVisibility.mount();
       window.addEventListener('message', receive);
       window.addEventListener('resize', scheduleMeasurements);
       window.addEventListener('scroll', scheduleMeasurements, true);
@@ -229,6 +233,7 @@ export default defineComponent({
     });
     onBeforeUnmount(() => {
       receiveGeneration++;
+      outlineVisibility.dispose();
       clearDrag();
       clearTimeout(hideTimer);
       if (selectionFrame !== null) cancelAnimationFrame(selectionFrame);

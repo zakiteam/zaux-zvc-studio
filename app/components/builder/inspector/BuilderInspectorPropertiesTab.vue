@@ -2,13 +2,13 @@
 	<template v-if="active && activeDefinition">
 		<template v-if="selectedNode && !isSource">
 			<div
-				class="zb-node-heading mb-1.5 flex items-center gap-1 [&_strong]:text-[12px] [&_strong]:font-semibold [&_small]:mt-0.5 [&_small]:block [&_small]:text-[10px] [&_small]:text-zaux-dark-grey"
+				class="zb-node-heading mb-1.5 flex flex-wrap items-center gap-1 [&_strong]:text-[12px] [&_strong]:font-semibold [&_small]:mt-0.5 [&_small]:block [&_small]:text-[10px] [&_small]:text-zaux-dark-grey"
 			>
 				<span
-					class="zb-node-icon grid h-[32px] w-[32px] place-items-center rounded-xxs bg-zaux-accent/10 text-[21px] text-zaux-accent"
+					class="zb-node-icon grid h-[32px] w-[32px] shrink-0 place-items-center rounded-xxs bg-zaux-accent/10 text-[21px] text-zaux-accent"
 					>◇</span
 				>
-				<div>
+				<div class="min-w-0 flex-1">
 					<strong>{{ selectedNode.name }}</strong
 					><small>{{ translate("zx_builder_properties") }}</small>
 				</div>
@@ -34,7 +34,7 @@
 					/>
 				</div>
 			</div>
-			<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
+			<div class="zb-row mb-2 mt-1.5 flex flex-wrap gap-1 [&>*]:flex-1">
 				<BuilderButton
 					:extraProps="{
 						customInnerClasses: 'justify-center flex w-full',
@@ -196,22 +196,22 @@
 		>
 			<span
 				class="zb-badge inline-block rounded-xxs bg-zaux-light px-0.75 py-0.25 font-mono text-[10px] tracking-[0.8px] text-zaux-dark-grey"
-				>{{ mode === "library" ? "ZVC" : "COPY" }}</span
+				>{{ mode === "template" && activeInstance?.kind === "free" ? translate("zx_builder_free_element") : mode === "library" ? "ZVC" : "COPY" }}</span
 			>
 			<p>
 				{{
 					translate(
 						mode === "library"
 							? "zx_builder_library_notice"
-							: "zx_builder_copy_notice",
+							: activeInstance?.kind === "free" ? "zx_builder_group_zvc_hint" : "zx_builder_copy_notice",
 					)
 				}}
 			</p>
 			<BuilderButton
 				size="xs"
 				v-if="mode === 'template'"
-				:label="translate('zx_builder_save_library')"
-				@click="modal = { type: 'save-library', name: activeInstance.name }"
+				:label="translate(activeInstance.kind === 'free' ? 'zx_builder_group_zvc' : 'zx_builder_save_library')"
+				@click="modal = activeInstance.kind === 'free' ? { type: 'group-zvc', instanceId: activeInstance.id } : { type: 'save-library', name: activeInstance.name }"
 			/>
 		</div>
 	</template>

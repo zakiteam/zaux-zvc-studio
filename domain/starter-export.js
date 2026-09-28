@@ -1,4 +1,6 @@
-import { clone, dataFor } from './nodes.js';
+import { clone, dataFor, runtimeNodes } from './nodes.js';
+import { activeDefinitionOnly } from './variants.js';
+import { definitionCss } from './partials.js';
 import { exportName } from './workspace.js';
 import { documentEnvelope } from './export.js';
 import { validateWorkspace } from './validation.js';
@@ -99,6 +101,7 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
   const components = [];
   const templates = [];
   function addDefinition(definition) {
+    definition = activeDefinitionOnly(definition);
     if (!includeDefinition(definition)) return definition.exportName;
     const key = definitionKey(definition);
     if (definitions.has(key)) return definitions.get(key);
@@ -118,9 +121,11 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
     for (const template of workspace.templates) {
       const base = exportName(template.name).slice(3);
       const name = uniqueName(/^[A-Za-z]/.test(base) ? base : 'Template' + base, templateNames);
-      const blocks = template.instances.map(instance => ({
-        blockName: addDefinition(instance.definition), data: clone(instance.data)
-      }));
+      const blocks = template.instances.flatMap(instance => instance.kind === 'free'
+        ? runtimeNodes(instance.definition, instance.data).map(node => ({ node }))
+        : [{ blockName: addDefinition(instance.definition), data: clone(instance.data) }]);
+      const freeCss = template.instances.filter(instance => instance.kind === 'free').map(instance => definitionCss(instance.definition)).filter(Boolean).join('\n');
+      if (freeCss) files[`style/template-${name.toLowerCase()}.css`] = freeCss;
       Object.assign(files, templateFiles(template, name, blocks));
       templates.push({ id: template.id, name, directory: `project/templates/${name.toLowerCase()}` });
     }

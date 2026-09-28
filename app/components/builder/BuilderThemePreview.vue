@@ -12,7 +12,7 @@
   import { componentThemesCss } from '../../../domain/component-themes.js';
 
   export default defineComponent({
-    props: { node: { type: Object, required: true }, background: String },
+    props: { node: { type: Object, required: true }, background: String, themeCss: String },
     setup(props) {
       const builder = useBuilder();
       const frame = ref(null);
@@ -28,7 +28,7 @@
         frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state',
           instances: JSON.parse(JSON.stringify(instances())), editable: false, themePreview: true,
           background: props.background, language: builder.language.value, css: dynamicCss,
-          themeCss: componentThemesCss(builder.document.value.componentThemes),
+          themeCss: props.themeCss ?? componentThemesCss(builder.document.value.componentThemes),
           styles: JSON.parse(JSON.stringify(builder.document.value.styles))
         }, window.location.origin);
       }
@@ -43,7 +43,7 @@
           if (token === generation) { dynamicCss = result.css; sendState(); }
         } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
       }
-      watch([() => props.node, () => props.background, builder.language, () => builder.document.value.styles, () => builder.document.value.componentThemes], sendState, { deep: true });
+      watch([() => props.node, () => props.background, () => props.themeCss, builder.language, () => builder.document.value.styles, () => builder.document.value.componentThemes], sendState, { deep: true });
       watch([() => props.node, () => builder.document.value.styles.uiSettings], () => {
         clearTimeout(timer); generation++; timer = setTimeout(compileCss, 450);
       }, { deep: true });

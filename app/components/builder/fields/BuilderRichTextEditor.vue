@@ -2,11 +2,11 @@
   <div class="min-w-0 overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white text-zaux-dark shadow-sm focus-within:border-zaux-accent/50" @keydown.stop>
     <div class="flex flex-wrap items-center gap-1 border-b-slim border-zaux-light-grey bg-zaux-white p-1" role="group" :aria-label="translate('zx_builder_richtext_formatting')">
       <div v-for="(group, index) in groups" :key="index" class="flex gap-0.5 pr-1 last:pr-0" :class="index < groups.length - 1 ? 'border-r-slim border-zaux-light-grey' : ''">
-        <BuilderButton v-for="action in group" :key="action.name" :icon="action.name" iconOnly :extraProps="iconProps" :label="translate(action.label)" :disabled="disabled || !available[action.name]" :aria-pressed="action.toggle ? !!active[action.name] : undefined" class="!h-[30px] !w-[30px] !min-w-[30px] !p-1 focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-zaux-accent" :class="active[action.name] ? '[&.zb-button]:!bg-zaux-accent/10 [&.zb-button]:!text-zaux-accent' : ''" @mousedown.prevent @click="run(action)" />
+        <BuilderButton v-for="action in group" :key="action.name" :iconHref="`/assets/icon/builder-richtext/symbol-defs.svg#${action.name}`" iconOnly :label="translate(action.label)" :disabled="disabled || !available[action.name]" :aria-pressed="action.toggle ? !!active[action.name] : undefined" class="!h-[30px] !w-[30px] !min-w-[30px] !p-1 focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-zaux-accent" :class="active[action.name] ? '[&.zb-button]:!bg-zaux-accent/10 [&.zb-button]:!text-zaux-accent' : ''" @mousedown.prevent @click="run(action)" />
       </div>
     </div>
     <div v-if="inTable" class="flex flex-wrap gap-0.5 border-b-slim border-zaux-light-grey bg-zaux-accent/5 p-1" role="group" :aria-label="translate('zx_builder_richtext_table_tools')">
-      <BuilderButton v-for="action in tableActions" :key="action.name" :icon="action.name" iconOnly :extraProps="iconProps" :label="translate(action.label)" :disabled="disabled || !available[action.name]" class="!h-[30px] !w-[30px] !min-w-[30px] !p-1" :class="action.danger ? '[&.zb-button]:!text-utility-error' : ''" @mousedown.prevent @click="run(action)" />
+      <BuilderButton v-for="action in tableActions" :key="action.name" :iconHref="`/assets/icon/builder-richtext/symbol-defs.svg#${action.name}`" iconOnly :label="translate(action.label)" :disabled="disabled || !available[action.name]" class="!h-[30px] !w-[30px] !min-w-[30px] !p-1" :class="action.danger ? '[&.zb-button]:!text-utility-error' : ''" @mousedown.prevent @click="run(action)" />
     </div>
     <EditorContent :editor="editor" class="zb-richtext font-builder text-[12px] leading-[1.6]" />
   </div>
@@ -27,7 +27,7 @@ export default defineComponent({
   setup(props, { emit }) {
     const editor = shallowRef(null);
     const active = ref({}); const available = ref({}); const inTable = ref(false);
-    const iconProps = { attributes: { icon: { iconSet: 'builder-richtext' } } };
+    // Use the dedicated sprite directly: Zaux Icon gives the global icon set precedence.
     const action = (name, command, toggle = false, args = undefined, danger = false) => ({ name, command, toggle, args, danger, label: `zx_builder_richtext_${name}` });
     const groups = [
       [action('undo', 'undo'), action('redo', 'redo')],
@@ -88,7 +88,7 @@ export default defineComponent({
       editor.value.setOptions({ editorProps: { attributes: attributes(), transformPastedHTML: sanitizeRichText } });
     });
     onBeforeUnmount(() => editor.value?.destroy());
-    return { ...useTranslation(), editor, groups, tableActions, iconProps, active, available, inTable, run };
+    return { ...useTranslation(), editor, groups, tableActions, active, available, inTable, run };
   }
 });
 </script>

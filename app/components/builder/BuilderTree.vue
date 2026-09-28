@@ -5,15 +5,16 @@
         :context-menu="true"
         content-class="!w-max !max-w-max !pb-1"
         :label="translate('zx_builder_layer_actions') + ': ' + node.name"
-        :items="[{ id: 'wrap', label: translate('zx_builder_wrap_div') }]"
+        :items="contextItems"
         :disabled="!canWrap"
-        @contextmenu="selectInstance(instance, node.id)"
-        @select="wrapHere(node.id)"
+        @contextmenu="selectOutlineRow(instance, node.id, false, true)"
+        @select="contextAction($event, node.id)"
       >
         <template #trigger="{ open, menuId }">
           <div
             class="zb-tree-item flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light focus-within:bg-zaux-light [&.active]:bg-zaux-accent/5"
-            :class="{ active: nodeId === node.id && (mode === 'library' || instanceId === instance), 'outline outline-1 outline-zaux-accent bg-zaux-accent/10': outlineDrag.position(node.id, instance) === 'inside' }"
+            :class="{ active: outlineSelected(instance, node.id), 'outline outline-1 outline-zaux-accent bg-zaux-accent/10': outlineDrag.position(node.id, instance) === 'inside' }"
+            data-zb-outline-drop="node" :data-zb-drop-instance="instance" :data-zb-drop-node="node.id"
             @dragover="outlineDrag.over($event, node, instance)"
             @dragleave="outlineDrag.leave"
             @drop="outlineDrag.drop($event, node, instance)"
@@ -29,15 +30,24 @@
             ><span aria-hidden="true">{{ collapsedOutline.has('node:' + instance + ':' + node.id) ? '▸' : '▾' }}</span></button>
             <span v-else aria-hidden="true" class="w-[24px] shrink-0 text-center text-[10px] text-zaux-dark-grey">&#9671;</span>
             <button
-              class="zb-tree-row flex min-w-0 flex-1 items-center gap-1 rounded-xxs px-0.5 py-1 text-left !text-[10px] [&>span]:truncate [&>small]:ml-auto [&>small]:text-[9px] [&>small]:text-zaux-dark-grey [&.active]:text-zaux-accent"
-              :class="{ active: nodeId === node.id && (mode === 'library' || instanceId === instance) }"
+              class="zb-tree-row select-none flex min-w-0 flex-1 items-center gap-1 rounded-xxs px-0.5 py-1 text-left !text-[10px] [&>span]:truncate [&>small]:ml-auto [&>small]:text-[9px] [&>small]:text-zaux-dark-grey [&.active]:text-zaux-accent"
+              :class="{ active: outlineSelected(instance, node.id) }"
               :draggable="canEditRemote"
               :aria-haspopup="canWrap ? 'menu' : undefined"
               :aria-expanded="canWrap ? open : undefined"
               :aria-controls="canWrap ? menuId : undefined"
-              @click="revealNode(node.id)"
+              :aria-pressed="outlineSelected(instance, node.id)"
+              @mousedown.shift.prevent
+              @click="revealNode(node.id, $event)"
               @dragstart.stop="outlineDrag.start($event, { kind: 'node', id: node.id, instanceId: instance })"
-            ><span>{{ node.name }}</span><small v-if="node.children.length">{{ node.children.length }}</small></button>
+            ><span>{{ node.name }}</span>
+              <span v-if="hiddenOutlineNodes.has(JSON.stringify([instance, node.id]))"
+                class="inline-flex shrink-0 text-zaux-dark-grey" role="img"
+                :title="translate('zx_builder_outline_hidden_viewport') + ': ' + viewportLabel"
+                :aria-label="translate('zx_builder_outline_hidden_viewport') + ': ' + viewportLabel">
+                <Icon iconName="visibility-off" size="text-icon-xxs" aria-hidden="true" />
+              </span>
+              <small v-if="node.children.length">{{ node.children.length }}</small></button>
             <div class="zb-tree-actions flex shrink-0 items-center gap-[1px] [&>.zb-button]:!min-w-[25px] [&>.zb-button]:!w-[25px] [&>.zb-button]:!p-0.5">
               <BuilderButton variant="alt1" icon="duplicate" iconOnly :label="translate('zx_builder_duplicate') + ': ' + node.name" @click.stop="duplicateHere(node.id)" />
               <BuilderButton variant="alt1" icon="delete" iconOnly :label="translate('zx_builder_delete') + ': ' + node.name" @click.stop="deleteHere(node.id)" />
@@ -58,6 +68,7 @@
       v-if="!nodes.length"
       class="zb-tree-empty relative mt-1.5 rounded-xxs border-slim border-dashed border-zaux-light-grey px-1 py-2 text-[10px] text-zaux-dark-grey"
       :class="{ '!border-zaux-accent bg-zaux-accent/10': outlineDrag.position(null, instance) }"
+      data-zb-outline-drop="empty" :data-zb-drop-instance="instance"
       @dragover="outlineDrag.over($event, null, instance)"
       @dragleave="outlineDrag.leave"
       @drop="outlineDrag.drop($event, null, instance)"
@@ -85,11 +96,18 @@
           : builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.definition;
         return builder.canEditRemote.value && !!definition && !definition.sourceKey;
       });
-      function wrapHere(id) { builder.selectInstance(props.instance, id); builder.wrapNode(); }
+      const contextItems = computed(() => [
+        { id: 'wrap', label: builder.translate('zx_builder_wrap_div') },
+        { id: 'group-zvc', label: builder.translate('zx_builder_group_zvc'), disabled: builder.outlineSelection.value.length > 1 && !builder.outlineGroupRange.value, hidden: builder.mode.value !== 'template' || props.depth !== 0 || builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.kind !== 'free' }
+      ]);
+      function contextAction(action, id) {
+        if (action.id === 'wrap') { builder.selectInstance(props.instance, id); builder.wrapNode(); }
+        if (action.id === 'group-zvc') builder.openOutlineGroup(props.instance, id);
+      }
       function duplicateHere(id) { builder.selectInstance(props.instance, id); builder.duplicateNode(); }
       function deleteHere(id) { builder.selectInstance(props.instance, id); builder.deleteNode(); }
-      function revealNode(id) { builder.selectInstance(props.instance, id); builder.reveal(props.instance, id); }
-      return { ...builder, outlineDrag, canWrap, wrapHere, duplicateHere, deleteHere, revealNode };
+      function revealNode(id, event) { builder.selectOutlineRow(props.instance, id, event.shiftKey); if (!event.shiftKey) builder.reveal(props.instance, id); }
+      return { ...builder, outlineDrag, canWrap, contextItems, contextAction, duplicateHere, deleteHere, revealNode };
     }
   });
   

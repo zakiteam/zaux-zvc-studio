@@ -1,6 +1,6 @@
 <template>
 	<aside
-		class="zb-inspector flex min-h-0 w-[298px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white max-[1200px]:w-[280px] max-[900px]:h-[60dvh] max-[900px]:!w-full max-[900px]:border-t-slim"
+		class="zb-inspector flex min-h-0 min-w-0 w-[298px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white [overflow-wrap:anywhere] max-[1200px]:w-[280px] max-[900px]:h-[60dvh] max-[900px]:!w-full max-[900px]:border-t-slim"
 		:style="{ width: `${width}px` }"
 	>
 		<div
@@ -23,12 +23,13 @@
 						: translate("zx_builder_properties")
 				}}
 			</h2>
-			<p v-if="activeDefinition">{{ activeDefinition.exportName }}</p>
+			<p v-if="activeDefinition">{{ mode === 'template' && activeInstance?.kind === 'free' ? translate('zx_builder_free_element') : activeDefinition.exportName }}</p>
 		</div>
 
+		<BuilderVariants v-if="activeDefinition && (mode === 'library' || activeInstance?.kind !== 'free')" :key="activeDefinition.id" />
 		<!-- Tabs -->
 		<div
-			class="zb-tabs flex shrink-0 gap-0.5 border-b-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
+			class="zb-tabs flex shrink-0 flex-wrap gap-0.5 border-b-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
 			role="tablist"
 		>
 			<button
@@ -46,11 +47,11 @@
 		<!-- Tab content -->
 		<div
 			data-inspector-scroll
-			class="flex-1 h-full min-h-0 overflow-auto zb-scroll"
+			class="flex-1 h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto zb-scroll"
 		>
-			<div class="p-2 zb-inspector-content">
+			<div class="p-2 zb-inspector-content" :key="`${activeDefinition?.id}-${activeDefinition?.activeVariant ?? ''}`">
 				<BuilderSourceInfo v-if="activeDefinition && isSource" />
-				<!-- Properties and Code stay mounted so their drafts follow selection changes. -->
+				<!-- Keep drafts across tabs, but reset them when changing definition or variant. -->
 				<BuilderInspectorPropertiesTab
 					:active="inspectorTab === 'properties'"
 					@error="localError = $event"
@@ -94,6 +95,7 @@ import { defineComponent, ref, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderSourceInfo from "./BuilderSourceInfo.vue";
+import BuilderVariants from "./BuilderVariants.vue";
 import BuilderInspectorPropertiesTab from "./inspector/BuilderInspectorPropertiesTab.vue";
 import BuilderInspectorStyleTab from "./inspector/BuilderInspectorStyleTab.vue";
 import BuilderInspectorDataTab from "./inspector/BuilderInspectorDataTab.vue";
@@ -103,6 +105,7 @@ export default defineComponent({
 	components: {
 		BuilderButton,
 		BuilderSourceInfo,
+		BuilderVariants,
 		BuilderInspectorPropertiesTab,
 		BuilderInspectorStyleTab,
 		BuilderInspectorDataTab,

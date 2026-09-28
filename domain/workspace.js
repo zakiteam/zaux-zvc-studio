@@ -11,7 +11,11 @@ export function createDefinition(name = 'Component', kind = 'zvc') {
   return { id: uid(), name, exportName: exportName(name, kind), ...(kind === 'zvp' ? { kind } : {}), fields: [], tree: [], css: '' };
 }
 export function copyDefinition(definition, name = definition.name) {
-  return { ...clone(definition), id: uid(), name, exportName: definition.sourceKey && (definition.kind !== 'zvp' || name === definition.name) ? definition.exportName : exportName(name, definition.kind), tree: definition.tree.map(copyNode) };
+  const copy = { ...clone(definition), id: uid(), name, exportName: definition.sourceKey && (definition.kind !== 'zvp' || name === definition.name) ? definition.exportName : exportName(name, definition.kind), tree: definition.tree.map(copyNode) };
+  for (const variant of copy.variants ?? []) {
+    if (variant.content) variant.content.tree = variant.content.tree.map(copyNode);
+  }
+  return copy;
 }
 export function createInstance(definition) {
   return { id: uid(), sourceId: definition.id, name: definition.name, definition: copyDefinition(definition), data: {} };

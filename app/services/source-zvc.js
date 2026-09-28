@@ -3,6 +3,7 @@ import partialRendererSource from '../../integrations/zaux/renderers/partial-ren
 import { registerSourceModules } from '../../domain/source-runtime.js';
 import { capturePartials } from '../../domain/partials.js';
 import { clone, dataFor } from '../../domain/nodes.js';
+import { activeDefinitionOnly } from '../../domain/variants.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
 import slotRendererSource from '../../integrations/zaux/renderers/slot-renderer.js?raw';
 import { componentFiles } from '../../domain/export.js';
@@ -65,6 +66,7 @@ export function visualSourceCopy(definition, data = {}) {
   return result;
 }
 export function filesForDefinition(definition) {
+  definition = activeDefinitionOnly(definition);
   const files = ownFilesForDefinition(definition);
   if (!definition.partials?.length) return files;
   const entry = definition.sourceKey?.split('/').at(-1) ?? definition.exportName.slice(3) + (definition.kind === 'zvp' ? '.zvp.js' : '.zvc.js');

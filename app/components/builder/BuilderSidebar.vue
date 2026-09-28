@@ -5,7 +5,7 @@
 		:style="{ width: `${width}px` }"
 	>
 		<div
-			class="group/section flex min-h-0 flex-col"
+			class="flex flex-col min-h-0 group/section"
 			:class="libraryCollapsed ? 'shrink-0' : 'flex-1'"
 		>
 		<div ref="tabsEl" class="flex shrink-0 items-center gap-1 border-b-slim border-zaux-light-grey px-1.5">
@@ -143,8 +143,8 @@
 					>
 						<BuilderButton
 							:label="translate('zx_builder_add_to_template')"
-							@click="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
-							variant="light" size="xs" class="absolute z-10 !hidden -translate-x-1/2 group-hover:!block left-1/2 top-6"
+							@click.stop="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
+							variant="light" size="xs" class="absolute z-30 !hidden -translate-x-1/2 group-hover:!block left-1/2 top-6"
 						>
 						</BuilderButton>
 						<BuilderLibraryThumbnail
@@ -251,6 +251,9 @@
 				>
 					{{ translate("zx_builder_palette_hint") }}
 				</p>
+				<BuilderInput v-if="mode === 'template'" v-model="elementDestination" type="select"
+					:label="translate('zx_builder_insert_destination')"
+					:options="[{ value: 'template', label: translate('zx_builder_insert_template') }, { value: 'selection', label: translate('zx_builder_insert_selection') }]" />
 				<div
 					v-for="group in [
 						'zx_builder_partials',
@@ -272,7 +275,7 @@
 							:key="entry.name"
 							:draggable="canEditRemote"
 							@dragstart="drag($event, { kind: 'catalog', name: entry.name })"
-							@click="addElement(entry.name)"
+							@click="mode === 'template' && elementDestination === 'template' ? addTemplateElement(entry.name) : addElement(entry.name)"
 						>
 							<span
 								class="zb-element-icon grid h-[24px] w-[24px] place-items-center rounded-xxs bg-zaux-light text-[17px] text-zaux-accent"
@@ -299,7 +302,7 @@
 			@resize="resizeOutline"
 		/>
 		<section
-			class="group/section flex min-h-0 flex-col px-2 zb-outline-panel shrink-0 border-t-slim border-zaux-light-grey"
+			class="flex flex-col min-h-0 px-2 group/section zb-outline-panel shrink-0 border-t-slim border-zaux-light-grey"
 			:class="{ 'flex-1': libraryCollapsed && !outlineCollapsed }"
 			:style="!outlineCollapsed && !libraryCollapsed ? { height: `${outlineHeight}px` } : null"
 			:aria-label="translate('zx_builder_outline')"
@@ -324,18 +327,29 @@
 					/>
 				</div>
 			</div>
-			<div id="zb-outline-section-content" v-show="!outlineCollapsed" class="min-h-0 flex-1 overflow-auto zb-scroll">
+			<div id="zb-outline-section-content" v-show="!outlineCollapsed" @dragover.capture="outlineDrag.scrollOver" @dragleave="outlineDrag.scrollLeave" class="flex-1 min-h-0 overflow-auto zb-scroll">
 				<!-- Copy/Paste node -->
-				<div class="sticky top-0 z-10 mb-3 flex flex-col justify-start gap-2 bg-zaux-white text-left">
+				<div data-zb-outline-tools class="sticky top-0 z-10 flex flex-col justify-start gap-2 mb-3 text-left bg-zaux-white">
 					<div class="flex items-stretch gap-1 pb-2">
 						<BuilderButton class="w-full" size="xs" icon="copy" :label="translate('zx_builder_copy_node')" :disabled="!canCopyNode" @click="copySelectedNode()" />
 						<BuilderButton class="w-full" size="xs" :label="translate('zx_builder_paste_node')" :disabled="!canPasteNode" @click="pasteNode()" />
 					</div>
-					<button v-if="clipboardNodeName" type="button" class="truncate text-left text-[11px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="dragClipboard" @click="pasteNode()">
+                    <BuilderButton v-if="mode === 'library'" class="w-full" size="xs"
+                        :label="translate('zx_builder_sync_instances')"
+                        :title="translate('zx_builder_sync_instances_hint')"
+                        :disabled="!canEditRemote || !activeDefinition"
+                        @click="syncActiveLibraryInstances" />
+					<button v-if="clipboardNodeName" type="button" class="truncate text-left text-[11px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
 					{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}
 					</button>
 				</div>
-				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">
+				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">{{ translate('zx_builder_outline_shift_hint') }}</p>
+                <div v-if="outlineSelection.length > 1" class="mb-2 flex items-center gap-1 text-[10px]" role="status">
+                    <span>{{ outlineSelection.length }} {{ translate('zx_builder_outline_selected') }}</span>
+                    <BuilderButton v-if="outlineGroupRange" size="xs" :disabled="!canEditRemote" :label="translate('zx_builder_group_zvc')"
+                        @click="modal = { type: 'group-zvc', ...outlineGroupRange }" />
+                </div>
+                <p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">
 					{{ translate("zx_builder_outline_drag_hint") }}
 				</p>
 				<template v-if="mode === 'library'"
@@ -385,13 +399,22 @@
 							instance="library"
 						/> </template
 				></template>
-				<template v-else
-					><article
+				<template v-else>
+                    <div class="relative mb-2 rounded-xxs border-slim border-dashed border-zaux-light-grey p-2 text-[10px] text-zaux-dark-grey"
+                        data-zb-outline-drop="instance"
+                        @dragover="outlineDrag.over($event, null, null, true)"
+                        @dragleave="outlineDrag.leave"
+                        @drop="outlineDrag.drop($event, null, null, true)">
+						{{ translate('zx_builder_free_elements_hint') }}
+                        <span v-if="outlineDrag.position(null, null, true)" class="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-zaux-accent" />
+                    </div>
+                    <article
 						v-for="instance in activeTemplate.instances"
 						:key="instance.id"
 						:data-zb-outline-instance="instance.id"
+                        data-zb-outline-drop="instance" :data-zb-drop-instance="instance.id"
 						class="zb-instance relative mb-2 rounded-xxs border-slim border-zaux-light-grey p-1 [&.active]:border-zaux-accent"
-						:class="{ active: instanceId === instance.id }"
+						:class="{ active: outlineSelected(instance.id) }"
 						:draggable="canEditRemote"
 						@dragstart.stop="
 							drag($event, { kind: 'instance', id: instance.id })
@@ -410,7 +433,9 @@
 									: 'bottom-0'
 							"
 						/>
-						<div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
+						<BuilderTree v-if="instance.kind === 'free'" :nodes="instance.definition.tree" :instance="instance.id" />
+                        <template v-else>
+                        <div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
 							<button
 								type="button"
 								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
@@ -434,8 +459,10 @@
 								}}</span>
 							</button>
 							<button
-								class="zb-instance-name flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
-								@click="revealInstance(instance.id)"
+								class="zb-instance-name select-none flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
+								:aria-pressed="outlineSelected(instance.id)"
+                                @mousedown.shift.prevent
+                                @click="revealInstance(instance.id, $event)"
 							>
 								<span>⠿</span>{{ instance.name }}
 							</button>
@@ -516,7 +543,9 @@
 							<button
 								v-if="instance.definition.sourceKey"
 								class="zb-source-outline px-1.5 py-1 text-left text-[10px] text-zaux-accent"
-								@click="revealInstance(instance.id)"
+								:aria-pressed="outlineSelected(instance.id)"
+                                @mousedown.shift.prevent
+                                @click="revealInstance(instance.id, $event)"
 							>
 								{{ translate("zx_builder_source_outline") }}</button
 							><BuilderTree
@@ -524,7 +553,7 @@
 								:nodes="instance.definition.tree"
 								:instance="instance.id"
 							/>
-						</template></article
+						</template></template></article
 				></template>
 			</div>
 		</section>
@@ -584,6 +613,7 @@ export default defineComponent({
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
+		const elementDestination = ref("template");
 		const libraryCollapsed = ref(false);
 		const outlineCollapsed = ref(false);
 		watch(() => builder.revealOutlineTarget.value, async (target) => {
@@ -699,15 +729,16 @@ export default defineComponent({
 		);
 		const drag = outlineDrag.start;
 
-		function revealInstance(id) {
-			builder.selectInstance(id);
-			builder.reveal(id);
+		function revealInstance(id, event) {
+			builder.selectOutlineRow(id, null, event.shiftKey);
+			if (!event.shiftKey) builder.reveal(id);
 		}
 
 		return {
 			...builder,
 			createItems,
 			libraryKindKeydown,
+			elementDestination,
 			search,
 			filtered,
 			filteredLibrary,

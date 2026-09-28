@@ -11,6 +11,7 @@
           :class="entry.id === componentId ? 'bg-zaux-light font-semibold text-zaux-accent' : ''"
           :aria-pressed="entry.id === componentId" @click="componentId = entry.id">
           {{ entry.id }} <span v-if="isModified(entry.id)" :aria-label="translate('zx_builder_theme_modified')">*</span>
+          <small v-if="hasDraft(entry.id)" class="block text-[10px] text-utility-warning">{{ translate('zx_builder_theme_unsaved') }}</small>
           <small class="block text-[10px] text-zaux-dark-grey">{{ entry.componentClass }}</small>
         </button>
         <p v-if="!filteredCatalog.length" class="p-2">{{ translate('zx_builder_theme_no_results') }}</p>
@@ -39,7 +40,7 @@
           </div>
           <p class="px-2 py-1 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_theme_preview_hint') }}</p>
           <template v-if="sample">
-            <BuilderThemePreview :node="previewNode" :background="background" />
+            <BuilderThemePreview :node="previewNode" :background="background" :themeCss="previewCss" />
             <BuilderThemeProps :key="componentId" :modelValue="previewProps" :fields="previewConfig.fields" @apply="applyPreview" />
           </template>
           <p v-else role="status" class="p-2">{{ translate('zx_builder_theme_preview_missing') }}</p>
@@ -49,27 +50,31 @@
             <BuilderButton size="xs" :label="translate('zx_builder_theme_variables')" :aria-pressed="editMode === 'variables'" @click="editMode = 'variables'" />
             <BuilderButton size="xs" :label="translate('zx_builder_theme_css')" :aria-pressed="editMode === 'css'" @click="editMode = 'css'" />
           </div>
+          <div class="flex flex-wrap items-center gap-1 p-2 border-b-slim border-zaux-light-grey">
+            <BuilderButton size="xs" variant="primary" :label="translate('zx_builder_theme_save')" :disabled="!canEditRemote || !dirty || !validDraft" @click="saveTheme" />
+            <BuilderButton size="xs" :label="translate('zx_builder_theme_discard')" :disabled="!dirty" @click="discardDraft" />
+            <p v-if="dirty" role="status" class="w-full text-[11px] text-utility-warning">{{ translate('zx_builder_theme_pending') }}</p>
+          </div>
           <div class="flex-1 min-h-0 p-2 space-y-2 overflow-auto">
             <p v-if="!canEditRemote" class="text-[11px]">{{ translate('zx_builder_project_readonly') }}</p>
-            <p v-if="localError" role="alert" class="text-utility-error">{{ translate(localError) }}</p>
+            <p v-if="localError || !validDraft" role="alert" class="text-utility-error">{{ translate(localError || 'zx_builder_theme_invalid_css') }}</p>
             <template v-if="editMode === 'variables'">
               <label class="block text-[11px]">{{ translate('zx_builder_theme_selector') }}</label>
               <BuilderInput v-model="ruleKey" type="select" :options="ruleOptions" :label="translate('zx_builder_theme_selector')" class="w-full font-mono text-[11px]" />
               <p class="break-all font-mono text-[10px] text-zaux-dark-grey">{{ target?.selector }}</p>
               <p class="text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_theme_variable_hint') }}</p>
-              <p v-if="dirty" role="status" class="text-[11px] text-utility-warning">{{ translate('zx_builder_theme_pending') }}</p>
               <BuilderInput v-model="variableSearch" :label="translate('zx_builder_theme_filter_vars')" :placeholder="translate('zx_builder_theme_filter_vars')" class="w-full" />
               <div v-for="variable in variables" :key="selected.id + ruleKey + variable.name" class="pb-2 border-b-slim border-zaux-light-grey">
                 <label :for="'theme-var-' + variable.name" class="mb-1 block break-all font-mono text-[10px]">{{ variable.name }}</label>
                 <div class="flex items-center gap-1">
                   <BuilderThemeColorInput v-if="isThemeColorVariable(variable.name, variable.value)"
                     :id="'theme-var-' + variable.name" :label="variable.name" :modelValue="overrides[variable.name] ?? ''"
-                    :defaultValue="variable.value" :variables="colorVariables" :disabled="!canEditRemote || dirty"
+                    :defaultValue="variable.value" :variables="colorVariables" :disabled="!canEditRemote || !validDraft"
                     @change="changeVariable(variable.name, $event)" />
                   <BuilderInput v-else :id="'theme-var-' + variable.name" :modelValue="overrides[variable.name] ?? ''" :placeholder="variable.value || translate('zx_builder_theme_inherited')"
-                    :label="variable.name" :disabled="!canEditRemote || dirty" :highlightWhenSet="true" class="min-w-0 flex-1 font-mono text-[12px]"
+                    :label="variable.name" :disabled="!canEditRemote || !validDraft" :highlightWhenSet="true" class="min-w-0 flex-1 font-mono text-[12px]"
                     @change="changeVariable(variable.name, $event.target.value)" />
-                  <BuilderButton size="xs" icon="undo" iconOnly :label="translate('zx_builder_theme_reset_variable')" :disabled="!canEditRemote || dirty || !Object.hasOwn(overrides, variable.name)"
+                  <BuilderButton size="xs" icon="undo" iconOnly :label="translate('zx_builder_theme_reset_variable')" :disabled="!canEditRemote || !validDraft || !Object.hasOwn(overrides, variable.name)"
                     @click="changeVariable(variable.name, '')" />
                 </div>
               </div>
@@ -77,10 +82,6 @@
             <template v-else>
               <p class="text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_theme_css_hint') }}</p>
               <BuilderCodeEditor :modelValue="cssDraft" language="css" :label="translate('zx_builder_theme_css')" :readonly="!canEditRemote" :rows="18" @update:modelValue="drafts[componentId] = $event" />
-              <div class="flex flex-wrap gap-1">
-                <BuilderButton size="xs" variant="primary" :label="translate('zx_builder_theme_apply_css')" :disabled="!canEditRemote || !dirty" @click="applyCss" />
-                <BuilderButton size="xs" :label="translate('zx_builder_theme_discard')" :disabled="!dirty" @click="discardDraft" />
-              </div>
             </template>
             <details>
               <summary class="cursor-pointer text-[11px]">{{ translate('zx_builder_theme_source') }}</summary>
@@ -133,8 +134,22 @@ export default defineComponent({
     const allCss = computed(() => componentThemesCss(entries.value));
     const cssDraft = computed(() => drafts.value[componentId.value] ?? savedCss.value);
     const dirty = computed(() => cssDraft.value !== savedCss.value);
+    const validDraft = computed(() => {
+      try { parseThemeCss(cssDraft.value); return true; }
+      catch { return false; }
+    });
+    // Incomplete CSS stays editable without breaking the variable controls or preview.
+    const editableCss = computed(() => validDraft.value ? cssDraft.value : savedCss.value);
+    const previewCss = computed(() => {
+      const previewEntries = entries.value.map(entry => entry.component === componentId.value
+        ? { ...entry, css: editableCss.value } : entry);
+      if (!previewEntries.some(entry => entry.component === componentId.value)) {
+        previewEntries.push({ component: componentId.value, css: editableCss.value });
+      }
+      return componentThemesCss(previewEntries);
+    });
     const themeOptions = computed(() => {
-      const authored = [...savedCss.value.matchAll(/--theme-([\w-]+)/g)].map(match => match[1]);
+      const authored = [...editableCss.value.matchAll(/--theme-([\w-]+)/g)].map(match => match[1]);
       const themes = [...new Set([...selected.value.themes, previewConfig.value?.node.props.theme, ...authored].filter(Boolean))];
       return [{ value: '', label: t('zx_builder_theme_base') }, ...themes.map(value => ({ value, label: value }))];
     });
@@ -142,7 +157,7 @@ export default defineComponent({
     const backgroundOptions = computed(() => [{ value: '#ffffff', label: t('zx_builder_theme_background_light') }, { value: '#202020', label: t('zx_builder_theme_background_dark') }]);
     const rules = computed(() => {
       const result = selected.value.rules.map(rule => ({ ...rule, variables: { ...rule.variables } }));
-      parseThemeCss(savedCss.value).walkRules(rule => {
+      parseThemeCss(editableCss.value).walkRules(rule => {
         const conditions = ruleConditions(rule);
         if (conditions === null) return;
         const key = JSON.stringify([rule.selector, conditions]);
@@ -160,7 +175,7 @@ export default defineComponent({
     });
     const ruleOptions = computed(() => rules.value.map(rule => ({ value: rule.key, label: [...rule.conditions.map(item => '@' + item.name + ' ' + item.params), rule.selector].join(' / ') })));
     const target = computed(() => rules.value.find(rule => rule.key === ruleKey.value) ?? rules.value[0]);
-    const overrides = computed(() => target.value ? themeVariableOverrides(savedCss.value, target.value) : {});
+    const overrides = computed(() => target.value ? themeVariableOverrides(editableCss.value, target.value) : {});
     const variableDefaults = computed(() => {
       const defaults = Object.fromEntries((selected.value.variables ?? []).map(name => [name, '']));
       // Root and component defaults are editable for each theme, without copying them into the project.
@@ -193,11 +208,11 @@ export default defineComponent({
       if (!value.some(rule => rule.key === ruleKey.value)) ruleKey.value = value[0]?.key ?? '';
     }, { immediate: true });
     function changeVariable(name, value) {
-      if (!builder.canEditRemote.value || dirty.value || !target.value) return;
-      try { builder.updateComponentTheme(componentId.value, setThemeVariable(savedCss.value, target.value, name, value.trim() === '' ? undefined : value)); localError.value = ''; }
+      if (!builder.canEditRemote.value || !validDraft.value || !target.value) return;
+      try { drafts.value[componentId.value] = setThemeVariable(cssDraft.value, target.value, name, value.trim() === '' ? undefined : value); localError.value = ''; }
       catch { localError.value = 'zx_builder_theme_invalid_css'; }
     }
-    function applyCss() {
+    function saveTheme() {
       if (!builder.canEditRemote.value) return;
       try {
         parseThemeCss(cssDraft.value);
@@ -211,11 +226,12 @@ export default defineComponent({
       if (typeof props.theme === 'string') theme.value = props.theme;
       if (typeof props.size === 'string') size.value = props.size;
     }
+    function hasDraft(id) { return Object.hasOwn(drafts.value, id) && drafts.value[id] !== (entries.value.find(entry => entry.component === id)?.css ?? ''); }
     function isModified(id) { return entries.value.some(entry => entry.component === id && entry.css.trim()); }
     function exportCss(bulk) { downloadText(bulk ? 'component-themes.css' : selected.value.id + '.theme.css', componentThemesCss(entries.value, bulk ? undefined : componentId.value), 'text/css'); }
     return { ...builder, componentId, selected, filteredCatalog, search, variableSearch, theme, size, sampleState, background, editMode,
       isThemeColorVariable, colorVariables, ruleKey, ruleOptions, target, variables, overrides, themeOptions, stateOptions, backgroundOptions, previewNode,
-      sample, previewConfig, previewProps, sizeOptions, applyPreview, drafts, savedCss, cssDraft, dirty, allCss, localError, changeVariable, applyCss, discardDraft, isModified, exportCss };
+      sample, previewConfig, previewProps, sizeOptions, applyPreview, drafts, savedCss, cssDraft, dirty, allCss, localError, changeVariable, saveTheme, validDraft, previewCss, hasDraft, discardDraft, isModified, exportCss };
   }
 });
 </script>

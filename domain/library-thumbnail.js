@@ -1,9 +1,10 @@
 import { clone } from './nodes.js';
+import { activeDefinitionOnly } from './variants.js';
 import { componentThemesCss } from './component-themes.js';
 
 export function libraryThumbnailState(definition, workspace, language) {
   function withoutPreview(item) {
-    const copy = clone(item);
+    const copy = clone(activeDefinitionOnly(item));
     delete copy.previewImage;
     if (copy.partials) copy.partials = copy.partials.map(withoutPreview);
     return copy;

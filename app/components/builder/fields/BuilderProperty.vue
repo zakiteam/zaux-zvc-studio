@@ -1,7 +1,7 @@
 <template>
-	<div class="zb-property mb-2.5">
+	<div class="zb-property min-w-0 mb-2.5">
 		<div
-			class="zb-field-heading flex items-baseline justify-between gap-1 [&_label]:mb-1 [&_label]:text-[11px] [&_label]:font-medium [&>select]:w-[125px] [&>select]:border-none [&>select]:bg-transparent [&>select]:p-0.5 [&>select]:text-[9px] [&>select]:text-zaux-dark-grey"
+			class="zb-field-heading flex flex-wrap items-baseline justify-between gap-1 [&_label]:min-w-0 [&_label]:[overflow-wrap:anywhere] [&_label]:mb-1 [&_label]:text-[11px] [&_label]:font-medium [&>select]:max-w-full [&>select]:w-[125px] [&>select]:border-none [&>select]:bg-transparent [&>select]:p-0.5 [&>select]:text-[9px] [&>select]:text-zaux-dark-grey"
 		>
 			<label :for="`prop-${encodeURIComponent(propertyPath)}`">{{
 				propertyLabel

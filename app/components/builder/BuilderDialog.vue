@@ -35,7 +35,7 @@
 			<form
 				v-if="
 					[
-						'new-component', 'new-partial',
+						'new-component', 'new-partial', 'group-zvc',
 						'new-template',
 						'new-project',
 						'rename-project',
@@ -57,6 +57,13 @@
 						maxlength="100"
 						autocomplete="off"
 					/>
+				</div>
+				<div v-if="modal.type === 'group-zvc'" class="mb-2.5">
+					<p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_group_zvc_hint') }}</p>
+					<label for="group-last" class="block text-[11px]">{{ translate('zx_builder_group_zvc_last') }}</label>
+					<select id="group-last" v-model="groupEnd" class="w-full bg-zaux-light px-2 py-1">
+						<option v-for="(item, index) in groupCandidates" :key="item.id" :value="item.id">{{ index + 1 }}. {{ item.definition.tree.map(node => node.name).join(', ') }}</option>
+					</select>
 				</div>
 				<footer>
 					<BuilderButton
@@ -334,6 +341,7 @@
 	</div>
 </template>
 <script>
+import { freeGroupCandidates } from '../../../domain/template-elements.js';
 import {
 	defineComponent,
 	ref,
@@ -370,6 +378,8 @@ export default defineComponent({
 		const builder = useBuilder();
 		const dialog = ref(null);
 		const name = ref(builder.modal.value.name ?? "");
+		const groupEnd = ref(builder.modal.value.endId ?? builder.modal.value.instanceId);
+		const groupCandidates = computed(() => freeGroupCandidates(builder.activeTemplate.value, builder.modal.value.instanceId));
 		const scope = ref(builder.modal.value.scope ?? "workspace");
 		const format = ref(builder.modal.value.format ?? "json");
 		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
@@ -464,6 +474,7 @@ export default defineComponent({
 			"new-component-json": "new_component_json",
             "new-partial-json": "new_partial_json",
 			"new-component": "new_component",
+			"group-zvc": "group_zvc",
             "new-partial": "new_partial",
 			"new-template": "new_template",
 			"save-library": "save_library",
@@ -554,6 +565,10 @@ export default defineComponent({
 		async function submitName() {
 			if (!name.value.trim() || saving.value) return;
 			const modal = builder.modal.value;
+			if (modal.type === 'group-zvc' && !builder.groupInZvc(name.value.trim(), modal.instanceId, groupEnd.value)) {
+				localError.value = builder.error.value;
+				return;
+			}
 			if (["new-component", "new-partial"].includes(modal.type))
 				builder.newComponent(name.value.trim(), modal.type === "new-partial" ? "zvp" : "zvc");
 			if (modal.type === "new-template") builder.newTemplate(name.value.trim());
@@ -692,6 +707,7 @@ export default defineComponent({
 		});
 		onBeforeUnmount(() => previousFocus?.focus());
 		return {
+			groupEnd, groupCandidates,
 			...builder,
 			dialog,
 			componentText,
