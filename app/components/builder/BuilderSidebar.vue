@@ -5,10 +5,14 @@
 		:style="{ width: `${width}px` }"
 	>
 		<div
-			ref="tabsEl"
-			class="zb-tabs flex shrink-0 gap-0.5 border-b-slim border-zaux-light-grey px-1.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
-			role="tablist"
+			class="group/section flex min-h-0 flex-col"
+			:class="libraryCollapsed ? 'shrink-0' : 'flex-1'"
 		>
+		<div ref="tabsEl" class="flex shrink-0 items-center gap-1 border-b-slim border-zaux-light-grey px-1.5">
+			<div
+				class="zb-tabs flex min-w-0 flex-1 gap-0.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
+				role="tablist"
+			>
 			<button
 				v-for="tab in ['library', 'elements']"
 				:key="tab"
@@ -19,8 +23,21 @@
 			>
 				{{ translate(`zx_builder_${tab}`) }}
 			</button>
+			</div>
+			<BuilderButton
+				class="!flex-none transition-opacity"
+				:class="libraryCollapsed ? 'opacity-100' : 'opacity-0 group-hover/section:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'"
+				variant="alt1"
+				size="xs"
+				:icon="libraryCollapsed ? 'chevron-down' : 'chevron-up'"
+				iconOnly
+				:label="translate(libraryCollapsed ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + translate('zx_builder_' + leftTab)"
+				:aria-expanded="!libraryCollapsed"
+				aria-controls="zb-library-section-content"
+				@click="libraryCollapsed = !libraryCollapsed"
+			/>
 		</div>
-		<div class="flex-1 h-full min-h-0 overflow-auto zb-scroll">
+		<div id="zb-library-section-content" v-show="!libraryCollapsed" class="flex-1 min-h-0 overflow-auto zb-scroll">
 			<div v-if="leftTab === 'library'" class="zb-library-panel px-2 py-2.5">
 				<div class="sticky top-0 z-20 -mx-2 -mt-2.5 bg-zaux-white px-2 pt-2.5 pb-2.5">
 					<div
@@ -273,25 +290,43 @@
 				</p>
 			</div>
 		</div>
+		</div>
 		<BuilderResizeHandle
+			v-if="!libraryCollapsed && !outlineCollapsed"
 			direction="vertical"
 			side="bottom"
 			:label="translate('zx_builder_resize_outline')"
 			@resize="resizeOutline"
 		/>
 		<section
-			class="px-2 overflow-auto zb-outline-panel shrink-0 zb-scroll border-t-slim border-zaux-light-grey"
-			:style="{ height: `${outlineHeight}px` }"
+			class="group/section flex min-h-0 flex-col px-2 zb-outline-panel shrink-0 border-t-slim border-zaux-light-grey"
+			:class="{ 'flex-1': libraryCollapsed && !outlineCollapsed }"
+			:style="!outlineCollapsed && !libraryCollapsed ? { height: `${outlineHeight}px` } : null"
 			:aria-label="translate('zx_builder_outline')"
 		>
+			<div class="flex shrink-0 items-center justify-between gap-1 py-1.5">
+				<h3 class="zb-eyebrow text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
+					{{ translate("zx_builder_outline") }}
+				</h3>
+				<div class="flex items-center gap-1">
+					<BuilderButton v-show="!outlineCollapsed" class="!flex-none" variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" :title="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
+					<BuilderButton
+						class="!flex-none transition-opacity"
+						:class="outlineCollapsed ? 'opacity-100' : 'opacity-0 group-hover/section:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'"
+						variant="alt1"
+						size="xs"
+						:icon="outlineCollapsed ? 'chevron-up' : 'chevron-down'"
+						iconOnly
+						:label="translate(outlineCollapsed ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + translate('zx_builder_outline')"
+						:aria-expanded="!outlineCollapsed"
+						aria-controls="zb-outline-section-content"
+						@click="outlineCollapsed = !outlineCollapsed"
+					/>
+				</div>
+			</div>
+			<div id="zb-outline-section-content" v-show="!outlineCollapsed" class="min-h-0 flex-1 overflow-auto zb-scroll">
 				<!-- Copy/Paste node -->
-				<div class="sticky top-0 z-10 -mx-2 mb-3 flex flex-col justify-start gap-2 bg-zaux-white px-2 pt-1.5 text-left">
-					<div class="flex items-center justify-between">
-						<h3 class="zb-eyebrow text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
-							{{ translate("zx_builder_outline") }}
-						</h3>
-						<BuilderButton class="!flex-none" variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" :title="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
-					</div>
+				<div class="sticky top-0 z-10 mb-3 flex flex-col justify-start gap-2 bg-zaux-white text-left">
 					<div class="flex items-stretch gap-1 pb-2">
 						<BuilderButton class="w-full" size="xs" icon="copy" :label="translate('zx_builder_copy_node')" :disabled="!canCopyNode" @click="copySelectedNode()" />
 						<BuilderButton class="w-full" size="xs" :label="translate('zx_builder_paste_node')" :disabled="!canPasteNode" @click="pasteNode()" />
@@ -491,7 +526,9 @@
 							/>
 						</template></article
 				></template>
+			</div>
 		</section>
+		<div v-if="libraryCollapsed && outlineCollapsed" class="flex-1" />
 		<div
 			ref="footerEl"
 			class="zb-sidebar-footer flex shrink-0 items-center justify-between border-t-slim border-zaux-light-grey px-2 py-1.5 text-[11px] text-zaux-dark-grey [&>select]:w-[58px] [&>select]:p-0.5 [&>select]:text-[10px] [&_small]:ml-0.5 [&_small]:text-[9px]"
@@ -547,8 +584,10 @@ export default defineComponent({
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
+		const libraryCollapsed = ref(false);
+		const outlineCollapsed = ref(false);
 		watch(() => builder.revealOutlineTarget.value, async (target) => {
-			if (!target) return;
+			if (!target || outlineCollapsed.value) return;
 			await nextTick();
 			const selector = target.nodeId
 				? `[data-zb-outline-node="${CSS.escape(target.nodeId)}"]`
@@ -566,7 +605,7 @@ export default defineComponent({
 		const RESIZE_HANDLE_HEIGHT = 4;
 		function clampOutline() {
 			const aside = asideEl.value;
-			if (!aside) return;
+			if (!aside?.clientHeight || libraryCollapsed.value || outlineCollapsed.value) return;
 			const fixed =
 				(tabsEl.value?.offsetHeight ?? 0) +
 				(footerEl.value?.offsetHeight ?? 0) +
@@ -581,9 +620,14 @@ export default defineComponent({
 			);
 		}
 		function resizeOutline(delta) {
+			if (libraryCollapsed.value || outlineCollapsed.value) return;
 			outlineHeight.value += delta;
 			clampOutline();
 		}
+		watch([libraryCollapsed, outlineCollapsed], async () => {
+			await nextTick();
+			clampOutline();
+		});
 		onMounted(() => {
 			clampOutline();
 			window.addEventListener("resize", clampOutline);
@@ -673,6 +717,8 @@ export default defineComponent({
 			previewId,
 			setPreview,
 			revealInstance,
+			libraryCollapsed,
+			outlineCollapsed,
 			outlineHeight,
 			resizeOutline,
 			asideEl,

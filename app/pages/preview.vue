@@ -1,10 +1,10 @@
 <template>
-  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @click.capture="select" @submit.prevent @dragstart="startDrag" @dragover.prevent="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
+  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @click.capture="select" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
     <p v-if="fontErrors.length" role="alert" class="bg-utility-error/10 p-2 font-builder text-[12px] text-utility-error">{{ translate('zx_builder_fonts_load_error') }}</p>
     <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.clean && !state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
     <section v-for="instance in state.instances" :key="instance.id" :data-zb-instance="instance.id" class="zb-stage-instance min-h-[12px]" :class="{ 'zb-stage-instance--empty': !instance.definition.tree.length }">
-      <PreviewBoundary @error="renderFailure = $event" :key="JSON.stringify([instance, state.styles?.uiSettings])" :message="translate('zx_builder_preview_error')"><ComponentsRenderer :components="previewNodes(instance, state.editable)" /></PreviewBoundary>
+      <PreviewInstance :instance="instance" :editable="state.editable" :ui-settings="state.styles?.uiSettings" :message="translate('zx_builder_preview_error')" @error="renderFailure = $event" />
       <div v-if="!state.clean && !instance.definition.tree.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ instance.name }}</span><h2>{{ translate('zx_builder_empty_tree') }}</h2></div>
     </section>
     <div v-if="selection && state.editable" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick border-zaux-accent" :style="selection.style" />
@@ -20,20 +20,18 @@
   </div>
 </template>
 <script>
-import { defineComponent, ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { defineComponent, ref, shallowRef, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useHead } from '#imports';
 import { createStyleBridge } from '../services/styles.js';
 import { createThemePreviewLifecycle } from '../services/theme-preview.js';
 import { createFontLoader } from '../services/fonts.js';
-import { previewNodes } from '../services/preview.js';
 import { definitionCss } from '../../domain/partials.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import ComponentsRenderer from '../../integrations/zaux/renderers/slot-renderer.js';
-import PreviewBoundary from '../components/builder/PreviewBoundary.vue';
+import PreviewInstance from '../components/builder/PreviewInstance.vue';
 export default defineComponent({
-  components: { PreviewBoundary, ComponentsRenderer },
+  components: { PreviewInstance },
   setup() {
     useHead({ link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] });
     const translation = useTranslation();
@@ -47,7 +45,7 @@ export default defineComponent({
     useHead(() => ({ bodyAttrs: { style: 'background-color: ' + (state.value.styles?.bodyBackground || (state.value.canvasDark ? '#18181b' : '#ffffff')) } }));
     const selection = ref(null);
     const selectionToolbar = ref(null);
-    const dropMarker = ref(null);
+    const dropMarker = shallowRef(null);
     const hovering = ref(false);
     const componentCss = computed(() => state.value.instances.map(item => definitionCss(item.definition)).join('\n'));
     let observer;
@@ -55,6 +53,10 @@ export default defineComponent({
     let hideTimer = null;
     let pendingReveal = null;
     let renderedGeneration = 0;
+    let lastContext = null;
+    let dragPoint = null;
+    let dragFrame = null;
+    let selectionFrame = null;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
     function revealElement(message) {
       pendingReveal = message;
@@ -81,6 +83,8 @@ export default defineComponent({
         fontLoader.apply(event.data.styles?.fonts ?? []);
         renderFailure.value = '';
         state.value = event.data;
+        lastContext = null;
+        if (!event.data.editable) clearDrag();
         translation.language.value = event.data.language;
         await nextTick();
         if (generation !== receiveGeneration) return;
@@ -101,10 +105,13 @@ export default defineComponent({
     function context(target) {
       const element = target.closest('[data-zb-node]');
       const section = target.closest('[data-zb-instance]');
+      if (lastContext?.state === state.value && lastContext.element === element && lastContext.section === section) return lastContext.target;
       const instanceId = section?.dataset.zbInstance ?? state.value.instances.at(-1)?.id;
       const instance = state.value.instances.find(item => item.id === instanceId);
       const node = instance && element ? findNode(instance.definition.tree, element.dataset.zbNode) : null;
-      return { element, section, instanceId, node };
+      const result = { element, section, instanceId, node };
+      lastContext = { state: state.value, element, section, target: result };
+      return result;
     }
     function nodeAction(type) {
       post({ type, instanceId: state.value.selectedInstanceId, nodeId: state.value.selectedNodeId });
@@ -157,33 +164,87 @@ export default defineComponent({
       event.stopPropagation();
       event.dataTransfer.setData('application/x-zaux-builder', JSON.stringify({ kind: 'node', id: target.node.id, instanceId: target.instanceId }));
       event.dataTransfer.effectAllowed = 'move';
+      clearDrag();
+      clearTimeout(hideTimer);
+      hovering.value = false;
+    }
+    function dropTarget(point) {
+      const target = context(point.element);
+      const rect = (target.element ?? target.section ?? point.stage).getBoundingClientRect();
+      const fraction = rect.height ? (point.y - rect.top) / rect.height : 1;
+      const position = target.node && containers.includes(target.node.name) && fraction > .25 && fraction < .75 ? 'inside' : fraction < .5 ? 'before' : 'after';
+      return { instanceId: target.instanceId, nodeId: target.node?.id ?? null, position, style: { top: `${window.scrollY + rect.top + (position === 'after' ? rect.height : 0)}px`, left: `${window.scrollX + rect.left}px`, width: `${rect.width}px`, height: position === 'inside' ? `${rect.height}px` : '3px' } };
+    }
+    function scheduleDropMarker() {
+      if (!dragPoint || dragFrame !== null) return;
+      dragFrame = requestAnimationFrame(() => {
+        dragFrame = null;
+        if (!dragPoint || !state.value.editable) return;
+        const element = document.elementFromPoint(dragPoint.x, dragPoint.y) ?? dragPoint.element;
+        const next = dropTarget({ ...dragPoint, element });
+        const previous = dropMarker.value;
+        if (previous && previous.instanceId === next.instanceId && previous.nodeId === next.nodeId
+          && previous.position === next.position && Object.keys(next.style).every(key => previous.style[key] === next.style[key])) return;
+        dropMarker.value = next;
+      });
+    }
+    function clearDrag() {
+      if (dragFrame !== null) cancelAnimationFrame(dragFrame);
+      dragFrame = null; dragPoint = null; dropMarker.value = null;
     }
     function dragOver(event) {
       if (!state.value.editable || !event.dataTransfer.types.includes('application/x-zaux-builder')) return;
-      const target = context(event.target);
-      const rect = (target.element ?? target.section ?? event.currentTarget).getBoundingClientRect();
-      const fraction = rect.height ? (event.clientY - rect.top) / rect.height : 1;
-      const position = target.node && containers.includes(target.node.name) && fraction > .25 && fraction < .75 ? 'inside' : fraction < .5 ? 'before' : 'after';
-      dropMarker.value = { instanceId: target.instanceId, nodeId: target.node?.id ?? null, position, style: { top: `${window.scrollY + rect.top + (position === 'after' ? rect.height : 0)}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: position === 'inside' ? `${rect.height}px` : '3px' } };
+      event.preventDefault();
+      dragPoint = { element: event.target, stage: event.currentTarget, x: event.clientX, y: event.clientY };
+      scheduleDropMarker();
     }
-    function dragLeave(event) { if (!event.relatedTarget) dropMarker.value = null; }
+    function dragLeave(event) {
+      if (!event.currentTarget.contains(event.relatedTarget)) clearDrag();
+    }
     function drop(event) {
-      if (!state.value.editable) return;
+      if (!state.value.editable) { clearDrag(); return; }
       try {
         const payload = JSON.parse(event.dataTransfer.getData('application/x-zaux-builder'));
-        const target = dropMarker.value ?? { instanceId: state.value.instances.at(-1)?.id, nodeId: null, position: 'after' };
+        // Resolve the actual release point even if the last animation frame is pending.
+        const target = dropTarget({ element: event.target, stage: event.currentTarget, y: event.clientY });
         post({ type: 'drop', payload, instanceId: target.instanceId, nodeId: target.nodeId, position: target.position });
       } catch { /* Ignore drags from outside the builder. */ }
-      dropMarker.value = null;
+      clearDrag();
+    }
+    function scheduleMeasurements() {
+      if (selectionFrame === null) {
+        selectionFrame = requestAnimationFrame(() => { selectionFrame = null; measureSelection(); });
+      }
+      scheduleDropMarker();
     }
     onMounted(() => {
       document.body.classList.add('zb-preview-body');
-      window.addEventListener('message', receive); window.addEventListener('resize', measureSelection); window.addEventListener('scroll', measureSelection);
-      observer = new ResizeObserver(measureSelection); observer.observe(document.body);
+      window.addEventListener('message', receive);
+      window.addEventListener('resize', scheduleMeasurements);
+      window.addEventListener('scroll', scheduleMeasurements, true);
+      window.addEventListener('dragend', clearDrag);
+      window.addEventListener('drop', clearDrag);
+      observer = new ResizeObserver(scheduleMeasurements); observer.observe(document.body);
       post({ type: 'ready' });
     });
-    onBeforeUnmount(() => { receiveGeneration++; themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose(); window.removeEventListener('message', receive); window.removeEventListener('resize', measureSelection); window.removeEventListener('scroll', measureSelection); observer?.disconnect(); document.body.classList.remove('zb-preview-body'); });
-    return { ...translation, renderFailure, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, previewNodes, select, startDrag, dragOver, dragLeave, drop };
+    onBeforeUnmount(() => {
+      receiveGeneration++;
+      clearDrag();
+      clearTimeout(hideTimer);
+      if (selectionFrame !== null) cancelAnimationFrame(selectionFrame);
+      hoverElement?.removeEventListener('mouseenter', onHoverEnter);
+      hoverElement?.removeEventListener('mouseleave', onHoverLeave);
+      lastContext = null;
+      themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose();
+      window.removeEventListener('message', receive);
+      window.removeEventListener('resize', scheduleMeasurements);
+      window.removeEventListener('scroll', scheduleMeasurements, true);
+      window.removeEventListener('dragend', clearDrag);
+      window.removeEventListener('drop', clearDrag);
+      observer?.disconnect();
+      document.body.classList.remove('zb-preview-body');
+    });
+    return { ...translation, renderFailure, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

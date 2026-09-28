@@ -1,14 +1,32 @@
 <template>
-	<div class="zb-workbench flex min-h-0 flex-1 max-[900px]:flex-wrap">
-		<BuilderSidebar
+	<div class="zb-workbench relative flex min-h-0 flex-1 max-[900px]:flex-wrap">
+		<div
 			v-show="!previewOnly"
-			:width="leftWidth"
-		/><BuilderResizeHandle
-			v-if="!previewOnly"
-			side="left"
-			:label="translate('zx_builder_resize_left')"
-			@resize="resizePanel('left', $event)"
-		/>
+			class="group/panel relative flex min-h-0 shrink-0 max-[900px]:h-[80dvh]"
+		>
+			<BuilderSidebar
+				id="zb-sidebar-panel"
+				v-show="!sidebarCollapsed"
+				:width="leftWidth"
+			/>
+			<BuilderResizeHandle
+				v-if="!sidebarCollapsed"
+				side="left"
+				:label="translate('zx_builder_resize_left')"
+				@resize="resizePanel('left', $event)"
+			/>
+			<BuilderButton
+				class="absolute left-full top-1/2 z-20 -translate-y-1/2 shadow-sm transition-opacity"
+				:class="sidebarCollapsed ? 'opacity-100 ml-1' : '-ml-1 opacity-0 group-hover/panel:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'"
+				:icon="sidebarCollapsed ? 'chevron-right' : 'chevron-left'"
+				iconOnly
+				size="xs"
+				:label="translate(sidebarCollapsed ? 'zx_builder_show_sidebar' : 'zx_builder_hide_sidebar')"
+				:aria-expanded="!sidebarCollapsed"
+				aria-controls="zb-sidebar-panel"
+				@click="sidebarCollapsed = !sidebarCollapsed"
+			/>
+		</div>
 		<main
 			class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
 		>
@@ -36,18 +54,39 @@
 					><span>{{ translate("zx_builder_readonly_source") }}</span>
 				</footer>
 				--></main>
-		<BuilderResizeHandle
-			v-if="!previewOnly"
-			side="right"
-			:label="translate('zx_builder_resize_right')"
-			@resize="resizePanel('right', $event)"
-		/><BuilderStyles
-			v-if="stylesOpen && !previewOnly"
-			:width="rightWidth"
-		/><BuilderInspector
-			v-show="!previewOnly && !stylesOpen"
-			:width="rightWidth"
-		/>
+		<div
+			v-show="!previewOnly"
+			class="group/panel relative flex min-h-0 shrink-0"
+			:class="inspectorCollapsed && !stylesOpen ? 'max-[900px]:absolute max-[900px]:right-0 max-[900px]:top-0 max-[900px]:h-[80dvh]' : 'max-[900px]:w-full'"
+		>
+			<BuilderResizeHandle
+				v-if="stylesOpen || !inspectorCollapsed"
+				side="right"
+				:label="translate('zx_builder_resize_right')"
+				@resize="resizePanel('right', $event)"
+			/>
+			<BuilderStyles
+				v-if="stylesOpen && !previewOnly"
+				:width="rightWidth"
+			/>
+			<BuilderInspector
+				id="zb-inspector-panel"
+				v-show="!stylesOpen && !inspectorCollapsed"
+				:width="rightWidth"
+			/>
+			<BuilderButton
+				v-if="!stylesOpen"
+				class="absolute right-full top-1/2 z-20 -translate-y-1/2 shadow-sm transition-opacity"
+				:class="inspectorCollapsed ? 'opacity-100 mr-1' : '-mr-1 opacity-0 group-hover/panel:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 max-[900px]:right-auto max-[900px]:left-1'"
+				:icon="inspectorCollapsed ? 'chevron-left' : 'chevron-right'"
+				iconOnly
+				size="xs"
+				:label="translate(inspectorCollapsed ? 'zx_builder_show_inspector' : 'zx_builder_hide_inspector')"
+				:aria-expanded="!inspectorCollapsed"
+				aria-controls="zb-inspector-panel"
+				@click="inspectorCollapsed = !inspectorCollapsed"
+			/>
+		</div>
 	</div>
 </template>
 <script>
@@ -60,6 +99,7 @@ import BuilderCanvas from "./BuilderCanvas.vue";
 import BuilderInspector from "./BuilderInspector.vue";
 import BuilderStyles from "./BuilderStyles.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
+import BuilderButton from "./BuilderButton.vue";
 export default defineComponent({
 	components: {
 		BuilderPreviewControls,
@@ -69,11 +109,14 @@ export default defineComponent({
 		BuilderInspector,
 		BuilderStyles,
 		BuilderResizeHandle,
+		BuilderButton,
 	},
 	setup() {
 		const builder = useBuilder();
 		const leftWidth = ref(420);
 		const rightWidth = ref(420);
+		const sidebarCollapsed = ref(false);
+		const inspectorCollapsed = ref(false);
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;
 			target.value = Math.min(
@@ -85,6 +128,8 @@ export default defineComponent({
 			...builder,
 			leftWidth,
 			rightWidth,
+			sidebarCollapsed,
+			inspectorCollapsed,
 			resizePanel,
 		};
 	},
