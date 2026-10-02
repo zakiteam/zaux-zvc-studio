@@ -1,19 +1,16 @@
 <template>
 	<header class="shrink-0 bg-zaux-white">
 		<div
-			class="zb-work-toolbar flex min-h-[56px] flex-wrap items-center justify-between gap-1 dark:border-zaux-light-grey border-b-slim border-zaux-light-grey px-1.5 py-1.5 max-[600px]:px-1.5"
+			class="flex justify-between py-2 border-b-slim border-b-set1-light-grey px-2"
 		>
-			<div class="flex items-center gap-4">
+			<div class="flex gap-4">
 				<NuxtLink
 					to="/"
 					class="flex items-center gap-2 shrink-0 text-set1-white"
 					aria-label="Zaux Studio"
 				>
 					<img class="w-4" :src="studioLogo" alt="" />
-					<span
-						class="font-bold uppercase font-builder text-eyelet-s text-set1-dark"
-						>Zaux studio</span
-					>
+					<span class="font-bold uppercase font-builder text-eyelet-s text-set1-dark">Zaux studio</span>
 				</NuxtLink>
 
 				<div class="flex flex-wrap items-center justify-end gap-3 ml-auto">
@@ -82,7 +79,10 @@
 					</BuilderDropdown>
 				</div>
 			</div>
-			<div>
+			<div class="flex justify-center min-[1200px]:justify-self-center">
+				<BuilderModeSwitcher />
+			</div>
+			<div class="min-[1200px]:justify-self-end">
 				<div class="flex flex-wrap items-center justify-end gap-1 ml-auto">
 					<span
 						class="mr-1.5 text-[11px] text-zaux-dark-grey max-[1200px]:hidden"
@@ -109,25 +109,6 @@
 					<span
 						class="mx-1 h-[24px] w-px bg-zaux-light-grey"
 						aria-hidden="true"
-					/>
-					<BuilderButton
-						icon="customize"
-						:label="translate('zx_builder_style_settings')"
-						:aria-pressed="stylesOpen"
-						size="xs"
-						@click="
-							stylesOpen = !stylesOpen;
-							workspaceView = 'design';
-							previewOnly = false;
-						"
-					/>
-					<BuilderButton
-						size="xs"
-						:label="translate('zx_builder_theme_editor')"
-						:aria-pressed="workspaceView === 'themes'"
-						@click="
-							workspaceView = workspaceView === 'themes' ? 'design' : 'themes'
-						"
 					/>
 					<BuilderButton
 						size="xs"
@@ -185,6 +166,7 @@ import { useAuth } from "../../composables/useAuth.js";
 import { useStudioTheme } from "../../composables/useStudioTheme.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderDropdown from "./BuilderDropdown.vue";
+import BuilderModeSwitcher from "./BuilderModeSwitcher.vue";
 import BuilderThumbnailControls from "./BuilderThumbnailControls.vue";
 import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 import BuilderFontLibrary from "./BuilderFontLibrary.vue";
@@ -195,6 +177,7 @@ export default defineComponent({
 		BuilderThumbnailControls,
 		BuilderButton,
 		BuilderDropdown,
+		BuilderModeSwitcher,
 		BuilderMediaPicker,
 		BuilderFontLibrary,
 		BuilderProjectBridge,
@@ -203,6 +186,7 @@ export default defineComponent({
 		const builder = useBuilder();
 		const router = useRouter();
 		const route = useRoute();
+
 		// Creating or deleting from the editor changes its project identity.
 		watch(
 			() => builder.activeRemoteProject.value?.id,

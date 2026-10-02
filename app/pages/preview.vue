@@ -31,6 +31,7 @@ import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import PreviewInstance from '../components/builder/PreviewInstance.vue';
 import { createOutlineVisibility } from '../services/outline-visibility.js';
+import { builderHistoryShortcut, nodeClipboardShortcut } from '../services/node-shortcuts.js';
 export default defineComponent({
   components: { PreviewInstance },
   setup() {
@@ -60,6 +61,21 @@ export default defineComponent({
     let dragFrame = null;
     let selectionFrame = null;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
+    function hotkey(event) {
+      if (!state.value.editable) return;
+      const historyAction = builderHistoryShortcut(event);
+      if (historyAction) {
+        event.preventDefault();
+        if (!event.repeat) post({ type: historyAction });
+        return;
+      }
+      const action = nodeClipboardShortcut(event);
+      if (!action) return;
+      const allowed = action === 'paste-node' ? state.value.canPasteNode : action === 'cut-node' ? state.value.canDeleteNode : action === 'duplicate-node' ? state.value.canDuplicateNode : state.value.canCopyNode;
+      if (!allowed) return;
+      event.preventDefault();
+      if (!event.repeat) nodeAction(action);
+    }
     function revealElement(message) {
       pendingReveal = message;
       // State messages render asynchronously; insertion may request scrolling
@@ -224,6 +240,7 @@ export default defineComponent({
       document.body.classList.add('zb-preview-body');
       outlineVisibility.mount();
       window.addEventListener('message', receive);
+      window.addEventListener('keydown', hotkey);
       window.addEventListener('resize', scheduleMeasurements);
       window.addEventListener('scroll', scheduleMeasurements, true);
       window.addEventListener('dragend', clearDrag);
@@ -242,6 +259,7 @@ export default defineComponent({
       lastContext = null;
       themeLifecycle.dispose(); fontLoader.dispose(); styleBridge.dispose();
       window.removeEventListener('message', receive);
+      window.removeEventListener('keydown', hotkey);
       window.removeEventListener('resize', scheduleMeasurements);
       window.removeEventListener('scroll', scheduleMeasurements, true);
       window.removeEventListener('dragend', clearDrag);

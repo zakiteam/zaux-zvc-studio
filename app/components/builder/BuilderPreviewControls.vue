@@ -91,17 +91,19 @@
         </div>
       </div>
     </div>
+    <BuilderWorkspaceTabs />
   </div>
 </template>
 <script>
 import { computed, defineComponent } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
 import BuilderButton from './BuilderButton.vue';
+import BuilderWorkspaceTabs from './BuilderWorkspaceTabs.vue';
 import BuilderInput from './fields/BuilderInput.vue';
 import BuilderStyleSelect from './fields/styles/BuilderStyleSelect.vue';
 import { tokenGroups } from '../../data/styles/tokens.js';
 export default defineComponent({
-  components: { BuilderButton, BuilderInput, BuilderStyleSelect },
+  components: { BuilderButton, BuilderInput, BuilderStyleSelect, BuilderWorkspaceTabs },
   setup() {
     const builder = useBuilder();
     const bodyColors = computed(() => {

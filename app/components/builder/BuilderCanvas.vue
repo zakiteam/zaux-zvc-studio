@@ -25,11 +25,19 @@ export default defineComponent({
     function receive(event) {
       if (event.origin !== window.location.origin || event.source !== frame.value?.contentWindow || event.data?.channel !== 'zaux-studio') return;
       const message = event.data;
+      if (message.type === 'undo' || message.type === 'redo') {
+        if (!builder.previewOnly.value && !builder.modal.value && builder.canEditRemote.value) {
+          if (message.type === 'undo') builder.undo();
+          else builder.redo();
+        }
+        return;
+      }
       if (message.type === 'outline-visibility' && message.request === visibilityRequest && Array.isArray(message.hidden)) {
         builder.hiddenOutlineNodes.value = new Set(message.hidden);
       }
       if (!builder.previewOnly.value && message.instanceId === (builder.mode.value === 'library' ? 'library' : builder.instanceId.value) && message.nodeId === builder.nodeId.value) {
         if (message.type === 'copy-node') builder.copySelectedNode();
+        if (message.type === 'cut-node') builder.cutSelectedNode();
         if (message.type === 'paste-node') builder.pasteNode();
         if (message.type === 'duplicate-node') builder.duplicateNode();
         if (message.type === 'delete-node') builder.deleteNode();

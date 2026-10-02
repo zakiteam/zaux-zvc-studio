@@ -69,6 +69,11 @@ Nested ZVP occurrences expose their captured variants in Properties/Data and
 slider editors. Switching one occurrence creates an internal dependency alias
 only when the dependency is shared with other occurrences. Existing captures
 do not acquire later library variants automatically; use Restore from library.
+
+Sync is variant sensitive: syncing from ZVC/ZVP editing mode replaces only the
+instances (and nested ZVP captures) whose `activeVariant` equals the edited
+variant. Copies without variants count as the first (base) variant. Copies on
+other variants are untouched, and no instance is switched to another variant.
 New ZVP references start with empty props and inherit captured defaults, storing
 only explicit edits. Older explicit props remain intact, even if they happen to
 equal a previous default.

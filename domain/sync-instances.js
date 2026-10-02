@@ -4,12 +4,17 @@ import { restoreInstance } from './restore-instance.js';
 // Explicit propagation only: ordinary library edits keep copies independent.
 export function syncLibraryInstances(workspace, source) {
   const original = clone(source);
+  // Variant sensitive: only copies set to the synced variant are replaced. Copies made
+  // before variants existed are the base variant (the first one).
+  const sourceVariant = original.activeVariant;
+  const variantMatches = copy => !original.variants?.length
+    || (copy.activeVariant ?? original.variants[0].id) === sourceVariant;
   function syncPartials(owner, data = {}) {
     for (const variant of owner.variants ?? []) {
       if (variant.content) syncPartials(variant.content, data);
     }
     for (const partial of [...(owner.partials ?? [])]) {
-      if ((partial.libraryId ?? partial.id) !== original.id) {
+      if ((partial.libraryId ?? partial.id) !== original.id || !variantMatches(partial)) {
         syncPartials(partial);
         continue;
       }
@@ -55,7 +60,9 @@ export function syncLibraryInstances(workspace, source) {
   }
   for (const template of workspace.templates) {
     for (const instance of template.instances) {
-      if (instance.sourceId === original.id) Object.assign(instance, restoreInstance(instance, original));
+      if (instance.sourceId === original.id) {
+        if (variantMatches(instance.definition)) Object.assign(instance, restoreInstance(instance, original));
+      }
       else if (original.kind === 'zvp') syncPartials(instance.definition, instance.data);
     }
   }

@@ -20,7 +20,6 @@
     <main v-if="selected" class="flex flex-col flex-1 min-w-0 min-h-0">
       <div class="flex flex-wrap items-center gap-1 p-2 border-b-slim border-zaux-light-grey bg-zaux-white">
         <strong class="mr-auto">{{ selected.id }}</strong>
-        <BuilderButton size="xs" :label="translate('zx_builder_design')" @click="workspaceView = 'design'" />
         <BuilderButton size="xs" :label="translate('zx_builder_theme_export_one')" :disabled="!savedCss.trim()" @click="exportCss(false)" />
         <BuilderButton size="xs" :label="translate('zx_builder_theme_export_all')" :disabled="!allCss.trim()" @click="exportCss(true)" />
       </div>

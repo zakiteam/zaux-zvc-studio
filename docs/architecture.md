@@ -65,6 +65,21 @@ The library contains reusable definitions. Inserting one creates an instance wit
 
 Studio has a single mutable workspace. Mutations go through `commit`, which validates the resulting document, records undo history and schedules persistence. UI selection and dialogs are separate transient state.
 
+`BuilderWorkspaceTabs.vue` owns session-only editing shortcuts and is mounted at
+the bottom of `BuilderPreviewControls.vue`. It observes the current template or
+library definition through `useBuilder()` and navigates through `selectTemplate`
+and `selectLibrary`. Shortcuts are unique by entity kind and ID, retain opening
+order, resolve names from the current document, and disappear when their entity
+is deleted. Tabs can be reordered by dragging their labels, with an insertion
+marker and horizontal scrolling near the strip edges, or with Alt + Left/Right
+on a focused label. Reordering only changes local shortcut order and preserves
+the edited entity. Closing the active shortcut selects its next neighbour (or previous
+when last); the only remaining shortcut stays open. The active shortcut scrolls
+into view within the horizontal strip. History resets on workspace changes or
+component unmount, remains available while Design is hidden, and is never saved
+or exported. The component can be moved anywhere inside the Builder provider
+without changing its parent or the workspace data model.
+
 The preview is an iframe at `/preview`. It receives serialized state over same-origin messages and returns selection/drop intents. The parent checks the sender and origin. The iframe's width is the real responsive viewport. Zaux components render through the original ComponentsRenderer; editor IDs are added only to preview props.
 
 Custom CSS is limited to the preview document. Property values are sanitized there before rendering HTML; no imported JavaScript is evaluated. Preview is a trusted local authoring tool, not a hardened multi-tenant sandbox.

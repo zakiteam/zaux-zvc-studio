@@ -86,6 +86,7 @@ export default [
   { name: 'div', container: true, html: true, props: {} },
   { name: 'section', container: true, html: true, props: {} },
   { name: 'nav', container: true, html: true, props: {} },
+  { name: 'form', container: true, html: true, props: { action: '', method: 'post' } },
   {
     name: 'ul', container: true, html: true, props: {}, createChildren: t =>
       [1, 2, 3].map(number => ({ name: 'li', props: { textContent: t('zx_builder_preset_list_item') + ' ' + number } }))

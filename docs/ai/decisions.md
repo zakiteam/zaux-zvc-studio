@@ -11,6 +11,12 @@
 - Minimal translation function and semantically organized folders.
 - AI knowledge, a discoverable skill, and project session memory.
 
+## Terminology (user, 2026-10-02)
+
+- **ZVC/ZVP editing mode**: editing a library definition (`mode === 'library'`).
+- **Template edit mode**: editing a template and its instances (`mode === 'template'`).
+- Library sync is variant sensitive: it only updates instances set to the edited variant.
+
 ## Implementation choices
 
 - `vendor/zaux` contains the pinned dependency. Generated bridges live elsewhere.

@@ -624,7 +624,7 @@ export default defineComponent({
 				: builder.mode.value === "library"
 					? "[data-zb-outline-definition]"
 					: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
-			document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
+			document.querySelector(selector)?.scrollIntoView({ block: "start", behavior: "smooth" });
 		});
 		const outlineHeight = ref(500);
 		const asideEl = ref(null);

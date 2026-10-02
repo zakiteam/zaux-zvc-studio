@@ -1,4 +1,5 @@
 import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
+import { nodeClipboardShortcut } from '../services/node-shortcuts.js';
 import { createFreeInstance, groupFreeInstances } from '../../domain/template-elements.js';
 import { outlineKey, outlineRows, outlineRoots, canMoveOutline, moveOutline } from '../../domain/outline.js';
 import { activeDefinitionOnly, addVariant, selectVariant, renameVariant, removeVariant } from '../../domain/variants.js';
@@ -281,10 +282,24 @@ export function createBuilder({ projectId = null } = {}) {
     } catch (exception) { error.value = exception.message; return false; }
   }
   function clearNodeClipboard() { nodeClipboard.value = null; }
-  function canPasteNodeAt(targetId = nodeId.value, position = 'after', targetInstanceId = instanceId.value) {
+  function cutSelectedNode() {
+    if (!canEditRemote.value || !canCopyNode.value) return false;
+    const previousClipboard = nodeClipboard.value;
+    if (!copySelectedNode()) return false;
+    deleteNode();
+    if (error.value) { nodeClipboard.value = previousClipboard; return false; }
+    return true;
+  }
+  function pastePosition(targetId, position, targetInstanceId) {
+    if (position !== 'auto') return position;
+    return canDropElement({ kind: 'clipboard' }, targetId, 'inside', targetInstanceId) ? 'inside' : 'after';
+  }
+  function canPasteNodeAt(targetId = nodeId.value, position = 'auto', targetInstanceId = instanceId.value) {
+    position = pastePosition(targetId, position, targetInstanceId);
     return Boolean(nodeClipboard.value && canDropElement({ kind: 'clipboard' }, targetId, position, targetInstanceId));
   }
-  function pasteNode(targetId = nodeId.value, position = 'after', targetInstanceId = instanceId.value) {
+  function pasteNode(targetId = nodeId.value, position = 'auto', targetInstanceId = instanceId.value) {
+    position = pastePosition(targetId, position, targetInstanceId);
     if (!canPasteNodeAt(targetId, position, targetInstanceId)) return false;
     let definition = mode.value === 'library' ? activeDefinition.value : activeTemplate.value.instances.find(item => item.id === targetInstanceId)?.definition;
     const freeBoundary = mode.value === 'template' && position !== 'inside' && activeTemplate.value.instances.some(item => item.id === targetInstanceId && item.kind === 'free' && item.definition.tree.some(node => node.id === targetId));
@@ -918,6 +933,20 @@ export function createBuilder({ projectId = null } = {}) {
     try { incoming.value = validateWorkspace(parseJson(event.newValue)); clearTimeout(timer); } catch { error.value = 'zx_builder_invalid_document'; }
   }
   function hotkey(event) {
+    const clipboardAction = nodeClipboardShortcut(event);
+    if (clipboardAction && !modal.value && !previewOnly.value && workspaceView.value === 'design') {
+      const allowed = clipboardAction === 'paste-node' ? canPasteNode.value : canCopyNode.value && (clipboardAction === 'copy-node' || canEditRemote.value);
+      if (allowed) {
+        event.preventDefault();
+        if (!event.repeat) {
+          if (clipboardAction === 'copy-node') copySelectedNode();
+          if (clipboardAction === 'paste-node') pasteNode();
+          if (clipboardAction === 'cut-node') cutSelectedNode();
+          if (clipboardAction === 'duplicate-node') duplicateNode();
+        }
+        return;
+      }
+    }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || modal.value) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); flushSave(); }
@@ -963,6 +992,7 @@ export function createBuilder({ projectId = null } = {}) {
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });
+  Object.assign(api, { cutSelectedNode });
   provide(key, api);
   return api;
 }
