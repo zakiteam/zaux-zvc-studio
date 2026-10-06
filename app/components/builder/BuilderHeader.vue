@@ -79,7 +79,7 @@
 					</BuilderDropdown>
 				</div>
 			</div>
-			<div class="flex justify-center min-[1200px]:justify-self-center">
+			<div class="flex justify-center">
 				<BuilderModeSwitcher />
 			</div>
 			<div class="min-[1200px]:justify-self-end">

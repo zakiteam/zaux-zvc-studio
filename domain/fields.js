@@ -21,3 +21,13 @@ export function isFieldVisible(field, data) {
     }
   });
 }
+// Reorders fields in place: moves `key` before (or after) `targetKey`.
+export function moveField(fields, key, targetKey, after = false) {
+  const from = fields.findIndex(field => field.key === key);
+  if (from < 0 || key === targetKey) return false;
+  const [field] = fields.splice(from, 1);
+  const index = fields.findIndex(item => item.key === targetKey);
+  if (index < 0) { fields.splice(from, 0, field); return false; }
+  fields.splice(index + (after ? 1 : 0), 0, field);
+  return true;
+}

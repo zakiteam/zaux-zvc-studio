@@ -11,12 +11,53 @@
 		>
 			{{ translate("zx_builder_fields_hint") }}
 		</p>
-		<details
+		<div v-if="activeDefinition.fields.length" class="flex items-center justify-between gap-1 pb-1">
+			<h3 class="zb-eyebrow text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
+				{{ translate("zx_builder_fields") }}
+			</h3>
+			<BuilderButton
+				class="!flex-none"
+				variant="alt1"
+				size="xs"
+				icon="dropdown-close"
+				iconOnly
+				:disabled="!openFields.size"
+				:label="translate('zx_builder_collapse_all')"
+				:title="translate('zx_builder_collapse_all')"
+				@click="collapseAllFields"
+			/>
+		</div>
+		<div ref="list" @dragover="dragOver" @drop="drop" @dragleave="leaveList">
+		<!-- The drop line lives outside <details>: a closed details hides everything but its summary. -->
+		<div
 			v-for="field in activeDefinition.fields"
 			:key="field.key"
+			:data-field-key="field.key"
+			class="relative"
+		>
+		<span v-if="dropTarget?.key === field.key" aria-hidden="true"
+			class="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-zaux-accent"
+			:class="dropTarget.after ? 'bottom-0' : 'top-0'" />
+		<details
 			class="zb-field-card"
+			:class="{ 'opacity-50': draggedKey === field.key }"
+			:open="openFields.has(field.key)"
+			@toggle="syncOpen(field.key, $event.target.open)"
 		>
 			<summary>
+				<button
+					v-if="activeDefinition.fields.length > 1"
+					type="button"
+					class="mr-1 cursor-grab rounded-xxs px-0.5 text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent active:cursor-grabbing"
+					draggable="true"
+					:title="translate('zx_builder_field_reorder')"
+					:aria-label="translate('zx_builder_field_reorder')"
+					@click.prevent.stop
+					@dragstart="startDrag($event, field)"
+					@dragend="clearDrag"
+					@keydown.alt.up.prevent="moveWithKeyboard(field, -1)"
+					@keydown.alt.down.prevent="moveWithKeyboard(field, 1)"
+				><span aria-hidden="true">⠿</span></button>
 				{{ field.label }} <code>{{ field.key }}</code>
 			</summary>
 			<div
@@ -24,7 +65,7 @@
 			>
 				<label>{{ translate("zx_builder_field_label") }}</label
 				><input
-					class="px-2 py-1 bg-zaux-light"
+					class="px-2 py-1 bg-zaux-light border-none"
 					:value="field.label"
 					@change="updateField(field.key, 'label', $event.target.value)"
 				/>
@@ -34,7 +75,7 @@
 			>
 				<label>{{ translate("zx_builder_field_type") }}</label
 				><select
-					class="px-2 py-1 bg-zaux-light"
+					class="px-2 py-1 bg-zaux-light border-none"
 					:value="field.type"
 					@change="changeType(field.key, $event.target.value)"
 				>
@@ -74,6 +115,8 @@
 				/>
 			</div>
 		</details>
+		</div>
+		</div>
 		<form
 			class="zb-new-field border-t-slim border-zaux-light-grey py-2.5 [&>h3]:mb-2.5 [&>h3]:text-[14px]"
 			@submit.prevent="addField"
@@ -115,12 +158,15 @@
 					</option>
 				</select>
 			</div>
-			<button
-				type="submit"
-				class="zb-submit inline-flex min-h-[36px] items-center justify-center rounded-xxs bg-zaux-accent px-2.5 py-1.5 !text-[12px] text-zaux-white hover:bg-zaux-dark-accent"
-			>
-				+ {{ translate("zx_builder_add") }}
-			</button>
+			<div class="flex justify-end gap-2 flex-wrap">
+				<BuilderButton
+					size="s"
+					type="submit"
+					icon="add"
+					tag="button"
+					:label="translate('zx_builder_add')"
+				/>
+			</div>
 		</form>
 		<p
 			v-if="fieldError"
@@ -131,9 +177,9 @@
 	</div>
 </template>
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, nextTick, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
-import { fieldInputType } from "../../../../domain/fields.js";
+import { fieldInputType, moveField } from "../../../../domain/fields.js";
 import BuilderButton from "../BuilderButton.vue";
 import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
@@ -190,6 +236,74 @@ export default defineComponent({
 			newLabel.value = "";
 			fieldError.value = "";
 		}
+		// Session-only UI state: which field cards are expanded.
+		const openFields = ref(new Set());
+		function syncOpen(key, open) {
+			if (openFields.value.has(key) === open) return;
+			const next = new Set(openFields.value);
+			if (open) next.add(key);
+			else next.delete(key);
+			openFields.value = next;
+		}
+		function collapseAllFields() {
+			openFields.value = new Set();
+		}
+		const list = ref(null);
+		const draggedKey = ref(null);
+		const dropTarget = ref(null);
+		function clearDrag() {
+			draggedKey.value = null;
+			dropTarget.value = null;
+		}
+		function startDrag(event, field) {
+			draggedKey.value = field.key;
+			event.dataTransfer.setData("application/x-zaux-field", field.key);
+			event.dataTransfer.effectAllowed = "move";
+			const card = event.target.closest("details");
+			if (card) event.dataTransfer.setDragImage(card, 12, 12);
+		}
+		function dragOver(event) {
+			if (!draggedKey.value) return;
+			event.preventDefault();
+			event.dataTransfer.dropEffect = "move";
+			const items = Array.from(list.value.children).filter(
+				(item) => item.dataset.fieldKey && item.dataset.fieldKey !== draggedKey.value,
+			);
+			const before = items.find((item) => {
+				const rect = item.getBoundingClientRect();
+				return event.clientY < rect.top + rect.height / 2;
+			});
+			const target = before ?? items.at(-1);
+			dropTarget.value = target ? { key: target.dataset.fieldKey, after: !before } : null;
+		}
+		function leaveList(event) {
+			if (!list.value?.contains(event.relatedTarget)) dropTarget.value = null;
+		}
+		function drop(event) {
+			if (!draggedKey.value) return;
+			event.preventDefault();
+			const key = draggedKey.value;
+			const target = dropTarget.value;
+			clearDrag();
+			if (!target) return;
+			// Skip the commit (and its undo step) when the drop keeps the current order.
+			const fields = builder.activeDefinition.value.fields;
+			const preview = fields.map((field) => ({ key: field.key }));
+			moveField(preview, key, target.key, target.after);
+			if (preview.every((item, index) => item.key === fields[index].key)) return;
+			builder.updateDefinition((def) => moveField(def.fields, key, target.key, target.after));
+		}
+		async function moveWithKeyboard(field, direction) {
+			const fields = builder.activeDefinition.value.fields;
+			const index = fields.findIndex((item) => item.key === field.key);
+			const target = fields[index + direction];
+			if (index < 0 || !target) return;
+			builder.updateDefinition((def) => moveField(def.fields, field.key, target.key, direction > 0));
+			await nextTick();
+			list.value
+				?.querySelector(`[data-field-key="${CSS.escape(field.key)}"] summary button`)
+				?.focus();
+		}
 		function deleteField(key) {
 			if (
 				JSON.stringify(builder.activeDefinition.value.tree).includes(
@@ -215,6 +329,18 @@ export default defineComponent({
 			changeType,
 			addField,
 			deleteField,
+			openFields,
+			syncOpen,
+			collapseAllFields,
+			list,
+			draggedKey,
+			dropTarget,
+			startDrag,
+			dragOver,
+			leaveList,
+			drop,
+			clearDrag,
+			moveWithKeyboard,
 		};
 	},
 });

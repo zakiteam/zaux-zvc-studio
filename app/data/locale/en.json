@@ -340,6 +340,7 @@
   "zx_builder_binding": "Bind to a field",
   "zx_builder_literal": "Direct value",
   "zx_builder_fields_hint": "Fields define the configurable data of your ZVC. Bind them to element properties.",
+  "zx_builder_field_reorder": "Drag to reorder or use Alt + up/down arrow",
   "zx_builder_no_fields": "This ZVC has no configurable fields yet.",
   "zx_builder_field_used": "This field is still bound to a property. Remove the binding first.",
   "zx_builder_field_exists": "The key is invalid or already in use.",

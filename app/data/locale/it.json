@@ -340,6 +340,7 @@
   "zx_builder_binding": "Collega a un campo",
   "zx_builder_literal": "Valore diretto",
   "zx_builder_fields_hint": "I campi definiscono i dati configurabili del ZVC. Collegali alle proprietà degli elementi.",
+  "zx_builder_field_reorder": "Trascina per riordinare oppure usa Alt + freccia su/giù",
   "zx_builder_no_fields": "Questo ZVC non ha ancora campi configurabili.",
   "zx_builder_field_used": "Questo campo è ancora collegato a una proprietà. Rimuovi prima il collegamento.",
   "zx_builder_field_exists": "La chiave non è valida o è già in uso.",

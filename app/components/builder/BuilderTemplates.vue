@@ -1,7 +1,7 @@
 <template>
   <section class="zb-scroll min-h-0 flex-1 overflow-auto bg-zaux-light p-3" :aria-label="translate('zx_builder_templates')">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-[16px] font-semibold">{{ translate('zx_builder_templates') }}</h2>
+      <h2 class="text-[16px] font-semibold">{{ translate('zx_builder_templates') }} ({{ document.templates?.length }})</h2>
       <div class="flex flex-wrap gap-1">
         <BuilderButton size="xs" variant="alt1" :label="translate('zx_builder_back_template')" @click="selectTemplate(activeTemplate.id)" />
         <BuilderButton size="xs" icon="add" :label="translate('zx_builder_new_template')" :disabled="!canEditRemote || remoteProjectBusy" @click="modal = { type: 'new-template' }" />
