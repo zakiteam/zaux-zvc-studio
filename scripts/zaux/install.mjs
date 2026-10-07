@@ -80,7 +80,45 @@ async function extract(buffer, destination) {
   return caseVariants;
 }
 
-function replaceTarget(staging) {
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Windows briefly locks freshly written files (antivirus, search indexer, a running
+// dev server's file watcher). Retry transient lock failures instead of failing
+// immediately, so the atomic swap never leaves vendor/zaux missing.
+const RETRYABLE = new Set(['EPERM', 'EACCES', 'EBUSY', 'ENOTEMPTY']);
+const LOCK_HINT = '\nThe directory is locked by another process (a running dev server, editor or antivirus). Stop "npm run dev", close editors, then run "npm run install:zaux" again.';
+
+async function renameWithRetry(from, to) {
+  let lastError;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (error) {
+      if (!RETRYABLE.has(error.code)) throw error;
+      lastError = error;
+      await sleep(150 * (attempt + 1));
+    }
+  }
+  lastError.message += LOCK_HINT;
+  throw lastError;
+}
+
+async function removeWithRetry(path) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      rmSync(path, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!RETRYABLE.has(error.code)) throw error;
+      await sleep(150 * (attempt + 1));
+    }
+  }
+  // A leftover that could not be removed must not abort the install.
+  console.warn(`Could not remove ${path}; it will be retried on the next run.`);
+}
+
+async function replaceTarget(staging) {
   if (existsSync(target)) {
     if (existsSync(resolve(target, '.git')) || (!readMarker() && existsSync(resolve(target, 'package.json')))) {
       throw new Error('vendor/zaux is not a managed release (Git checkout or unknown files). Remove it manually first.');
@@ -89,15 +127,21 @@ function replaceTarget(staging) {
   // Swap through a backup: a running dev server can briefly lock files on Windows,
   // and a failed rename must not leave vendor/zaux missing.
   const backup = `${target}.previous`;
-  rmSync(backup, { recursive: true, force: true });
-  if (existsSync(target)) renameSync(target, backup);
+  await removeWithRetry(backup);
+  if (existsSync(target)) await renameWithRetry(target, backup);
   try {
-    renameSync(staging, target);
+    await renameWithRetry(staging, target);
   } catch (error) {
-    if (existsSync(backup)) renameSync(backup, target);
+    if (existsSync(backup)) {
+      try {
+        await renameWithRetry(backup, target);
+      } catch (restoreError) {
+        error.message += `\nAlso failed to restore the previous release from ${backup} (${restoreError.code}); restore it manually.`;
+      }
+    }
     throw error;
   }
-  rmSync(backup, { recursive: true, force: true });
+  await removeWithRetry(backup);
 }
 
 export async function installZaux() {
@@ -108,7 +152,7 @@ export async function installZaux() {
   if (!sourceDir && current?.version === version && current?.repository === repository && Array.isArray(current.caseVariants)) return current;
 
   const staging = `${target}.staging`;
-  rmSync(staging, { recursive: true, force: true });
+  await removeWithRetry(staging);
   mkdirSync(staging, { recursive: true });
   try {
     let caseVariants = [];
@@ -119,9 +163,9 @@ export async function installZaux() {
     }
     if (!existsSync(resolve(staging, 'core/setup.js'))) throw new Error(`Zaux ${wanted.version} does not look like a Zaux release (core/setup.js missing).`);
     writeFileSync(resolve(staging, '.zaux-release.json'), JSON.stringify({ ...wanted, caseVariants, installedAt: new Date().toISOString() }, null, 2) + '\n');
-    replaceTarget(staging);
+    await replaceTarget(staging);
   } catch (error) {
-    rmSync(staging, { recursive: true, force: true });
+    await removeWithRetry(staging);
     throw error;
   }
   console.log(`Zaux ${wanted.version} installed in vendor/zaux.`);

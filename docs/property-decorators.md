@@ -79,6 +79,7 @@ used in the Fields/Data tab.
 | `textarea` | `control: 'textarea'`, or a long-text prop (`excerpt`, `contentHTML`, `innerHTML`, `paragraph`, `textContent`) |
 | `html` | `control: 'html'` (source / rich text / HTML) |
 | `css-editor` | `control: 'css-editor'` |
+| `classes` | `control: 'classes'` (value `null`, absent or string) → [BuilderStyleInput.vue](../app/components/builder/fields/BuilderStyleInput.vue): class string with Tailwind suggestions and CSS preview, as in the Style tab |
 | `json` | `null`, object or array value, or `type: Object` / `type: Array` |
 | `select` | `selectOptions([...])` → `control: 'select'` + `options` |
 | `buttongroup` | `control: 'buttongroup'` |
@@ -96,15 +97,16 @@ used in the Fields/Data tab.
 
 `propertyValueType` resolves in this order:
 
-1. `null` or object/array value → `json`
-2. boolean value → `switch`
-3. numeric value → `number`
-4. `descriptor.control` in `text`, `textarea`, `html`, `css-editor` → that editor
-5. string value: long-text prop name → `textarea`, otherwise `text`
-6. `descriptor.type === Boolean` or boolean `default` → `switch`
-7. `descriptor.type === Number` or numeric `default` → `number`
-8. `descriptor.type === Object` or `Array` → `json`
-9. fallback → `text`
+1. `descriptor.control === 'classes'` with a `null`, absent or string value → `classes`
+2. `null` or object/array value → `json`
+3. boolean value → `switch`
+4. numeric value → `number`
+5. `descriptor.control` in `text`, `textarea`, `html`, `css-editor` → that editor
+6. string value: long-text prop name → `textarea`, otherwise `text`
+7. `descriptor.type === Boolean` or boolean `default` → `switch`
+8. `descriptor.type === Number` or numeric `default` → `number`
+9. `descriptor.type === Object` or `Array` → `json`
+10. fallback → `text`
 
 `BuilderProperty` then intercepts, before the scalar fallback, in this order:
 bindings, `media: true`, `properties` (object), `items` (array), `buttongroup`,
@@ -127,6 +129,8 @@ Out-of-list values keep a "custom value" entry and remain editable.
 - OffCanvasTrigger.offCanvasId, ZModalTrigger.modalId: options from the current
   trees, deduplicated by ID.
 - a.target: static select; a.href, a.id, a.rel: HTML attribute descriptors.
+- ScrollTopSentinel.scrolledClasses, ScrollTopSentinel.unScrolledClasses: `control: 'classes'`.
+  A `null` value shows an empty field and is kept until the user edits it.
 
 [icon-options.js](../integrations/zaux/options/icon-options.js) reads symbol-defs.svg
 files through a Vite raw glob. These assets remain read-only. Added source asset

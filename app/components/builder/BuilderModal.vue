@@ -19,7 +19,7 @@
 				<Icon iconName="info" size="text-icon-xxs" aria-hidden="true" />
 			</span>
 			<slot name="header" :close="close" />
-			<BuilderButton class="ml-auto" icon="close" iconOnly size="xs" variant="alt1" :disabled="busy" :label="translate('zx_builder_close')" @click="close" />
+			<BuilderButton class="ml-auto !px-0" icon="close" iconOnly size="xs" variant="alt1" :disabled="busy" :label="translate('zx_builder_close')" @click="close" />
 		</header>
 		<div class="zb-modal-body zb-scroll min-h-0 flex-1 overflow-auto" :class="bodyClass">
 			<slot :close="close" />

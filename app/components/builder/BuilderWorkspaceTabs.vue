@@ -2,7 +2,9 @@
   <nav v-if="tabs.length" :aria-label="translate('zx_builder_workspace_tabs')" class="min-w-0">
     <div ref="strip" class="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       @dragover="dragOver" @drop="drop" @dragleave="leaveStrip" @dragend="clearDrag">
+      <!-- Middle click closes a tab, as in browsers and code editors; mousedown is cancelled to avoid autoscroll. -->
       <div v-for="tab in tabs" :key="tab.key" :data-workspace-tab="tab.key"
+        @mousedown.middle.prevent @auxclick.middle.prevent="close(tab)"
         class="group/tab relative flex h-[30px] shrink-0 items-center rounded-xxs text-[11px]"
         :class="[tab.key === activeKey ? 'bg-zaux-light text-zaux-dark' : 'text-zaux-dark-grey hover:bg-zaux-light/60', { 'opacity-50': draggedKey === tab.key }]">
         <span v-if="dropTarget?.key === tab.key" aria-hidden="true"

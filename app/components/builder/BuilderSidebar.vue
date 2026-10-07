@@ -151,6 +151,15 @@
 						/>
 						<BuilderTree v-if="instance.kind === 'free'" :nodes="instance.definition.tree" :instance="instance.id" />
 						<template v-else>
+						<BuilderDropdown
+							:context-menu="true"
+							content-class="!w-max !max-w-max !pb-1"
+							:label="translate('zx_builder_instance_actions') + ': ' + instance.name"
+							:items="instanceContextItems(instance)"
+							@contextmenu="selectOutlineRow(instance.id, null, false, true)"
+							@select="instanceContextAction($event, instance)"
+						>
+						<template #trigger="{ open, menuId }">
 						<div class="zb-instance-heading group/instance flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light" :class="{ 'bg-zaux-accent/5': outlineSelected(instance.id) }">
 							<button
 								type="button"
@@ -178,6 +187,9 @@
 								class="zb-instance-name select-none flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-semibold"
 								:class="{ 'text-zaux-accent': outlineSelected(instance.id) }"
 								:aria-pressed="outlineSelected(instance.id)"
+								aria-haspopup="menu"
+								:aria-expanded="open"
+								:aria-controls="menuId"
 								@mousedown.shift.prevent
 								@click="revealInstance(instance.id, $event)"
 								@dblclick="modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name }"
@@ -204,26 +216,11 @@
 								/>
 							</div>
 						</div>
+							</template>
+							</BuilderDropdown>
 						<template v-if="!collapsedOutline.has('instance:' + instance.id)">
-							<div v-if="instanceId === instance.id" class="flex flex-wrap items-center gap-0.5 py-0.5 pl-3 [&>.zb-button]:!text-[10px]">
-								<BuilderButton size="xs" variant="alt1" icon="edit"
-									:extraProps="{ actionIcon: false }"
-									:label="translate('zx_builder_rename')"
-									@click="modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name }" />
-								<BuilderButton size="xs" variant="alt1" icon="refresh"
-									:extraProps="{ actionIcon: false }"
-									:label="translate('zx_builder_restore_library')"
-									:title="translate(instanceLibraryDefinition ? 'zx_builder_restore_library_hint' : 'zx_builder_restore_library_missing')"
-									:disabled="!canEditRemote || !instanceLibraryDefinition"
-									@click="restoreActiveInstance" />
-								<BuilderButton size="xs" icon="enter" iconOnly variant="alt1"
-									:label="translate('zx_builder_edit_library')"
-									:disabled="!instanceLibraryDefinition"
-									@click="instanceLibraryDefinition && selectLibrary(instanceLibraryDefinition.id)" />
-								<details
-									v-if="instance.unmappedProperties?.length"
-									class="w-full mt-0 mb-0 text-[10px] !py-0.5"
-								>
+							<div v-if="instanceId === instance.id && instance.unmappedProperties?.length" class="py-0.5 pl-3">
+								<details class="w-full mt-0 mb-0 text-[10px] !py-0.5">
 									<summary class="pb-0">
 										{{ translate("zx_builder_restore_unmapped") }}
 									</summary>
@@ -657,6 +654,30 @@ export default defineComponent({
 			if (!event.shiftKey) builder.reveal(id);
 		}
 
+		// Right-click menu on a ZVC instance name in the outline.
+		function instanceContextItems(instance) {
+			const original = builder.document.value.library.some((item) => item.id === instance.sourceId);
+			const editable = builder.canEditRemote.value;
+			return [
+				{ id: "edit-library", icon: "enter", label: builder.translate("zx_builder_edit_library"), disabled: !original },
+				{ id: "rename", icon: "edit", label: builder.translate("zx_builder_rename"), disabled: !editable },
+				{ id: "export", icon: "download", label: builder.translate("zx_builder_export_instance") },
+				{ id: "sync", icon: "refresh", label: builder.translate("zx_builder_restore_library"), disabled: !editable || !original },
+				{ id: "reset", icon: "loop", label: builder.translate("zx_builder_reset_instance"), disabled: !editable || !original, danger: true },
+			];
+		}
+		function instanceContextAction(item, instance) {
+			if (item.id === "rename") builder.modal.value = { type: "rename", kind: "instance", id: instance.id, name: instance.name };
+			else if (item.id === "sync") builder.restoreActiveInstance();
+			else if (item.id === "reset") builder.resetInstance(instance.id);
+			else if (item.id === "edit-library") builder.selectLibrary(instance.sourceId);
+			else if (item.id === "export") {
+				// The export dialog reads the component scope from the selected instance.
+				if (builder.instanceId.value !== instance.id) builder.selectOutlineRow(instance.id, null, false, true);
+				builder.openExport({ scope: "component" });
+			}
+		}
+
 		return {
 			...builder,
 			tabs: TABS,
@@ -675,6 +696,8 @@ export default defineComponent({
 			previewId,
 			setPreview,
 			revealInstance,
+			instanceContextItems,
+			instanceContextAction,
 			hintsOpen,
 		};
 	},

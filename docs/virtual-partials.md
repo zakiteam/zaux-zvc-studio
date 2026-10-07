@@ -91,7 +91,7 @@ Library has separate ZVC and ZVP tabs, with the existing search and Imported/Pro
 
 Selecting a partial node opens its Data editor. The same field editor is used in Properties and for partial slides; it respects configured types, showIf, typed/custom options, image controls, bindings and edit permissions. Native source bases remain unchanged.
 
-Restore from library restores the selected node or slide using the existing ZVC restoration policy: preserve content/data, restore structure, field metadata and styles. The operation creates an independent captured dependency with a unique descriptor name, so other occurrences in the same template are not changed. Its optional libraryId keeps the original library identity for subsequent restores, including after renaming. The entire restoration is one undoable commit. A deleted library original disables restoration.
+Sync with original restores the selected node or slide using the existing ZVC restoration policy: preserve content/data, restore structure, field metadata and styles. The operation creates an independent captured dependency with a unique descriptor name, so other occurrences in the same template are not changed. Its optional libraryId keeps the original library identity for subsequent restores, including after renaming. The entire restoration is one undoable commit. A deleted library original disables restoration.
 
 ### Files changed for this refinement
 

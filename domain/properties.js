@@ -1,5 +1,7 @@
 // Actual JSON values take precedence so imported custom values retain their type.
 export function propertyValueType(property, value, descriptor = {}) {
+  // Class strings: null/absent values show an empty field and stay untouched until edited.
+  if (descriptor.control === 'classes' && (value == null || typeof value === 'string')) return 'classes';
   if (value === null || (value && typeof value === 'object')) return 'json';
   if (typeof value === 'boolean') return 'switch';
   if (typeof value === 'number') return 'number';

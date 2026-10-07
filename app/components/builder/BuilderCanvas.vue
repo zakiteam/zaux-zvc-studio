@@ -15,6 +15,11 @@
         </div>
       </div>
     </div>
+    <!-- Canvas right-click menu: the iframe forwards the point, the menu renders in the editor document. -->
+    <BuilderDropdown ref="contextMenu" context-menu content-class="!w-max !max-w-max !pb-1"
+      :label="translate('zx_builder_canvas_actions')" :items="contextItems" @select="contextAction">
+      <template #trigger><span aria-hidden="true" /></template>
+    </BuilderDropdown>
   </div>
 </template>
 <script>
@@ -22,11 +27,29 @@ import { computed, defineComponent, ref, watch, onMounted, onBeforeUnmount } fro
 import { runtimeNodes } from '../../../domain/nodes.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
+import BuilderDropdown from './BuilderDropdown.vue';
 export default defineComponent({
+  components: { BuilderDropdown },
   setup() {
     const builder = useBuilder();
     const frame = ref(null);
     const stage = ref(null);
+    const contextMenu = ref(null);
+    const contextItems = computed(() => [
+      { id: 'edit-library', icon: 'enter', label: builder.translate('zx_builder_edit_library'), hidden: builder.mode.value !== 'template', disabled: !builder.instanceLibraryDefinition.value },
+      { id: 'export-runtime', icon: 'download', label: builder.translate('zx_builder_export_zaux_json'), disabled: !builder.activeDefinition.value },
+      { id: 'export-js', icon: 'download', label: builder.translate('zx_builder_export_component_js'), disabled: !builder.activeDefinition.value },
+    ]);
+    function contextAction(item) {
+      if (item.id === 'edit-library') builder.selectLibrary(builder.instanceLibraryDefinition.value.id);
+      if (item.id === 'export-runtime') builder.openExport({ scope: 'component', format: 'runtime' });
+      if (item.id === 'export-js') builder.openExport({ scope: 'component', format: 'js' });
+    }
+    // Iframe coordinates are scaled by the canvas zoom; the frame rectangle already includes it.
+    function openContextMenu({ x, y }) {
+      const rect = frame.value?.getBoundingClientRect();
+      if (rect && Number.isFinite(x) && Number.isFinite(y)) contextMenu.value?.openAt(rect.left + x * layout.value.scale, rect.top + y * layout.value.scale);
+    }
     const stageSize = ref({ width: 0, height: 0 });
     let stageObserver;
     // Frame keeps its nominal viewport width; zoom only scales it visually inside the stage.
@@ -72,7 +95,10 @@ export default defineComponent({
       }
       if (message.type === 'layout') { if (!builder.modal.value) builder.runLayoutShortcut(message.action); return; }
       if (message.type === 'ready') sendState();
+      if (message.type === 'context-menu') { if (!builder.previewOnly.value && !builder.modal.value) openContextMenu(message); return; }
       if (message.type === 'select') {
+        // A click inside the iframe never reaches this document's pointer listeners.
+        contextMenu.value?.close();
         builder.selectInstance(message.instanceId, message.nodeId);
         if (message.revealOutline) builder.revealOutline(message.instanceId, message.nodeId);
       }
@@ -100,7 +126,7 @@ export default defineComponent({
       stageObserver.observe(stage.value);
     });
     onBeforeUnmount(() => { stageObserver?.disconnect(); builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
-    return { ...builder, frame, stage, layout, sendState };
+    return { ...builder, frame, stage, layout, sendState, contextMenu, contextItems, contextAction };
   }
 });
 </script>

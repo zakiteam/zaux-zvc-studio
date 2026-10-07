@@ -30,7 +30,8 @@ export function nodeClipboardShortcut(event, options) {
 
 // Figma-style canvas/layout keys: Ctrl+\ toggles the panels, Shift+1 fits, Shift+0 is 100%, Ctrl +/- zooms.
 // Navigation keys work from form fields too (not from code/rich-text editors, where Ctrl+L selects a line):
-// Ctrl+P opens the command palette, Ctrl+K focuses the Elements search, Ctrl+L the Library search.
+// Ctrl+P opens the command palette, Ctrl+K focuses the Elements search, Ctrl+L the Library search,
+// Ctrl+E opens the export dialog on the selected ZVC.
 // Alt+1/2/3 open the Structure, Library and Elements tabs (Figma's Alt+number panels); the physical
 // key is read so macOS Option, which types a character, works too.
 export function layoutShortcut(event, options) {
@@ -43,7 +44,7 @@ export function layoutShortcut(event, options) {
   }
   const command = event.ctrlKey || event.metaKey;
   if (command && !event.shiftKey && !target?.isContentEditable && !target?.closest?.('.cm-editor') && !insideDialog(target, options)) {
-    const navigation = { p: 'command-palette', k: 'focus-elements', l: 'focus-library' }[event.key.toLowerCase()];
+    const navigation = { p: 'command-palette', k: 'focus-elements', l: 'focus-library', e: 'export-component' }[event.key.toLowerCase()];
     if (navigation) return navigation;
   }
   if (textEntry(target) || insideDialog(target, options)) return null;

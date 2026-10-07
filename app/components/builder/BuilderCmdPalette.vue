@@ -37,25 +37,46 @@
 				v-for="(item, index) in results"
 				:key="item.id"
 				:id="optionId(item)"
+				:data-zb-thumb="item.kind === 'element' ? undefined : item.id"
 				role="option"
 				:aria-selected="index === activeIndex"
 				class="group flex cursor-pointer items-center gap-1 rounded-xxs py-0.5 pl-1 pr-1.5"
 				:class="index === activeIndex ? 'bg-zaux-light' : ''"
 				@mousemove="activeIndex = index"
-				@click="openItem(item)"
+				@click="insertItem(item)"
 			>
 				<span
 					class="w-[30px] shrink-0 rounded-xxs py-0.25 text-center text-[9px] font-semibold"
-					:class="(item.kind ?? 'zvc') === 'zvp' ? 'bg-utility-notice/30 text-zaux-dark' : 'bg-zaux-accent/15 text-zaux-accent'"
-				>{{ (item.kind ?? 'zvc').toUpperCase() }}</span>
+					:class="kindClass(item)"
+				>{{ kindLabel(item) }}</span>
+				<!-- Inline thumbnail: the cached Library capture, requested lazily while the row is in view. -->
+				<span class="grid h-[36px] w-[48px] shrink-0 place-items-center overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white" aria-hidden="true">
+					<span v-if="item.kind === 'element'" class="text-[16px] text-zaux-accent">{{ containers.includes(item.name) ? "▤" : "◇" }}</span>
+					<img v-else-if="thumbnailOf(item)" :src="thumbnailOf(item)" alt="" loading="lazy" class="h-full w-full" :class="item.previewImage ? 'object-cover' : 'object-contain object-top'" />
+				</span>
 				<span class="min-w-0 flex-1">
 					<span class="block truncate text-[12px] font-semibold">{{ item.name }}</span>
 					<span class="block truncate text-[10px] text-zaux-dark-grey">
-						<span class="font-mono">{{ item.exportName }}</span>
-						· {{ translate(item.id === 'source:' + item.sourceKey ? 'zx_builder_library_imported' : 'zx_builder_library_project') }}
-						<template v-if="mode === 'library' && item.id === libraryId"> · {{ translate('zx_builder_cmd_current') }}</template>
+						<template v-if="item.kind === 'element'">{{ translate(item.group) }}</template>
+						<template v-else>
+							<span class="font-mono">{{ item.exportName }}</span>
+							· {{ translate(item.id === 'source:' + item.sourceKey ? 'zx_builder_library_imported' : 'zx_builder_library_project') }}
+							<template v-if="mode === 'library' && item.id === libraryId"> · {{ translate('zx_builder_cmd_current') }}</template>
+						</template>
 					</span>
 				</span>
+				<BuilderButton
+					v-if="item.kind !== 'element'"
+					size="xs"
+					variant="alt1"
+					icon="enter"
+					tabindex="-1"
+					:extraProps="{ actionIcon: false }"
+					:label="translate('zx_builder_cmd_open')"
+					class="shrink-0 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+					:class="{ '!opacity-100': index === activeIndex }"
+					@click.stop="openItem(item)"
+				/>
 				<BuilderButton
 					size="xs"
 					variant="alt1"
@@ -79,21 +100,27 @@
 			:aria-label="translate('zx_builder_cmd_preview')"
 		>
 			<div class="relative grid aspect-[4/3] w-full shrink-0 place-items-center overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white">
-				<img v-if="previewImage" :src="previewImage" alt="" class="h-full w-full" :class="activeItem.previewImage ? 'object-cover' : 'object-contain object-top'" />
+				<span v-if="activeItem.kind === 'element'" class="text-[48px] text-zaux-accent" aria-hidden="true">{{ containers.includes(activeItem.name) ? "▤" : "◇" }}</span>
+				<img v-else-if="previewImage" :src="previewImage" alt="" class="h-full w-full" :class="activeItem.previewImage ? 'object-cover' : 'object-contain object-top'" />
 				<span v-else class="px-2 text-center text-[11px] text-zaux-dark-grey" :title="previewEntry?.error">
 					{{ translate(previewEntry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}
 				</span>
 			</div>
 			<div class="min-w-0">
 				<p class="truncate text-[13px] font-semibold" :title="activeItem.name">{{ activeItem.name }}</p>
-				<p class="truncate font-mono text-[10px] text-zaux-dark-grey">{{ activeItem.exportName }}</p>
-				<p class="text-[10px] text-zaux-dark-grey">
-					{{ (activeItem.kind ?? 'zvc').toUpperCase() }} · {{ translate(activeItem.id === 'source:' + activeItem.sourceKey ? 'zx_builder_library_imported' : 'zx_builder_library_project') }}
-					<template v-if="activeItem.fields?.length"> · {{ activeItem.fields.length }} {{ translate('zx_builder_fields').toLowerCase() }}</template>
-				</p>
+				<template v-if="activeItem.kind === 'element'">
+					<p class="text-[10px] text-zaux-dark-grey">{{ translate(activeItem.group) }}</p>
+				</template>
+				<template v-else>
+					<p class="truncate font-mono text-[10px] text-zaux-dark-grey">{{ activeItem.exportName }}</p>
+					<p class="text-[10px] text-zaux-dark-grey">
+						{{ kindLabel(activeItem) }} · {{ translate(activeItem.id === 'source:' + activeItem.sourceKey ? 'zx_builder_library_imported' : 'zx_builder_library_project') }}
+						<template v-if="activeItem.fields?.length"> · {{ activeItem.fields.length }} {{ translate('zx_builder_fields').toLowerCase() }}</template>
+					</p>
+				</template>
 			</div>
 			<div class="mt-auto flex flex-wrap gap-1">
-				<BuilderButton size="xs" icon="enter" tabindex="-1" :extraProps="{ actionIcon: false }" :label="translate('zx_builder_cmd_open')" @click="openItem(activeItem)" />
+				<BuilderButton v-if="activeItem.kind !== 'element'" size="xs" icon="enter" tabindex="-1" :extraProps="{ actionIcon: false }" :label="translate('zx_builder_cmd_open')" @click="openItem(activeItem)" />
 				<BuilderButton size="xs" variant="primary" icon="plus" tabindex="-1" :extraProps="{ actionIcon: false }"
 					:label="translate('zx_builder_cmd_insert')" :title="insertTitle(activeItem)" :disabled="!canInsert(activeItem)" @click="insertItem(activeItem)" />
 			</div>
@@ -108,10 +135,14 @@
 <script>
 import { computed, defineComponent, nextTick, onBeforeUnmount, ref, useId, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
+import { catalog, containers } from "../../services/catalog.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderModal from "./BuilderModal.vue";
 
-const LIMIT = 60;
+const LIMIT = 100;
+
+// Palette elements can only be inserted; library definitions can also be opened for editing.
+const ELEMENTS = catalog.map((entry) => ({ id: "element:" + entry.name, kind: "element", name: entry.name, group: entry.group }));
 
 // 3: prefix, 2: substring, 1: characters in order (fuzzy, as in a quick-open), 0: no match.
 function matchScore(text, query) {
@@ -127,7 +158,7 @@ function matchScore(text, query) {
 	return 0;
 }
 
-// Quick-open for ZVC/ZVP definitions: Enter edits, Shift+Enter or the row button inserts into the current context.
+// Quick-open for ZVC/ZVP definitions and palette elements: Enter inserts into the current context, Shift+Enter edits a definition.
 export default defineComponent({
 	components: { BuilderButton, BuilderModal },
 	setup() {
@@ -139,10 +170,13 @@ export default defineComponent({
 		const optionId = (item) => `${listId}-${item.id.replace(/[^\w-]/g, "_")}`;
 		const results = computed(() => {
 			const needle = query.value.trim().toLowerCase();
-			return builder.document.value.library
+			return [...builder.document.value.library, ...ELEMENTS]
 				.map((item) => ({ item, score: Math.max(matchScore(item.name, needle), matchScore(item.exportName, needle), matchScore(item.sourceKey, needle)) }))
 				.filter((entry) => entry.score > 0)
-				.sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name, builder.language.value, { sensitivity: "base" }))
+				// At equal score, library definitions come before palette elements.
+				.sort((a, b) => b.score - a.score
+					|| (a.item.kind === "element") - (b.item.kind === "element")
+					|| a.item.name.localeCompare(b.item.name, builder.language.value, { sensitivity: "base" }))
 				.slice(0, LIMIT)
 				.map((entry) => entry.item);
 		});
@@ -150,31 +184,67 @@ export default defineComponent({
 		const activeItem = computed(() => results.value[activeIndex.value] ?? null);
 		const previewEntry = computed(() => (activeItem.value ? builder.libraryThumbnails.value[activeItem.value.id] : null));
 		const previewImage = computed(() => activeItem.value?.previewImage || previewEntry.value?.url || "");
+		const thumbnailOf = (item) => item.previewImage || builder.libraryThumbnails.value[item.id]?.url || "";
 		// Render a missing thumbnail only once the selection rests, so arrowing through results stays cheap.
 		let previewTimer;
 		watch(activeItem, (item) => {
 			clearTimeout(previewTimer);
-			if (item && !item.previewImage) previewTimer = setTimeout(() => builder.ensureLibraryThumbnail(item.id), 250);
+			if (item && item.kind !== "element" && !item.previewImage) previewTimer = setTimeout(() => builder.ensureLibraryThumbnail(item.id), 250);
 		}, { immediate: true });
-		onBeforeUnmount(() => clearTimeout(previewTimer));
+		// Inline thumbnails: request captures only for rows that stay in view for a moment.
+		const rowTimers = new Map();
+		let observer;
+		function clearRowTimers() {
+			for (const timer of rowTimers.values()) clearTimeout(timer);
+			rowTimers.clear();
+		}
+		function observeRows() {
+			observer?.disconnect();
+			clearRowTimers();
+			if (!list.value) return;
+			observer = new IntersectionObserver((entries) => {
+				for (const entry of entries) {
+					const id = entry.target.dataset.zbThumb;
+					clearTimeout(rowTimers.get(id));
+					rowTimers.delete(id);
+					if (entry.isIntersecting) rowTimers.set(id, setTimeout(() => { rowTimers.delete(id); builder.ensureLibraryThumbnail(id); }, 400));
+				}
+			}, { root: list.value, rootMargin: "60px" });
+			for (const row of list.value.querySelectorAll("[data-zb-thumb]")) {
+				const definition = builder.document.value.library.find((item) => item.id === row.dataset.zbThumb);
+				if (definition && !definition.previewImage) observer.observe(row);
+			}
+		}
+		watch(results, observeRows, { flush: "post", immediate: true });
+		onBeforeUnmount(() => {
+			clearTimeout(previewTimer);
+			observer?.disconnect();
+			clearRowTimers();
+		});
 		const insertTarget = computed(() => builder.mode.value === "library"
 			? `${builder.activeDefinition.value?.kind === "zvp" ? "ZVP" : "ZVC"}: ${builder.activeDefinition.value?.name ?? ""}`
 			: `${builder.translate("zx_builder_template")}: ${builder.activeTemplate.value.name}`);
-		// Templates accept both kinds; a definition being edited accepts only ZVPs that would not create a cycle.
+		const kindLabel = (item) => (item.kind === "element" ? builder.translate("zx_builder_cmd_kind_element") : (item.kind ?? "zvc").toUpperCase());
+		const kindClass = (item) => item.kind === "element" ? "bg-zaux-light-grey/40 text-zaux-dark"
+			: item.kind === "zvp" ? "bg-utility-notice/30 text-zaux-dark" : "bg-zaux-accent/15 text-zaux-accent";
+		// Templates accept every kind; a definition being edited accepts elements and only ZVPs that would not create a cycle.
 		function canInsert(item) {
 			if (!builder.canEditRemote.value) return false;
 			if (builder.mode.value === "template") return true;
-			if (builder.isSource.value || item.kind !== "zvp") return false;
+			if (builder.isSource.value) return false;
+			if (item.kind === "element") return true;
+			if (item.kind !== "zvp") return false;
 			return builder.selectablePartials.value.some((partial) => partial.exportName === item.exportName);
 		}
 		function insertTitle(item) {
 			if (canInsert(item)) return builder.translate("zx_builder_cmd_insert") + ": " + insertTarget.value;
 			if (!builder.canEditRemote.value) return builder.translate("zx_builder_project_readonly");
-			if (builder.mode.value === "library" && item.kind !== "zvp") return builder.translate("zx_builder_cmd_insert_zvc");
+			if (builder.mode.value === "library" && !builder.isSource.value && (item.kind ?? "zvc") === "zvc") return builder.translate("zx_builder_cmd_insert_zvc");
 			return builder.translate("zx_builder_cmd_insert_unavailable");
 		}
 		function close() { builder.commandPaletteOpen.value = false; }
 		function openItem(item) {
+			if (item.kind === "element") return;
 			builder.selectLibrary(item.id);
 			close();
 		}
@@ -182,9 +252,10 @@ export default defineComponent({
 			if (!canInsert(item)) return;
 			if (builder.mode.value === "template") {
 				builder.templatesOpen.value = false;
-				if (item.kind === "zvp") builder.insertPartial(item.id);
+				if (item.kind === "element") builder.addTemplateElement(item.name);
+				else if (item.kind === "zvp") builder.insertPartial(item.id);
 				else builder.insertInstance(item.id);
-			} else builder.addElement(item.exportName);
+			} else builder.addElement(item.kind === "element" ? item.name : item.exportName);
 			close();
 		}
 		async function move(step) {
@@ -202,8 +273,8 @@ export default defineComponent({
 			else if (event.key === "PageUp") { event.preventDefault(); move(-Math.min(8, activeIndex.value)); }
 			else if (event.key === "Enter" && item) {
 				event.preventDefault();
-				if (event.shiftKey) insertItem(item);
-				else openItem(item);
+				if (event.shiftKey) openItem(item);
+				else insertItem(item);
 			} else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
 				// Pressing the opening shortcut again closes the palette instead of printing.
 				event.preventDefault();
@@ -214,8 +285,9 @@ export default defineComponent({
 			translate: builder.translate,
 			mode: builder.mode,
 			libraryId: builder.libraryId,
-			query, activeIndex, list, listId, optionId, results, insertTarget, activeItem, previewEntry, previewImage,
-			canInsert, insertTitle, close, openItem, insertItem, onKeydown,
+			containers,
+			query, activeIndex, list, listId, optionId, results, insertTarget, activeItem, previewEntry, previewImage, thumbnailOf,
+			kindLabel, kindClass, canInsert, insertTitle, close, openItem, insertItem, onKeydown,
 		};
 	},
 });

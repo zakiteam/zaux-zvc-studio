@@ -1,9 +1,9 @@
 <template>
-  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @click.capture="select" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
+  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @click.capture="select" @contextmenu="contextMenu" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
     <p v-if="fontErrors.length" role="alert" class="bg-utility-error/10 p-2 font-builder text-[12px] text-utility-error">{{ translate('zx_builder_fonts_load_error') }}</p>
     <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.clean && !state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
-    <section v-for="instance in state.instances" :key="instance.id" :data-zb-instance="instance.id" class="zb-stage-instance min-h-[12px]" :class="{ 'zb-stage-instance--empty': !instance.definition.tree.length }">
+    <section v-for="instance in state.instances" :key="instance.id" :data-zb-instance="instance.id" class="zb-stage-instance" :class="{ 'zb-stage-instance--empty': !instance.definition.tree.length }">
       <PreviewInstance :instance="instance" :editable="state.editable" :ui-settings="state.styles?.uiSettings" :message="translate('zx_builder_preview_error')" @error="renderFailure = $event" />
       <div v-if="!state.clean && !instance.definition.tree.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ instance.name }}</span><h2>{{ translate('zx_builder_empty_tree') }}</h2></div>
     </section>
@@ -168,6 +168,14 @@ export default defineComponent({
         post({ type: 'select', instanceId: target.instanceId, nodeId: target.node?.id ?? null, revealOutline: true });
       } else if (event.target.closest('a')) event.preventDefault();
     }
+    // Right-click selects the target like a click; the editor renders the menu outside the iframe.
+    function contextMenu(event) {
+      if (!state.value.editable || state.value.clean || event.target.closest('[data-zb-toolbar]')) return;
+      event.preventDefault();
+      const target = context(event.target);
+      post({ type: 'select', instanceId: target.instanceId, nodeId: target.node?.id ?? null, revealOutline: true });
+      post({ type: 'context-menu', x: event.clientX, y: event.clientY });
+    }
     async function measureSelection() {
       const id = state.value.selectedNodeId;
       const selector = id ? `[data-zb-node="${CSS.escape(id)}"]` : `[data-zb-instance="${CSS.escape(state.value.selectedInstanceId ?? '')}"]`;
@@ -276,7 +284,7 @@ export default defineComponent({
       observer?.disconnect();
       document.body.classList.remove('zb-preview-body');
     });
-    return { ...translation, renderFailure, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, startDrag, dragOver, dragLeave, drop };
+    return { ...translation, renderFailure, fontErrors, state, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, contextMenu, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

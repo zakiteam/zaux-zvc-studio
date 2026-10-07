@@ -5,7 +5,7 @@
 			size="xs"
 			icon="download"
 			:label="translate('zx_builder_export_zaux_json')"
-			@click="modal = { type: 'export', scope: 'component', format: 'runtime' }"
+			@click="openExport({ scope: 'component', format: 'runtime' })"
 		/>
 		<div
 			class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
@@ -59,7 +59,7 @@
 				rows="26"
 				label="ZVC JavaScript" /><BuilderButton
 				:label="translate('zx_builder_download_js')"
-				@click="modal = { type: 'export', scope: 'component', format: 'js' }"
+				@click="openExport({ scope: 'component', format: 'js' })"
 		/></template>
 		<template v-else
 			><p

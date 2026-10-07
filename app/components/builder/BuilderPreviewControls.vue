@@ -45,7 +45,7 @@
           :label="translate('zx_builder_body_background')" :disabled="!canEditRemote"
           :title="translate('zx_builder_body_background')"
           @update:modelValue="updateBodyBackground" />
-        <BuilderButton size="xs" variant="alt1" icon="target" iconOnly
+        <BuilderButton size="xs" variant="alt1" :icon="followViewportStyles ? 'hyperlink' : 'hyperlink-remove'" iconOnly
           :label="translate('zx_builder_follow_viewport_styles')" :aria-pressed="followViewportStyles"
           :extraProps="{ inheritedUIFlags: { HOVER: followViewportStyles } }"
           @click="followViewportStyles = !followViewportStyles" />

@@ -68,7 +68,7 @@ differ. All actions use the normal commit, undo/redo and persistence lifecycle.
 Nested ZVP occurrences expose their captured variants in Properties/Data and
 slider editors. Switching one occurrence creates an internal dependency alias
 only when the dependency is shared with other occurrences. Existing captures
-do not acquire later library variants automatically; use Restore from library.
+do not acquire later library variants automatically; use Sync with original (instance right-click menu).
 
 Sync is variant sensitive: syncing from ZVC/ZVP editing mode replaces only the
 instances (and nested ZVP captures) whose `activeVariant` equals the edited
@@ -193,7 +193,7 @@ The additional **HTML** mode uses CodeMirror syntax highlighting and indentation
 
 ## Restore an instance from the library
 
-The selected instance in Structure exposes **Restore from library**. Its `sourceId` selects the original library definition; a missing source disables the action. The replacement is independent and goes through normal undo, validation and persistence.
+The instance name in Structure has a right-click menu: **Rename**, **Sync with original** (restore structure and styles from the library definition `sourceId`, keeping data and properties), **Reset instance** (replace the instance in place with a fresh `createInstance` copy of the original, discarding data and edits; `useBuilder.resetInstance`) and **Edit in library**. A missing source disables the library actions. Every change goes through normal undo, validation and persistence; unmapped properties after a sync stay visible below the selected instance.
 
 Restoration retains effective data values and visual node properties, including false, zero, empty strings, null and obsolete data keys. Library structure and CSS replace the instance structure and CSS. Class/style properties (including nested class/style settings and CSS-editor fields) use library values. Arrays retain authored content and use library styling at corresponding positions. New fields use library defaults. Native instances regenerate from their preserved data; generated nodes are not patched.
 

@@ -73,6 +73,8 @@ export const propertyDecorators = {
     modalId: ({ trees }) => panelOptions(trees, 'ZModal', 'modalId')
   },
   Accordion : { content : { control : 'textarea' } },
+  // control: 'classes' edits a class string with BuilderStyleInput (Tailwind suggestions and CSS preview).
+  ScrollTopSentinel: { scrolledClasses: { control: 'classes' }, unScrolledClasses: { control: 'classes' } },
   // The `media` prop of these components carries a Media.vue-style object
   // ({ type, props }); the shared BuilderMediaInput edits it compactly. Opt-in
   // per component so other `media` props keep their ordinary editor.

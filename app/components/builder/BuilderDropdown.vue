@@ -204,6 +204,11 @@ export default defineComponent({
 			const rect = trigger.value.getBoundingClientRect();
 			const x = event.type === 'contextmenu' && event.clientX ? event.clientX : rect.left;
 			const y = event.type === 'contextmenu' && event.clientY ? event.clientY : rect.bottom;
+			await openAt(x, y);
+		}
+		// Opens the context menu at viewport coordinates, for callers without a DOM event (the canvas iframe).
+		async function openAt(x, y) {
+			if (!props.contextMenu || props.disabled) return;
 			contextStyle.value = { position: 'fixed', zIndex: 1000, margin: 0, left: '0px', top: '0px', visibility: 'hidden' };
 			open.value = true;
 			await nextTick();
@@ -336,6 +341,8 @@ export default defineComponent({
 			triggerKeydown,
 			triggerClick,
 			contextMenuOpen,
+			openAt,
+			close,
 			contextStyle,
 			menuKeydown,
 			focusOut,

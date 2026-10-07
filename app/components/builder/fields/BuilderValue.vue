@@ -7,6 +7,13 @@
 			:modelValue="modelValue"
 			@update:modelValue="$emit('update:modelValue', $event)"
 		/>
+		<BuilderStyleInput
+			v-else-if="type === 'classes'"
+			:modelValue="modelValue ?? ''"
+			:label="label"
+			:disabled="disabled"
+			@update:modelValue="$emit('update:modelValue', $event)"
+		/>
 		<BuilderInput
 			v-else-if="type === 'switch'"
 			type="select"
@@ -136,9 +143,11 @@ import BuilderImageInput from "./BuilderImageInput.vue";
 import BuilderCodeEditor from "./BuilderCodeEditor.vue";
 import BuilderButton from "../BuilderButton.vue";
 import BuilderButtonGroupInput from "./BuilderButtonGroupInput.vue";
+import BuilderStyleInput from "./BuilderStyleInput.vue";
 export default defineComponent({
 	components: {
 		BuilderInput,
+		BuilderStyleInput,
 		BuilderImageInput,
 		BuilderCodeEditor,
 		BuilderButton,

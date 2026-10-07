@@ -9,7 +9,7 @@
 					:title="translate('zx_builder_hub_back')"
 					:aria-label="'Zaux Studio: ' + translate('zx_builder_hub_back')"
 				>
-					<img class="w-[18px]" :src="studioLogo" alt="" />
+					<img class="w-[24px]" :src="studioLogo" alt="" />
 				</NuxtLink>
 				<BuilderDropdown
 					:label="translate('zx_builder_main_menu')"
@@ -122,7 +122,7 @@
 					icon="download"
 					:extraProps="{ actionIcon: false }"
 					:label="translate('zx_builder_export')"
-					@click="modal = { type: 'export' }"
+					@click="openExport()"
 				/>
 				<BuilderButton
 					size="xs"

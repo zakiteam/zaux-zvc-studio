@@ -191,11 +191,17 @@ export function createBuilder({ projectId = null } = {}) {
       panelFocusRequest.value = { tab, token: Date.now() };
     }
     if (action === 'command-palette') commandPaletteOpen.value = true;
+    if (action === 'export-component') openExport({ scope: 'component' });
     if (['tab-layers', 'tab-library', 'tab-elements'].includes(action)) {
       previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = action.slice(4);
       // Structure scrolls to the current selection, expanding collapsed ancestors.
       if (action === 'tab-layers' && (nodeId.value || mode.value === 'template' && instanceId.value)) revealOutline(mode.value === 'library' ? 'library' : instanceId.value, nodeId.value);
     }
+  }
+  // Opens the export dialog, which reads its initial scope and format from the modal descriptor.
+  // The component scope needs an active definition; without one the dialog keeps its own default.
+  function openExport({ scope, format } = {}) {
+    modal.value = { type: 'export', ...(scope === 'component' && !activeDefinition.value ? {} : { scope, format }) };
   }
   function updateBodyBackground(value) {
     commit(workspace => {
@@ -210,7 +216,7 @@ export function createBuilder({ projectId = null } = {}) {
         projectId: activeRemoteProject.value?.id ?? 'local',
         templateId: activeTemplate.value.id, componentId: mode.value === 'library' ? activeDefinition.value?.id : null, canvasDark: canvasDark.value
       });
-    } catch { error.value = 'zx_builder_preview_open_error'; }
+    } catch (exception) { error.value = exception?.name === 'QuotaExceededError' ? 'zx_builder_preview_quota_error' : 'zx_builder_preview_open_error'; }
   }
   const stylesOpen = ref(false);
   const workspaceView = ref('design');
@@ -597,6 +603,20 @@ export function createBuilder({ projectId = null } = {}) {
       Object.assign(activeInstance.value, restoreInstance(activeInstance.value, instanceLibraryDefinition.value));
     });
     if (!error.value) { nodeId.value = null; inspectorTab.value = 'data'; }
+  }
+  // Hard reset: replaces the instance with a fresh copy of its library ZVC, discarding data and edits.
+  function resetInstance(id) {
+    const current = activeTemplate.value?.instances.find(item => item.id === id);
+    const definition = document.value.library.find(item => item.id === current?.sourceId);
+    if (!canEditRemote.value || !definition) return;
+    const instance = createInstance(definition);
+    commit(() => {
+      const list = activeTemplate.value.instances;
+      const index = list.findIndex(item => item.id === id);
+      if (index >= 0) list.splice(index, 1, instance);
+    });
+    if (error.value) return;
+    instanceId.value = instance.id; nodeId.value = null;
   }
   function insertInstance(definitionId, beforeId = null, position = 'before') {
     if (!canEditRemote.value) return;
@@ -1034,7 +1054,7 @@ export function createBuilder({ projectId = null } = {}) {
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });
-  Object.assign(api, { cutSelectedNode });
+  Object.assign(api, { cutSelectedNode, resetInstance, openExport });
   provide(key, api);
   return api;
 }
