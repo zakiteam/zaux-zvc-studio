@@ -27,8 +27,9 @@ export function tailwindCatalog() {
 export async function tailwindClassCss(className) {
   if (previews.has(className)) return previews.get(className);
   // Safelist the exact candidate: no HTML parsing or interpretation of quotes.
+  // Include components so Zaux containers and plugin classes show their CSS too.
   const result = await postcss([tailwindcss({ ...compilerConfig, safelist: [className] })])
-    .process('@tailwind utilities;', { from: undefined });
+    .process('@tailwind components; @tailwind utilities;', { from: undefined });
   // Only the assistance response is formatted; selectors and authored CSS stay literal.
   const display = result.root.clone();
   display.walkDecls(declaration => { declaration.value = remValuesToPixels(declaration.value); });

@@ -52,16 +52,32 @@ async function releaseZip(repository, version) {
 }
 
 // Release archives wrap everything in a single top-level folder; strip it.
+// Zaux ships some files twice with a case-only difference (ZSection.vue and
+// Zsection.vue). A case-insensitive filesystem keeps one of them, so identical
+// variants are written once and returned for prepare.mjs to register as aliases.
 async function extract(buffer, destination) {
   const zip = await JSZip.loadAsync(buffer);
+  const written = new Map();
+  const caseVariants = [];
   for (const entry of Object.values(zip.files)) {
     const name = entry.name.split('/').slice(1).join('/');
     if (!name || entry.dir) continue;
     const path = resolve(destination, name);
     if (!path.startsWith(destination)) continue;
+    const content = await entry.async('nodebuffer');
+    const existing = written.get(name.toLowerCase());
+    if (existing && existing.name !== name) {
+      if (existing.content.equals(content)) {
+        caseVariants.push({ path: name, file: existing.name });
+        continue;
+      }
+      console.warn(`Zaux ships ${name} and ${existing.name} with different content; only one survives on case-insensitive filesystems.`);
+    }
+    written.set(name.toLowerCase(), { name, content });
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, await entry.async('nodebuffer'));
+    writeFileSync(path, content);
   }
+  return caseVariants;
 }
 
 function replaceTarget(staging) {
@@ -69,28 +85,40 @@ function replaceTarget(staging) {
     if (existsSync(resolve(target, '.git')) || (!readMarker() && existsSync(resolve(target, 'package.json')))) {
       throw new Error('vendor/zaux is not a managed release (Git checkout or unknown files). Remove it manually first.');
     }
-    rmSync(target, { recursive: true, force: true });
   }
-  renameSync(staging, target);
+  // Swap through a backup: a running dev server can briefly lock files on Windows,
+  // and a failed rename must not leave vendor/zaux missing.
+  const backup = `${target}.previous`;
+  rmSync(backup, { recursive: true, force: true });
+  if (existsSync(target)) renameSync(target, backup);
+  try {
+    renameSync(staging, target);
+  } catch (error) {
+    if (existsSync(backup)) renameSync(backup, target);
+    throw error;
+  }
+  rmSync(backup, { recursive: true, force: true });
 }
 
 export async function installZaux() {
   const { repository, version, sourceDir } = settings();
   const wanted = sourceDir ? { version: 'local', source: resolve(root, sourceDir) } : { version, repository };
   const current = readMarker();
-  if (!sourceDir && current?.version === version && current?.repository === repository) return current;
+  // Installs made before caseVariants was recorded are refreshed once from the cache.
+  if (!sourceDir && current?.version === version && current?.repository === repository && Array.isArray(current.caseVariants)) return current;
 
   const staging = `${target}.staging`;
   rmSync(staging, { recursive: true, force: true });
   mkdirSync(staging, { recursive: true });
   try {
+    let caseVariants = [];
     if (sourceDir) {
       cpSync(wanted.source, staging, { recursive: true, filter: path => !/[\\/](\.git|node_modules)([\\/]|$)/.test(path.slice(wanted.source.length)) });
     } else {
-      await extract(await releaseZip(repository, version), staging);
+      caseVariants = await extract(await releaseZip(repository, version), staging);
     }
     if (!existsSync(resolve(staging, 'core/setup.js'))) throw new Error(`Zaux ${wanted.version} does not look like a Zaux release (core/setup.js missing).`);
-    writeFileSync(resolve(staging, '.zaux-release.json'), JSON.stringify({ ...wanted, installedAt: new Date().toISOString() }, null, 2) + '\n');
+    writeFileSync(resolve(staging, '.zaux-release.json'), JSON.stringify({ ...wanted, caseVariants, installedAt: new Date().toISOString() }, null, 2) + '\n');
     replaceTarget(staging);
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });

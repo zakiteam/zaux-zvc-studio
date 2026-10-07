@@ -29,7 +29,7 @@ The page uses Studio authentication. Remote projects are fetched through the exi
 
 | File | Responsibility |
 | --- | --- |
-| `app/components/builder/BuilderPreviewControls.vue` | Zaux body color token selector with clear action and light/dark canvas selector. |
+| `app/components/builder/BuilderPreviewControls.vue` | Canvas toolbar: viewport, zoom, Zaux body color token selector with clear action, canvas color toggle and Preview mode. |
 | `app/components/builder/BuilderHeader.vue` | Matching Import/Export buttons and primary preview action with play icon. |
 | `app/components/builder/BuilderDesignView.vue` | Separate background controls from viewport controls; place the header toggle beside Design/Preview. |
 | `app/components/builder/BuilderWorkspace.vue` | Toggle the shared header in Preview mode. |

@@ -92,3 +92,6 @@ html[data-studio-theme] :where(select:not([multiple]):not([size]), select:not([m
     background-image: none;
   }
 }
+
+/* Iframes swallow pointer events, which would stall panel resizing over the canvas. */
+body.zb-resizing iframe { pointer-events: none; }

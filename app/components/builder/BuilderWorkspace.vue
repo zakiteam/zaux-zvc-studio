@@ -43,6 +43,7 @@
 		<BuilderDesignView v-show="workspaceView === 'design'" />
 		<BuilderThemeEditor v-if="themesOpened" v-show="workspaceView === 'themes'" />
 		<BuilderDialog v-if="modal" />
+		<BuilderCmdPalette v-if="commandPaletteOpen" />
 	</div>
   <main v-else class="grid h-screen p-4 min-h-dvh place-items-center bg-zaux-light font-builder text-zaux-dark">
     <div class="text-center">
@@ -60,8 +61,9 @@ import BuilderHeader from './BuilderHeader.vue';
 import BuilderDialog from './BuilderDialog.vue';
 import BuilderDesignView from './BuilderDesignView.vue';
 import BuilderThemeEditor from './BuilderThemeEditor.vue';
+import BuilderCmdPalette from './BuilderCmdPalette.vue';
 export default defineComponent({
-  components: { BuilderHeader, BuilderDialog, BuilderDesignView, BuilderThemeEditor },
+  components: { BuilderHeader, BuilderDialog, BuilderDesignView, BuilderThemeEditor, BuilderCmdPalette },
   props: { projectId: { type: String, default: null } },
   setup(props) {
     const builder = createBuilder({ projectId: props.projectId });

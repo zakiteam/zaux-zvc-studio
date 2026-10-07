@@ -1,110 +1,343 @@
 <template>
 	<aside
-		ref="asideEl"
-		class="zb-sidebar flex min-h-0 w-[254px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[1200px]:w-[230px] max-[900px]:h-[80dvh] max-[900px]:!w-[210px]"
+		class="zb-sidebar flex min-h-0 w-[264px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[900px]:h-[80dvh] max-[900px]:!w-[210px]"
 		:style="{ width: `${width}px` }"
 	>
+		<!-- Panel tabs. Dragging over a tab opens it, so assets can be dropped into the structure. -->
 		<div
-			class="flex flex-col min-h-0 group/section"
-			:class="libraryCollapsed ? 'shrink-0' : 'flex-1'"
+			class="flex h-[40px] shrink-0 items-center gap-0.5 border-b-slim border-zaux-light-grey px-1"
+			role="tablist"
+			:aria-label="translate('zx_builder_left_panel')"
 		>
-		<div ref="tabsEl" class="flex shrink-0 items-center gap-1 border-b-slim border-zaux-light-grey px-1.5">
-			<div
-				class="zb-tabs flex min-w-0 flex-1 gap-0.5 [&>button]:flex-1 [&>button]:border-b-thick [&>button]:border-transparent [&>button]:px-0.75 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:text-zaux-dark-grey [&>button.active]:border-zaux-accent [&>button.active]:text-zaux-accent"
-				role="tablist"
-			>
 			<button
-				v-for="tab in ['library', 'elements']"
-				:key="tab"
+				v-for="tab in tabs"
+				:key="tab.id"
+				type="button"
 				role="tab"
-				:aria-selected="leftTab === tab"
-				:class="{ active: leftTab === tab }"
-				@click="leftTab = tab"
+				:id="'zb-left-tab-' + tab.id"
+				:aria-controls="'zb-left-panel-' + tab.id"
+				:aria-selected="leftTab === tab.id"
+				:tabindex="leftTab === tab.id ? 0 : -1"
+				class="rounded-xxs px-1 py-0.5 text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+				:class="leftTab === tab.id ? 'bg-zaux-light text-zaux-dark' : 'text-zaux-dark-grey hover:text-zaux-dark'"
+				@click="leftTab = tab.id"
+				@keydown="tabKeydown"
+				@dragenter="springTab($event, tab.id)"
+				@dragleave="cancelSpring"
+				@drop="cancelSpring"
 			>
-				{{ translate(`zx_builder_${tab}`) }}
+				{{ translate(tab.label) }}
 			</button>
-			</div>
-			<BuilderButton
-				class="!flex-none transition-opacity"
-				:class="libraryCollapsed ? 'opacity-100' : 'opacity-0 group-hover/section:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'"
-				variant="alt1"
-				size="xs"
-				:icon="libraryCollapsed ? 'chevron-down' : 'chevron-up'"
-				iconOnly
-				:label="translate(libraryCollapsed ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + translate('zx_builder_' + leftTab)"
-				:aria-expanded="!libraryCollapsed"
-				aria-controls="zb-library-section-content"
-				@click="libraryCollapsed = !libraryCollapsed"
-			/>
 		</div>
-		<div id="zb-library-section-content" v-show="!libraryCollapsed" class="flex-1 min-h-0 overflow-auto zb-scroll">
-			<div v-if="leftTab === 'library'" class="zb-library-panel px-2 py-2.5">
-				<div class="sticky top-0 z-20 -mx-2 -mt-2.5 bg-zaux-white px-2 pt-2.5 pb-2.5">
-					<div
-						class="zb-panel-heading mb-2 flex items-center justify-between [&_h2]:text-[16px] [&_h2]:font-medium [&_h2]:tracking-[-0.4px] [&_p]:mt-0.5 [&_p]:text-[10px] [&_p]:text-zaux-dark-grey"
-					>
-						<div>
-							<h2>{{ translate("zx_builder_library") }}</h2>
-							<p>
-								{{ filteredLibrary.length }}
-								{{ translate("zx_builder_" + libraryKind) }}
-							</p>
+
+		<!-- Structure: templates (pages) and the layer outline. -->
+		<section
+			v-show="leftTab === 'layers'"
+			id="zb-left-panel-layers"
+			role="tabpanel"
+			aria-labelledby="zb-left-tab-layers"
+			class="flex flex-col flex-1 min-h-0 zb-outline-panel"
+		>
+			<BuilderPages />
+			<div
+				id="zb-outline-section-content"
+				class="flex-1 min-h-0 px-1 pb-2 overflow-auto zb-scroll"
+				@dragover.capture="outlineDrag.scrollOver"
+				@dragleave="outlineDrag.scrollLeave"
+			>
+				<div data-zb-outline-tools class="sticky top-0 z-10 -mx-1 bg-zaux-white px-1">
+					<div class="flex h-[32px] items-center justify-between gap-1">
+						<h3 class="zb-eyebrow truncate pl-0.5 text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
+							{{ translate("zx_builder_outline") }}
+						</h3>
+						<div class="flex shrink-0 items-center [&>.zb-button]:!w-[26px] [&>.zb-button]:!min-w-[26px] [&>.zb-button]:!p-0.5">
+							<BuilderButton variant="alt1" size="xs" icon="copy" iconOnly :label="translate('zx_builder_copy_node') + ' (Ctrl C)'" :disabled="!canCopyNode" @click="copySelectedNode()" />
+							<BuilderButton variant="alt1" size="xs" icon="document-add" iconOnly :label="translate('zx_builder_paste_node') + ' (Ctrl V)'" :disabled="!canPasteNode" @click="pasteNode()" />
+							<BuilderButton v-if="mode === 'library'" variant="alt1" size="xs" icon="loop" iconOnly
+								:label="translate('zx_builder_sync_instances') + ': ' + translate('zx_builder_sync_instances_hint')"
+								:disabled="!canEditRemote || !activeDefinition"
+								@click="syncActiveLibraryInstances" />
+							<BuilderButton variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
+							<BuilderButton variant="alt1" size="xs" icon="help" iconOnly :label="translate('zx_builder_outline_help')"
+								:aria-pressed="hintsOpen" :aria-expanded="hintsOpen" aria-controls="zb-outline-hints"
+								:extraProps="{ inheritedUIFlags: { HOVER: hintsOpen } }" @click="hintsOpen = !hintsOpen" />
 						</div>
-						<BuilderDropdown
-							:label="translate('zx_builder_create')"
-							icon="plus"
-							align="end"
-							:popOverProps="{
-								dropdown: { class: '!max-w-[150px]' },
-							}"
-							:items="createItems"
-							:disabled="!canEditRemote"
-							@select="modal = { type: $event.id }"
-						/>
 					</div>
+					<div v-if="hintsOpen" id="zb-outline-hints" class="mb-1 space-y-0.5 rounded-xxs bg-zaux-light p-1 text-[10px] leading-relaxed text-zaux-dark-grey">
+						<p>{{ translate('zx_builder_outline_shift_hint') }}</p>
+						<p>{{ translate("zx_builder_outline_drag_hint") }}</p>
+						<p v-if="mode === 'library'">{{ translate('zx_builder_sync_instances_hint') }}</p>
+					</div>
+					<button v-if="clipboardNodeName" type="button" class="mb-1 flex w-full min-w-0 items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-accent/50 px-1 py-0.5 text-left text-[10px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
+						<span aria-hidden="true">⠿</span><span class="truncate">{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}</span>
+					</button>
+					<div v-if="outlineSelection.length > 1" class="mb-1 flex items-center gap-1 rounded-xxs bg-zaux-accent/10 px-1 py-0.5 text-[10px]" role="status">
+						<span class="flex-1">{{ outlineSelection.length }} {{ translate('zx_builder_outline_selected') }}</span>
+						<BuilderButton v-if="outlineGroupRange" size="xs" variant="alt1" :disabled="!canEditRemote" :label="translate('zx_builder_group_zvc')"
+							@click="modal = { type: 'group-zvc', ...outlineGroupRange }" />
+					</div>
+				</div>
+				<template v-if="mode === 'library'"
+					><div class="flex items-center gap-0.5" data-zb-outline-definition>
+						<button
+							type="button"
+							class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[12px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							:aria-expanded="
+								!collapsedOutline.has('definition:' + activeDefinition?.id)
+							"
+							:aria-label="
+								translate(
+									collapsedOutline.has('definition:' + activeDefinition?.id)
+										? 'zx_builder_expand'
+										: 'zx_builder_collapse',
+								) +
+								': ' +
+								activeDefinition?.name
+							"
+							@click.stop="toggleOutline('definition:' + activeDefinition?.id)"
+							@dragstart.stop.prevent
+						>
+							<span aria-hidden="true">{{
+								collapsedOutline.has("definition:" + activeDefinition?.id)
+									? "▸"
+									: "▾"
+							}}</span>
+						</button>
+						<h3 class="truncate text-[11px] font-semibold">
+							{{ activeDefinition?.name }}
+						</h3>
+					</div>
+					<template
+						v-if="!collapsedOutline.has('definition:' + activeDefinition?.id)"
+					>
+						<p
+							v-if="activeDefinition?.sourceKey"
+							class="zb-help !mb-2 !mt-1 px-0.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
+						>
+							{{ translate("zx_builder_source_outline") }}
+						</p>
+						<BuilderTree
+							v-else-if="activeDefinition"
+							:nodes="activeDefinition.tree"
+							instance="library"
+							nested
+						/> </template
+				></template>
+				<template v-else>
+					<article
+						v-for="instance in activeTemplate.instances"
+						:key="instance.id"
+						:data-zb-outline-instance="instance.id"
+						data-zb-outline-drop="instance" :data-zb-drop-instance="instance.id"
+						class="zb-instance relative rounded-xxs border-slim border-transparent px-0.5 pt-0.5 [&.active]:border-zaux-accent/60 [&.active]:pb-0.5"
+						:class="{ active: outlineSelected(instance.id) }"
+						:draggable="canEditRemote"
+						@dragstart.stop="
+							drag($event, { kind: 'instance', id: instance.id })
+						"
+						@dragover="outlineDrag.over($event, null, instance.id, true)"
+						@dragleave="outlineDrag.leave"
+						@drop="outlineDrag.drop($event, null, instance.id, true)"
+					>
+						<span
+							v-if="outlineDrag.position(null, instance.id, true)"
+							aria-hidden="true"
+							class="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-zaux-accent"
+							:class="
+								outlineDrag.position(null, instance.id, true) === 'before'
+									? 'top-0'
+									: 'bottom-0'
+							"
+						/>
+						<BuilderTree v-if="instance.kind === 'free'" :nodes="instance.definition.tree" :instance="instance.id" />
+						<template v-else>
+						<div class="zb-instance-heading group/instance flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light" :class="{ 'bg-zaux-accent/5': outlineSelected(instance.id) }">
+							<button
+								type="button"
+								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[12px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+								:aria-expanded="
+									!collapsedOutline.has('instance:' + instance.id)
+								"
+								:aria-label="
+									translate(
+										collapsedOutline.has('instance:' + instance.id)
+											? 'zx_builder_expand'
+											: 'zx_builder_collapse',
+									) +
+									': ' +
+									instance.name
+								"
+								@click.stop="toggleOutline('instance:' + instance.id)"
+								@dragstart.stop.prevent
+							>
+								<span aria-hidden="true">{{
+									collapsedOutline.has("instance:" + instance.id) ? "▸" : "▾"
+								}}</span>
+							</button>
+							<button
+								class="zb-instance-name select-none flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-semibold"
+								:class="{ 'text-zaux-accent': outlineSelected(instance.id) }"
+								:aria-pressed="outlineSelected(instance.id)"
+								@mousedown.shift.prevent
+								@click="revealInstance(instance.id, $event)"
+								@dblclick="modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name }"
+							>
+								<span aria-hidden="true" class="text-[10px] text-zaux-accent">◆</span><span class="truncate">{{ instance.name }}</span>
+							</button>
+							<div
+								class="zb-instance-tools flex shrink-0 items-center gap-[1px] opacity-0 group-hover/instance:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 [&>.zb-button]:!min-w-[24px] [&>.zb-button]:!w-[24px] [&>.zb-button]:!p-0.5"
+								:class="{ '!opacity-100': instanceId === instance.id }"
+							>
+								<BuilderButton
+									icon="duplicate"
+									iconOnly
+									variant="alt1"
+									:label="`${translate('zx_builder_duplicate')}: ${instance.name}`"
+									@click="duplicate('instance', instance.id)"
+								/>
+								<BuilderButton
+									icon="delete"
+									variant="alt1"
+									iconOnly
+									:label="`${translate('zx_builder_delete')}: ${instance.name}`"
+									@click="remove('instance', instance.id)"
+								/>
+							</div>
+						</div>
+						<template v-if="!collapsedOutline.has('instance:' + instance.id)">
+							<div v-if="instanceId === instance.id" class="flex flex-wrap items-center gap-0.5 py-0.5 pl-3 [&>.zb-button]:!text-[10px]">
+								<BuilderButton size="xs" variant="alt1" icon="edit"
+									:extraProps="{ actionIcon: false }"
+									:label="translate('zx_builder_rename')"
+									@click="modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name }" />
+								<BuilderButton size="xs" variant="alt1" icon="refresh"
+									:extraProps="{ actionIcon: false }"
+									:label="translate('zx_builder_restore_library')"
+									:title="translate(instanceLibraryDefinition ? 'zx_builder_restore_library_hint' : 'zx_builder_restore_library_missing')"
+									:disabled="!canEditRemote || !instanceLibraryDefinition"
+									@click="restoreActiveInstance" />
+								<BuilderButton size="xs" icon="enter" iconOnly variant="alt1"
+									:label="translate('zx_builder_edit_library')"
+									:disabled="!instanceLibraryDefinition"
+									@click="instanceLibraryDefinition && selectLibrary(instanceLibraryDefinition.id)" />
+								<details
+									v-if="instance.unmappedProperties?.length"
+									class="w-full mt-0 mb-0 text-[10px] !py-0.5"
+								>
+									<summary class="pb-0">
+										{{ translate("zx_builder_restore_unmapped") }}
+									</summary>
+									<BuilderCodeEditor
+										:modelValue="
+											JSON.stringify(instance.unmappedProperties, null, 2)
+										"
+										:label="translate('zx_builder_restore_unmapped')"
+										readonly
+										rows="10"
+									/>
+								</details>
+							</div>
+							<button
+								v-if="instance.definition.sourceKey"
+								class="zb-source-outline px-1.5 py-0.5 pl-3 text-left text-[10px] text-zaux-accent"
+								:aria-pressed="outlineSelected(instance.id)"
+								@mousedown.shift.prevent
+								@click="revealInstance(instance.id, $event)"
+							>
+								{{ translate("zx_builder_source_outline") }}</button
+							><BuilderTree
+								v-else
+								:nodes="instance.definition.tree"
+								:instance="instance.id"
+								nested
+							/>
+						</template></template></article
+					>
+					<div class="relative mt-1 rounded-xxs border-slim border-dashed border-zaux-light-grey px-1 py-1 text-center text-[10px] text-zaux-dark-grey"
+						data-zb-outline-drop="instance"
+						@dragover="outlineDrag.over($event, null, null, true)"
+						@dragleave="outlineDrag.leave"
+						@drop="outlineDrag.drop($event, null, null, true)">
+						{{ translate('zx_builder_free_elements_hint') }}
+						<span v-if="outlineDrag.position(null, null, true)" class="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-zaux-accent" />
+					</div>
+				</template>
+			</div>
+		</section>
+
+		<!-- Library: ZVC/ZVP assets. -->
+		<section
+			v-show="leftTab === 'library'"
+			id="zb-left-panel-library"
+			role="tabpanel"
+			aria-labelledby="zb-left-tab-library"
+			class="flex flex-col flex-1 min-h-0 zb-library-panel"
+		>
+			<div class="shrink-0 space-y-1 border-b-slim border-zaux-light-grey px-1.5 py-1.5">
+				<div class="flex items-center gap-0.5">
 					<BuilderInput
 						v-model="librarySearch"
+						class="flex-1"
 						type="search"
 						:label="translate('zx_builder_library_search')"
 						:placeholder="translate('zx_builder_library_search')"
 					/>
+					<BuilderDropdown
+						:label="translate('zx_builder_create')"
+						icon="plus"
+						iconOnly
+						:extraTriggerProps="{ iconName: 'plus', hasIcon: true, actionIcon: false }"
+						btnTheme="alt1"
+						align="end"
+						:items="createItems"
+						:disabled="!canEditRemote"
+						@select="modal = { type: $event.id }"
+					/>
+				</div>
+				<div class="flex items-center gap-0.5">
+					<div
+						class="flex shrink-0 gap-[2px] rounded-xxs bg-zaux-light p-[2px]"
+						role="tablist"
+						:aria-label="translate('zx_builder_library')"
+					>
+						<button
+							v-for="kind in ['zvc', 'zvp']"
+							:key="kind"
+							type="button"
+							role="tab"
+							:id="'library-kind-' + kind"
+							:aria-controls="'library-panel-' + kind"
+							:aria-selected="libraryKind === kind"
+							:tabindex="libraryKind === kind ? 0 : -1"
+							class="rounded-xxs px-1 py-0.25 text-[10px] font-semibold"
+							:class="
+								libraryKind === kind
+									? 'bg-zaux-white text-zaux-accent shadow-sm'
+									: 'text-zaux-dark-grey hover:text-zaux-dark'
+							"
+							:title="translate('zx_builder_' + kind + '_pretty_name')"
+							@click="libraryKind = kind"
+							@keydown="libraryKindKeydown"
+						>
+							{{ kind.toUpperCase() }}
+						</button>
+					</div>
 					<BuilderInput
-						class="mt-1.5"
+						class="flex-1 !py-0.5 !text-[11px]"
 						v-model="libraryCategory"
 						type="select"
 						:label="translate('zx_builder_library_category')"
 						:options="[
 							{ value: 'imported', label: translate('zx_builder_library_imported') },
 							{ value: 'project', label: translate('zx_builder_library_project') },
-							]"
+						]"
 					/>
 				</div>
-				<div
-					class="flex mb-2 border-b-slim border-zaux-light-grey"
-					role="tablist"
-					:aria-label="translate('zx_builder_library')"
-				>
-					<button
-						v-for="kind in ['zvc', 'zvp']"
-						:key="kind"
-						type="button"
-						role="tab"
-						:id="'library-kind-' + kind"
-						:aria-controls="'library-panel-' + kind"
-						:aria-selected="libraryKind === kind"
-						:tabindex="libraryKind === kind ? 0 : -1"
-						class="flex-1 py-1 text-[11px] border-b-thick"
-						:class="
-							libraryKind === kind
-								? 'border-zaux-accent text-zaux-accent'
-								: 'border-transparent text-zaux-dark-grey'
-						"
-						@click="libraryKind = kind"
-						@keydown="libraryKindKeydown"
-					>
-						{{ translate("zx_builder_" + kind + "_pretty_name") }}
-					</button>
-				</div>
+			</div>
+			<div class="flex-1 min-h-0 px-1.5 py-1.5 overflow-auto zb-scroll">
+				<p class="mb-1 text-[10px] text-zaux-dark-grey" role="status">
+					{{ filteredLibrary.length }} {{ translate("zx_builder_" + libraryKind) }}
+				</p>
 				<p
 					v-if="!filteredLibrary.length"
 					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
@@ -118,7 +351,7 @@
 					}}
 				</p>
 				<div
-					class="grid grid-cols-2 gap-1"
+					class="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-1"
 					role="tabpanel"
 					:id="'library-panel-' + libraryKind"
 					:aria-labelledby="'library-kind-' + libraryKind"
@@ -152,48 +385,30 @@
 							@insert="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
 							@choose-image="previewId = definition.id"
 						/>
-						<div
-							class="zb-card-body relative px-1.5 pb-1.5 pt-1 [&>small]:mt-0.25 [&>small]:block [&>small]:font-mono [&>small]:text-[9px] [&>small]:text-zaux-dark-grey"
-						>
-							<div>
-								<button
-									class="zb-card-name block w-full truncate text-left text-[11px] font-semibold"
-									@click="selectLibrary(definition.id)"
-								>
-									{{ definition.name }}
-								</button>
-								<small class="block mb-1.5 truncate">{{ definition.exportName }}</small>
-							</div>
-							<div
-								class="flex flex-col gap-1 zb-card-actions"
+						<div class="zb-card-body relative px-1 pb-0.5 pt-0.5">
+							<button
+								class="zb-card-name block w-full truncate text-left text-[11px] font-semibold"
+								:title="translate('zx_builder_edit_library') + ': ' + definition.name"
+								@click="selectLibrary(definition.id)"
 							>
+								{{ definition.name }}
+							</button>
+							<small class="block truncate font-mono text-[9px] text-zaux-dark-grey">{{ definition.exportName }}</small>
+							<div class="zb-card-actions -mx-0.5 flex items-center justify-between [&_.zb-button]:!w-[24px] [&_.zb-button]:!min-w-[24px] [&_.zb-button]:!p-0.5">
 								<BuilderButton
 									size="xs"
-									class="!text-[10px]"
 									variant="alt1"
+									icon="enter"
+									iconOnly
+									:label="translate('zx_builder_edit_library') + ': ' + definition.name"
 									@click="selectLibrary(definition.id)"
-									:label="translate('zx_builder_edit_library')"
 								/>
-								<!--
-								<BuilderButton
-									:label="
-										translate(
-											definition.kind === 'zvp'
-												? 'zx_builder_add_partial'
-												: 'zx_builder_add_to_template',
-										)
-									"
-									icon="add"
-									variant="alt1"
-								/>
-								-->
-								<div class="flex flex-wrap justify-end gap-1">
+								<div class="flex items-center">
 									<BuilderButton
 										icon="duplicate"
 										iconOnly
 										size="xs"
 										variant="alt1"
-										class="!flex-none"
 										:label="
 											translate('zx_builder_duplicate') + ': ' + definition.name
 										"
@@ -212,7 +427,7 @@
 									/>
 									<BuilderButton
 										v-if="!definition.id.startsWith('source:')"
-										icon="close"
+										icon="delete"
 										iconOnly
 										size="xs"
 										variant="alt1"
@@ -226,61 +441,62 @@
 					</article>
 				</div>
 				<p
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
+					class="zb-help !mb-2 !mt-1.5 text-[10px] leading-[1.65] text-zaux-dark-grey"
 				>
 					{{ translate("zx_builder_library_drag") }}
 				</p>
 			</div>
-			<div
-				v-else
-				class="zb-elements-panel px-2 py-2.5 [&>input]:mb-0.5 [&_h3]:mb-1 [&_h3]:mt-3"
-			>
+		</section>
+
+		<!-- Elements: the curated palette. -->
+		<section
+			v-show="leftTab === 'elements'"
+			id="zb-left-panel-elements"
+			role="tabpanel"
+			aria-labelledby="zb-left-tab-elements"
+			class="flex flex-col flex-1 min-h-0 zb-elements-panel"
+		>
+			<div class="shrink-0 space-y-1 border-b-slim border-zaux-light-grey px-1.5 py-1.5">
 				<BuilderInput
 					v-model="search"
 					type="search"
 					:placeholder="translate('zx_builder_search')"
 					:label="translate('zx_builder_search')"
 				/>
-				<p
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_drag_hint") }}
-				</p>
-				<p
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_palette_hint") }}
-				</p>
-				<BuilderInput v-if="mode === 'template'" v-model="elementDestination" type="select"
+				<BuilderInput v-if="mode === 'template'" v-model="elementDestination" type="select" class="!py-0.5 !text-[11px]"
 					:label="translate('zx_builder_insert_destination')"
 					:options="[{ value: 'template', label: translate('zx_builder_insert_template') }, { value: 'selection', label: translate('zx_builder_insert_selection') }]" />
+			</div>
+			<div class="flex-1 min-h-0 px-1.5 py-2 overflow-auto zb-scroll">
 				<div
 					v-for="group in [
 						'zx_builder_partials',
 						'zx_builder_zaux',
 						'zx_builder_native',
 					]"
+					v-show="filtered.some((item) => item.group === group)"
 					:key="group"
 				>
 					<h3
-						class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
+						class="zb-eyebrow sticky top-0 z-10 bg-zaux-white pb-1.5 pt-1.5 text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
 					>
 						{{ translate(group) }}
 					</h3>
 					<div
-						class="zb-element-list flex flex-col gap-0.5 [&>button]:flex [&>button]:cursor-grab [&>button]:items-center [&>button]:gap-1.5 [&>button]:rounded-xxs [&>button]:border-slim [&>button]:border-zaux-light-grey [&>button]:p-1.5 [&>button]:text-left [&>button]:text-[11px] [&>button:hover]:border-zaux-accent [&>button:hover]:bg-zaux-light"
+						class="zb-element-list flex flex-col gap-1.5 [&>button]:flex [&>button]:cursor-grab [&>button]:items-center [&>button]:gap-1 [&>button]:rounded-xxs [&>button]:px-0.5 [&>button]:py-0.25 [&>button]:text-left [&>button]:text-[11px] [&>button:hover]:bg-zaux-light"
 					>
 						<button
 							v-for="entry in filtered.filter((item) => item.group === group)"
 							:key="entry.name"
 							:draggable="canEditRemote"
+							:title="translate('zx_builder_drag_hint')"
 							@dragstart="drag($event, { kind: 'catalog', name: entry.name })"
 							@click="mode === 'template' && elementDestination === 'template' ? addTemplateElement(entry.name) : addElement(entry.name)"
 						>
 							<span
-								class="zb-element-icon grid h-[24px] w-[24px] place-items-center rounded-xxs bg-zaux-light text-[17px] text-zaux-accent"
+								class="zb-element-icon grid h-[22px] w-[22px] shrink-0 place-items-center rounded-xxs bg-zaux-light text-[14px] text-zaux-accent"
 								>{{ containers.includes(entry.name) ? "▤" : "◇" }}</span
-							><span>{{ entry.name }}</span
+							><span class="truncate">{{ entry.name }}</span
 							><span class="ml-auto zb-drag-grip text-zaux-light-grey">⠿</span>
 						</button>
 					</div>
@@ -291,290 +507,11 @@
 				>
 					{{ translate("zx_builder_empty_search") }}
 				</p>
-			</div>
-		</div>
-		</div>
-		<BuilderResizeHandle
-			v-if="!libraryCollapsed && !outlineCollapsed"
-			direction="vertical"
-			side="bottom"
-			:label="translate('zx_builder_resize_outline')"
-			@resize="resizeOutline"
-		/>
-		<section
-			class="flex flex-col min-h-0 px-2 group/section zb-outline-panel shrink-0 border-t-slim border-zaux-light-grey"
-			:class="{ 'flex-1': libraryCollapsed && !outlineCollapsed }"
-			:style="!outlineCollapsed && !libraryCollapsed ? { height: `${outlineHeight}px` } : null"
-			:aria-label="translate('zx_builder_outline')"
-		>
-			<div class="flex shrink-0 items-center justify-between gap-1 py-1.5">
-				<h3 class="zb-eyebrow text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
-					{{ translate("zx_builder_outline") }}
-				</h3>
-				<div class="flex items-center gap-1">
-					<BuilderButton v-show="!outlineCollapsed" class="!flex-none" variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" :title="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
-					<BuilderButton
-						class="!flex-none transition-opacity"
-						:class="outlineCollapsed ? 'opacity-100' : 'opacity-0 group-hover/section:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'"
-						variant="alt1"
-						size="xs"
-						:icon="outlineCollapsed ? 'chevron-up' : 'chevron-down'"
-						iconOnly
-						:label="translate(outlineCollapsed ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + translate('zx_builder_outline')"
-						:aria-expanded="!outlineCollapsed"
-						aria-controls="zb-outline-section-content"
-						@click="outlineCollapsed = !outlineCollapsed"
-					/>
-				</div>
-			</div>
-			<div id="zb-outline-section-content" v-show="!outlineCollapsed" @dragover.capture="outlineDrag.scrollOver" @dragleave="outlineDrag.scrollLeave" class="flex-1 min-h-0 overflow-auto zb-scroll">
-				<!-- Copy/Paste node -->
-				<div data-zb-outline-tools class="sticky top-0 z-10 flex flex-col justify-start gap-2 mb-3 text-left bg-zaux-white">
-					<div class="flex items-stretch gap-1 pb-2">
-						<BuilderButton class="w-full" size="xs" icon="copy" :label="translate('zx_builder_copy_node')" :disabled="!canCopyNode" @click="copySelectedNode()" />
-						<BuilderButton class="w-full" size="xs" :label="translate('zx_builder_paste_node')" :disabled="!canPasteNode" @click="pasteNode()" />
-					</div>
-                    <BuilderButton v-if="mode === 'library'" class="w-full" size="xs"
-                        :label="translate('zx_builder_sync_instances')"
-                        :title="translate('zx_builder_sync_instances_hint')"
-                        :disabled="!canEditRemote || !activeDefinition"
-                        @click="syncActiveLibraryInstances" />
-					<button v-if="clipboardNodeName" type="button" class="truncate text-left text-[11px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
-					{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}
-					</button>
-				</div>
-				<p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">{{ translate('zx_builder_outline_shift_hint') }}</p>
-                <div v-if="outlineSelection.length > 1" class="mb-2 flex items-center gap-1 text-[10px]" role="status">
-                    <span>{{ outlineSelection.length }} {{ translate('zx_builder_outline_selected') }}</span>
-                    <BuilderButton v-if="outlineGroupRange" size="xs" :disabled="!canEditRemote" :label="translate('zx_builder_group_zvc')"
-                        @click="modal = { type: 'group-zvc', ...outlineGroupRange }" />
-                </div>
-                <p class="mb-2 text-[10px] leading-relaxed text-zaux-dark-grey">
-					{{ translate("zx_builder_outline_drag_hint") }}
+				<p class="zb-help !mb-0 !mt-2 text-[10px] leading-[1.65] text-zaux-dark-grey">
+					{{ translate("zx_builder_palette_hint") }} {{ translate("zx_builder_drag_hint") }}
 				</p>
-				<template v-if="mode === 'library'"
-					><div class="flex items-center gap-0.5" data-zb-outline-definition>
-						<button
-							type="button"
-							class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
-							:aria-expanded="
-								!collapsedOutline.has('definition:' + activeDefinition?.id)
-							"
-							:aria-label="
-								translate(
-									collapsedOutline.has('definition:' + activeDefinition?.id)
-										? 'zx_builder_expand'
-										: 'zx_builder_collapse',
-								) +
-								': ' +
-								activeDefinition?.name
-							"
-							@click.stop="toggleOutline('definition:' + activeDefinition?.id)"
-							@dragstart.stop.prevent
-						>
-							<span aria-hidden="true">{{
-								collapsedOutline.has("definition:" + activeDefinition?.id)
-									? "▸"
-									: "▾"
-							}}</span>
-						</button>
-						<h3
-							class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
-						>
-							{{ activeDefinition?.name }}
-						</h3>
-					</div>
-					<template
-						v-if="!collapsedOutline.has('definition:' + activeDefinition?.id)"
-					>
-						<p
-							v-if="activeDefinition?.sourceKey"
-							class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-						>
-							{{ translate("zx_builder_source_outline") }}
-						</p>
-						<BuilderTree
-							v-else-if="activeDefinition"
-							:nodes="activeDefinition.tree"
-							instance="library"
-						/> </template
-				></template>
-				<template v-else>
-                    <div class="relative mb-2 rounded-xxs border-slim border-dashed border-zaux-light-grey p-2 text-[10px] text-zaux-dark-grey"
-                        data-zb-outline-drop="instance"
-                        @dragover="outlineDrag.over($event, null, null, true)"
-                        @dragleave="outlineDrag.leave"
-                        @drop="outlineDrag.drop($event, null, null, true)">
-						{{ translate('zx_builder_free_elements_hint') }}
-                        <span v-if="outlineDrag.position(null, null, true)" class="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-zaux-accent" />
-                    </div>
-                    <article
-						v-for="instance in activeTemplate.instances"
-						:key="instance.id"
-						:data-zb-outline-instance="instance.id"
-                        data-zb-outline-drop="instance" :data-zb-drop-instance="instance.id"
-						class="zb-instance relative mb-2 rounded-xxs border-slim border-zaux-light-grey p-1 [&.active]:border-zaux-accent"
-						:class="{ active: outlineSelected(instance.id) }"
-						:draggable="canEditRemote"
-						@dragstart.stop="
-							drag($event, { kind: 'instance', id: instance.id })
-						"
-						@dragover="outlineDrag.over($event, null, instance.id, true)"
-						@dragleave="outlineDrag.leave"
-						@drop="outlineDrag.drop($event, null, instance.id, true)"
-					>
-						<span
-							v-if="outlineDrag.position(null, instance.id, true)"
-							aria-hidden="true"
-							class="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-zaux-accent"
-							:class="
-								outlineDrag.position(null, instance.id, true) === 'before'
-									? 'top-0'
-									: 'bottom-0'
-							"
-						/>
-						<BuilderTree v-if="instance.kind === 'free'" :nodes="instance.definition.tree" :instance="instance.id" />
-                        <template v-else>
-                        <div class="zb-instance-heading flex min-w-0 items-center gap-0.25">
-							<button
-								type="button"
-								class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[16px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
-								:aria-expanded="
-									!collapsedOutline.has('instance:' + instance.id)
-								"
-								:aria-label="
-									translate(
-										collapsedOutline.has('instance:' + instance.id)
-											? 'zx_builder_expand'
-											: 'zx_builder_collapse',
-									) +
-									': ' +
-									instance.name
-								"
-								@click.stop="toggleOutline('instance:' + instance.id)"
-								@dragstart.stop.prevent
-							>
-								<span aria-hidden="true">{{
-									collapsedOutline.has("instance:" + instance.id) ? "▸" : "▾"
-								}}</span>
-							</button>
-							<button
-								class="zb-instance-name select-none flex min-w-0 flex-1 items-center gap-1 truncate px-0.25 py-0.5 text-left !text-[11px] font-medium [&>span]:text-zaux-dark-grey"
-								:aria-pressed="outlineSelected(instance.id)"
-                                @mousedown.shift.prevent
-                                @click="revealInstance(instance.id, $event)"
-							>
-								<span>⠿</span>{{ instance.name }}
-							</button>
-							<div
-								class="zb-instance-tools flex shrink-0 items-center gap-[1px] [&>.zb-button]:!min-w-[25px] [&>.zb-button]:!w-[25px] [&>.zb-button]:!p-0.5"
-							>
-								<BuilderButton
-									icon="duplicate"
-									iconOnly
-									variant="alt1"
-									:label="`${translate('zx_builder_duplicate')}: ${instance.name}`"
-									@click="duplicate('instance', instance.id)"
-								/>
-								<BuilderButton
-									icon="delete"
-									variant="alt1"
-									iconOnly
-									:label="`${translate('zx_builder_delete')}: ${instance.name}`"
-									@click="remove('instance', instance.id)"
-								/>
-							</div>
-						</div>
-						<template v-if="!collapsedOutline.has('instance:' + instance.id)">
-							<div
-								v-if="instanceId === instance.id"
-								class="zb-instance-actions flex justify-between gap-0.5 pb-1.5 pt-0.5 text-[9px] text-zaux-dark-grey [&>button:hover]:text-zaux-accent"
-							>
-								<button
-									@click="
-										modal = {
-											type: 'rename',
-											kind: 'instance',
-											id: instance.id,
-											name: instance.name,
-										}
-									"
-								>
-									{{ translate("zx_builder_rename") }}
-								</button>
-							</div>
-							<div v-if="instanceId === instance.id" class="px-0.5 pb-1.5">
-								<div class="flex items-center gap-1">
-                                  <BuilderButton size="xs" class="flex-1 min-w-0"
-                                    :label="translate('zx_builder_restore_library')"
-                                    :disabled="!canEditRemote || !instanceLibraryDefinition"
-                                    @click="restoreActiveInstance" />
-                                  <BuilderButton size="xs" icon="edit" iconOnly variant="alt1"
-                                    :label="translate('zx_builder_edit_library')"
-                                    :disabled="!instanceLibraryDefinition"
-                                    @click="instanceLibraryDefinition && selectLibrary(instanceLibraryDefinition.id)" />
-                                </div>
-								<p class="mt-1 text-[10px] leading-relaxed text-zaux-dark-grey">
-									{{
-										translate(
-											instanceLibraryDefinition
-												? "zx_builder_restore_library_hint"
-												: "zx_builder_restore_library_missing",
-										)
-									}}
-								</p>
-								<details
-									v-if="instance.unmappedProperties?.length"
-									class="mt-1 mb-0 text-[10px]"
-								>
-									<summary class="pb-0">
-										{{ translate("zx_builder_restore_unmapped") }}
-									</summary>
-									<BuilderCodeEditor
-										:modelValue="
-											JSON.stringify(instance.unmappedProperties, null, 2)
-										"
-										:label="translate('zx_builder_restore_unmapped')"
-										readonly
-										rows="10"
-									/>
-								</details>
-							</div>
-							<button
-								v-if="instance.definition.sourceKey"
-								class="zb-source-outline px-1.5 py-1 text-left text-[10px] text-zaux-accent"
-								:aria-pressed="outlineSelected(instance.id)"
-                                @mousedown.shift.prevent
-                                @click="revealInstance(instance.id, $event)"
-							>
-								{{ translate("zx_builder_source_outline") }}</button
-							><BuilderTree
-								v-else
-								:nodes="instance.definition.tree"
-								:instance="instance.id"
-							/>
-						</template></template></article
-				></template>
 			</div>
 		</section>
-		<div v-if="libraryCollapsed && outlineCollapsed" class="flex-1" />
-		<div
-			ref="footerEl"
-			class="zb-sidebar-footer flex shrink-0 items-center justify-between border-t-slim border-zaux-light-grey px-2 py-1.5 text-[11px] text-zaux-dark-grey [&>select]:w-[58px] [&>select]:p-0.5 [&>select]:text-[10px] [&_small]:ml-0.5 [&_small]:text-[9px]"
-		>
-			<span>Zaux Studio <small>0.1</small></span
-			><BuilderInput
-				class="!w-[58px] !p-0.5 !text-[10px]"
-				type="select"
-				:modelValue="language"
-				:label="translate('zx_builder_language')"
-				:options="[
-					{ value: 'it', label: 'IT' },
-					{ value: 'en', label: 'EN' },
-				]"
-				@update:modelValue="setLanguage"
-			/>
-		</div>
 		<BuilderMediaPicker
 			v-if="previewId"
 			scopeOnly="global"
@@ -586,85 +523,71 @@
 </template>
 <script>
 import BuilderMediaPicker from "./BuilderMediaPicker.vue";
-import { defineComponent, computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { defineComponent, computed, ref, watch, nextTick, onBeforeUnmount } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderDropdown from "./BuilderDropdown.vue";
 import BuilderLibraryThumbnail from "./BuilderLibraryThumbnail.vue";
 import BuilderButton from "./BuilderButton.vue";
-import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 import BuilderTree from "./BuilderTree.vue";
 import BuilderInput from "./fields/BuilderInput.vue";
+import BuilderPages from "./BuilderPages.vue";
+
+const TABS = [
+	{ id: "layers", label: "zx_builder_outline" },
+	{ id: "library", label: "zx_builder_library" },
+	{ id: "elements", label: "zx_builder_elements" },
+];
+
 export default defineComponent({
 	components: {
 		BuilderLibraryThumbnail,
 		BuilderDropdown,
 		BuilderCodeEditor,
 		BuilderButton,
-		BuilderResizeHandle,
 		BuilderTree,
 		BuilderInput,
 		BuilderMediaPicker,
+		BuilderPages,
 	},
-	props: { width: { default: 180 } },
+	props: { width: { default: 264 } },
 	setup() {
 		const builder = useBuilder();
 		const outlineDrag = createBuilderOutlineDrag(builder);
 		const search = ref("");
 		const elementDestination = ref("template");
-		const libraryCollapsed = ref(false);
-		const outlineCollapsed = ref(false);
+		const hintsOpen = ref(false);
 		watch(() => builder.revealOutlineTarget.value, async (target) => {
-			if (!target || outlineCollapsed.value) return;
+			if (!target || builder.leftTab.value !== "layers") return;
 			await nextTick();
 			const selector = target.nodeId
 				? `[data-zb-outline-node="${CSS.escape(target.nodeId)}"]`
 				: builder.mode.value === "library"
 					? "[data-zb-outline-definition]"
 					: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
-			document.querySelector(selector)?.scrollIntoView({ block: "start", behavior: "smooth" });
+			document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
 		});
-		const outlineHeight = ref(500);
-		const asideEl = ref(null);
-		const tabsEl = ref(null);
-		const footerEl = ref(null);
-		const MIN_OUTLINE_HEIGHT = 350;
-		const MIN_CONTENT_HEIGHT = 80;
-		const RESIZE_HANDLE_HEIGHT = 4;
-		function clampOutline() {
-			const aside = asideEl.value;
-			if (!aside?.clientHeight || libraryCollapsed.value || outlineCollapsed.value) return;
-			const fixed =
-				(tabsEl.value?.offsetHeight ?? 0) +
-				(footerEl.value?.offsetHeight ?? 0) +
-				RESIZE_HANDLE_HEIGHT;
-			const max = Math.max(
-				0,
-				aside.clientHeight - fixed - MIN_CONTENT_HEIGHT,
-			);
-			outlineHeight.value = Math.min(
-				max,
-				Math.max(MIN_OUTLINE_HEIGHT, outlineHeight.value),
-			);
+		function tabKeydown(event) {
+			if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+			event.preventDefault();
+			const index = TABS.findIndex((tab) => tab.id === builder.leftTab.value);
+			const next = event.key === "Home" ? 0
+				: event.key === "End" ? TABS.length - 1
+					: (index + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+			builder.leftTab.value = TABS[next].id;
+			event.currentTarget.parentElement.querySelector("#zb-left-tab-" + TABS[next].id)?.focus();
 		}
-		function resizeOutline(delta) {
-			if (libraryCollapsed.value || outlineCollapsed.value) return;
-			outlineHeight.value += delta;
-			clampOutline();
+		// Spring-loaded tabs: hovering a tab while dragging a builder item opens it.
+		let springTimer;
+		function cancelSpring() { clearTimeout(springTimer); }
+		function springTab(event, id) {
+			cancelSpring();
+			if (builder.leftTab.value === id || !event.dataTransfer?.types.includes("application/x-zaux-builder")) return;
+			springTimer = setTimeout(() => { builder.leftTab.value = id; }, 450);
 		}
-		watch([libraryCollapsed, outlineCollapsed], async () => {
-			await nextTick();
-			clampOutline();
-		});
-		onMounted(() => {
-			clampOutline();
-			window.addEventListener("resize", clampOutline);
-		});
-		onBeforeUnmount(() => {
-			window.removeEventListener("resize", clampOutline);
-		});
+		onBeforeUnmount(cancelSpring);
 		const createItems = computed(() => [
 			{
 				id: "new-component",
@@ -736,6 +659,10 @@ export default defineComponent({
 
 		return {
 			...builder,
+			tabs: TABS,
+			tabKeydown,
+			springTab,
+			cancelSpring,
 			createItems,
 			libraryKindKeydown,
 			elementDestination,
@@ -748,13 +675,7 @@ export default defineComponent({
 			previewId,
 			setPreview,
 			revealInstance,
-			libraryCollapsed,
-			outlineCollapsed,
-			outlineHeight,
-			resizeOutline,
-			asideEl,
-			tabsEl,
-			footerEl,
+			hintsOpen,
 		};
 	},
 });

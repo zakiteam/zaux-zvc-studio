@@ -1,13 +1,24 @@
 <template>
-  <div class="zb-canvas-area flex min-h-0 flex-1 flex-col items-center overflow-auto px-1 pb-1 max-[1200px]:p-2" :style="{ backgroundColor: canvasDark ? '#18181b' : '#e4e4e7' }">
-    <div class="zb-canvas-ruler h-[22px] w-full shrink-0 text-center [&>span]:font-mono [&>span]:text-[9px] [&>span]:tracking-[1px] [&>span]:text-zaux-dark-grey"><span :style="{ color: canvasDark ? '#d4d4d8' : '#52525b' }">{{ viewportLabel }}</span></div>
-    <div class="zb-preview-frame min-h-[450px] w-full flex-1 overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep transition-[width] [&>iframe]:block [&>iframe]:h-full [&>iframe]:min-h-[450px] [&>iframe]:w-full [&>iframe]:border-none" :style="viewportWidth === null ? {} : { width: `${viewportWidth}px`, minWidth: `${viewportWidth}px`, boxSizing: 'content-box', alignSelf: 'flex-start', marginInline: 'auto' }">
-      <iframe ref="frame" src="/preview" :style="{ backgroundColor: canvasDark ? '#18181b' : '#ffffff' }" :title="translate('zx_builder_preview_title')" @load="sendState" />
+  <div class="zb-canvas-area relative flex min-h-0 flex-1 flex-col" :style="{ backgroundColor: canvasDark ? '#18181b' : '#e4e4e7' }">
+    <slot name="toolbar" />
+    <div ref="stage" class="zb-canvas-stage zb-scroll min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
+      <div class="zb-canvas-frame mx-auto" :style="{ width: `${layout.width * layout.scale}px` }">
+        <div class="zb-canvas-label flex h-[22px] items-end justify-between gap-2 pb-0.5 font-mono text-[10px]" :style="{ color: canvasDark ? '#a1a1aa' : '#52525b' }">
+          <span class="truncate">{{ viewportLabel }}</span>
+          <span class="shrink-0">{{ Math.round(layout.scale * 100) }}%</span>
+        </div>
+        <div class="relative" :style="{ height: `${layout.height * layout.scale}px` }">
+          <div class="zb-preview-frame absolute left-0 top-0 origin-top-left overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep [&>iframe]:block [&>iframe]:h-full [&>iframe]:w-full [&>iframe]:border-none"
+            :style="{ width: `${layout.width}px`, height: `${layout.height}px`, transform: layout.scale === 1 ? null : `scale(${layout.scale})` }">
+            <iframe ref="frame" src="/preview" :style="{ backgroundColor: canvasDark ? '#18181b' : '#ffffff' }" :title="translate('zx_builder_preview_title')" @load="sendState" />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 <script>
-import { defineComponent, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, defineComponent, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { runtimeNodes } from '../../../domain/nodes.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
@@ -15,6 +26,23 @@ export default defineComponent({
   setup() {
     const builder = useBuilder();
     const frame = ref(null);
+    const stage = ref(null);
+    const stageSize = ref({ width: 0, height: 0 });
+    let stageObserver;
+    // Frame keeps its nominal viewport width; zoom only scales it visually inside the stage.
+    const layout = computed(() => {
+      const { width, height } = stageSize.value;
+      // The frame always fits the stage height, so the stage never needs a vertical scrollbar:
+      // a scrollbar would change the width, the fit scale and the toolbar wrapping, in a loop.
+      const availableWidth = Math.max(240, width - 32);
+      const availableHeight = Math.max(120, height - 22 - 16);
+      const nominal = builder.viewportWidth.value;
+      const zoom = builder.canvasZoom.value;
+      // Round down so the scaled frame never exceeds the stage by a sub-pixel.
+      const scale = zoom === 'fit' ? (nominal ? Math.min(1, Math.floor(availableWidth / nominal * 1000) / 1000) : 1) : zoom;
+      return { scale, width: Math.floor(nominal ?? availableWidth / scale), height: Math.floor(availableHeight / scale) };
+    });
+    watch(() => layout.value.scale, scale => { builder.canvasScale.value = scale; }, { immediate: true });
     const dynamicCss = ref('');
     let timer;
     let generation = 0;
@@ -42,6 +70,7 @@ export default defineComponent({
         if (message.type === 'duplicate-node') builder.duplicateNode();
         if (message.type === 'delete-node') builder.deleteNode();
       }
+      if (message.type === 'layout') { if (!builder.modal.value) builder.runLayoutShortcut(message.action); return; }
       if (message.type === 'ready') sendState();
       if (message.type === 'select') {
         builder.selectInstance(message.instanceId, message.nodeId);
@@ -63,9 +92,15 @@ export default defineComponent({
       frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'reveal', instanceId: target.instanceId, nodeId: target.nodeId }, window.location.origin);
     });
     watch([builder.mode, builder.libraryId, builder.templateId, builder.viewportWidth], () => { builder.hiddenOutlineNodes.value = new Set(); sendState(); });
-    onMounted(() => { window.addEventListener('message', receive); compileCss(); });
-    onBeforeUnmount(() => { builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
-    return { ...builder, frame, sendState };
+    onMounted(() => {
+      window.addEventListener('message', receive); compileCss();
+      stageObserver = new ResizeObserver(([entry]) => {
+        stageSize.value = { width: entry.target.clientWidth, height: entry.target.clientHeight };
+      });
+      stageObserver.observe(stage.value);
+    });
+    onBeforeUnmount(() => { stageObserver?.disconnect(); builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
+    return { ...builder, frame, stage, layout, sendState };
   }
 });
 </script>

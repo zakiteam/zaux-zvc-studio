@@ -1,344 +1,333 @@
 <template>
-	<div
-		class="zb-dialog-backdrop fixed inset-0 z-[5000] grid place-items-center bg-zaux-black/40 py-1.5 px-4 backdrop-blur-[4px]"
-		@mousedown.self="close"
+	<BuilderModal
+		:title="title"
+		:size="wide ? 'full' : 'sm'"
+		:busy="saving"
+		closeOnBackdrop
+		initialFocus='input:not([type="file"]), textarea, .cm-content'
+		bodyClass="p-2 [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"
+		@close="close"
 	>
-		<section
-			ref="dialog"
-			class="zb-dialog max-h-[95dvh] w-[440px] max-w-full overflow-auto rounded-s bg-zaux-white p-4 shadow-deeper [&.zb-dialog--wide]:w-[1400px] [&>header]:mb-3 [&>header]:flex [&>header]:items-start [&>header]:justify-between [&_h2]:mt-1 [&_h2]:text-[25px] [&_h2]:font-normal [&_h2]:tracking-[-0.7px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey [&_footer]:mt-3 [&_footer]:flex [&_footer]:items-center [&_footer]:justify-end [&_footer]:gap-1.5 [&_footer>span]:!mr-auto"
-			:class="{
-				'zb-dialog--wide': ['import', 'export', 'new-component-json', 'new-partial-json'].includes(
-					modal.type,
-				),
-			}"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="dialog-title"
-			tabindex="-1"
-			@keydown="trapFocus"
+		<form
+			v-if="nameForm"
+			:id="formId"
+			@submit.prevent="submitName"
 		>
-			<header>
-				<div>
-					<span
-						class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey"
-						>ZAUX STUDIO</span
-					>
-					<h2 id="dialog-title">{{ title }}</h2>
-				</div>
-				<BuilderButton
-					icon="close"
-					iconOnly
-					:label="translate('zx_builder_close')"
-					@click="close"
-				/>
-			</header>
-			<form
-				v-if="
-					[
-						'new-component', 'new-partial', 'group-zvc',
-						'new-template',
-						'new-project',
-						'rename-project',
-						'rename',
-						'save-library',
-					].includes(modal.type)
-				"
-				@submit.prevent="submitName"
+			<div
+				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
-				<div
-					class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
+				<label for="dialog-name">{{ translate("zx_builder_name") }}</label
+				><input
+					class="px-2 py-1 border-none bg-zaux-light"
+					id="dialog-name"
+					v-model="name"
+					required
+					maxlength="100"
+					autocomplete="off"
+				/>
+			</div>
+			<div v-if="modal.type === 'group-zvc'" class="mb-2.5">
+				<p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_group_zvc_hint') }}</p>
+				<label for="group-last" class="block text-[11px]">{{ translate('zx_builder_group_zvc_last') }}</label>
+				<select id="group-last" v-model="groupEnd" class="w-full bg-zaux-light px-2 py-1">
+					<option v-for="(item, index) in groupCandidates" :key="item.id" :value="item.id">{{ index + 1 }}. {{ item.definition.tree.map(node => node.name).join(', ') }}</option>
+				</select>
+			</div>
+		</form>
+		<p v-else-if="modal.type === 'delete-project'">
+			{{
+				translate("zx_builder_delete_project_confirm", { name: modal.name })
+			}}
+		</p>
+		<p v-else-if="modal.type === 'delete' || modal.type === 'resume'">
+			{{
+				translate(
+					modal.type === "delete"
+						? "zx_builder_delete_confirm"
+						: "zx_builder_replace_workspace",
+				)
+			}}
+		</p>
+		<template v-else-if="modal.type === 'export'">
+			<p
+				class="zb-help !mb-2 !mt-0 text-[11px] leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_export_hint") }}
+			</p>
+			<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
+				<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
+					<option value="starter">{{ translate("zx_builder_starter_package") }}</option>
+					<option value="workspace">
+						{{ translate("zx_builder_workspace") }}
+					</option>
+					<option value="template">
+						{{ translate("zx_builder_current_template") }}
+					</option>
+					<option v-if="activeDefinition" value="component">
+						{{ translate("zx_builder_current_component") }}
+					</option></select
+				><select
+					class="px-2 py-1 border-none bg-zaux-light"
+					v-if="['component', 'template'].includes(scope)"
+					v-model="format"
+					aria-label="Format"
 				>
-					<label for="dialog-name">{{ translate("zx_builder_name") }}</label
-					><input
-						class="px-2 py-1 border-none bg-zaux-light"
-						id="dialog-name"
-						v-model="name"
-						required
-						maxlength="100"
-						autocomplete="off"
-					/>
-				</div>
-				<div v-if="modal.type === 'group-zvc'" class="mb-2.5">
-					<p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_group_zvc_hint') }}</p>
-					<label for="group-last" class="block text-[11px]">{{ translate('zx_builder_group_zvc_last') }}</label>
-					<select id="group-last" v-model="groupEnd" class="w-full bg-zaux-light px-2 py-1">
-						<option v-for="(item, index) in groupCandidates" :key="item.id" :value="item.id">{{ index + 1 }}. {{ item.definition.tree.map(node => node.name).join(', ') }}</option>
-					</select>
-				</div>
-				<footer>
-					<BuilderButton
-						:label="translate('zx_builder_cancel')"
-						@click="close"
-					/><button
-						class="zb-submit inline-flex min-h-[36px] items-center justify-center rounded-xxs bg-zaux-accent px-2.5 py-1.5 !text-[12px] text-zaux-white hover:bg-zaux-dark-accent disabled:cursor-wait disabled:opacity-60"
-						:disabled="saving"
-						type="submit"
-					>
-						{{
-							translate(saving ? "zx_builder_remote_saving" : "zx_builder_save")
-						}}
-					</button>
-				</footer>
-			</form>
-			<template v-else-if="modal.type === 'delete-project'">
-				<p>
-					{{
-						translate("zx_builder_delete_project_confirm", { name: modal.name })
-					}}
-				</p>
-				<footer>
-					<BuilderButton
-						:disabled="saving"
-						:label="translate('zx_builder_cancel')"
-						@click="close"
-					/><BuilderButton
-						variant="primary"
-						:disabled="saving"
-						:label="
-							translate(
-								saving
-									? 'zx_builder_remote_saving'
-									: 'zx_builder_delete_project',
-							)
-						"
-						@click="deleteProject"
-					/>
-				</footer>
-			</template>
-			<template v-else-if="modal.type === 'delete' || modal.type === 'resume'"
-				><p>
-					{{
-						translate(
-							modal.type === "delete"
-								? "zx_builder_delete_confirm"
-								: "zx_builder_replace_workspace",
-						)
-					}}
-				</p>
-				<footer>
-					<BuilderButton
-						:label="translate('zx_builder_cancel')"
-						@click="close"
-					/><BuilderButton
-						variant="primary"
-						:label="translate('zx_builder_confirm')"
-						@click="confirmAction"
-					/></footer
-			></template>
-			<template v-else-if="modal.type === 'export'">
-				<p
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_export_hint") }}
-				</p>
-				<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
-					<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
-						<option value="starter">{{ translate("zx_builder_starter_package") }}</option>
-						<option value="workspace">
-							{{ translate("zx_builder_workspace") }}
-						</option>
-						<option value="template">
-							{{ translate("zx_builder_current_template") }}
-						</option>
-						<option v-if="activeDefinition" value="component">
-							{{ translate("zx_builder_current_component") }}
-						</option></select
-					><select
-						class="px-2 py-1 border-none bg-zaux-light"
-						v-if="['component', 'template'].includes(scope)"
-						v-model="format"
-						aria-label="Format"
-					>
-						<option value="json">
-							{{ translate("zx_builder_json_editable") }}
-						</option>
-						<option value="runtime">
-							{{ translate("zx_builder_json_runtime") }}
-						</option>
-						<option value="js">JavaScript</option>
-						<option v-if="scope === 'component'" value="vue">Vue SFC</option>
-					</select>
-				</div>
-				<p v-if="scope === 'starter'" class="mb-2 text-[12px] text-zaux-dark-grey">
-					{{ translate('zx_builder_starter_hint') }}
-				</p>
-				<label v-if="scope === 'starter'" class="mb-2 flex cursor-pointer items-center gap-1.5 text-[12px] text-zaux-dark">
-					<input v-model="includeImported" type="checkbox" class="!w-auto accent-zaux-accent" />
-					<span>{{ translate("zx_builder_starter_include_imported") }}</span>
+					<option value="json">
+						{{ translate("zx_builder_json_editable") }}
+					</option>
+					<option value="runtime">
+						{{ translate("zx_builder_json_runtime") }}
+					</option>
+					<option value="js">JavaScript</option>
+					<option v-if="scope === 'component'" value="vue">Vue SFC</option>
+				</select>
+			</div>
+			<p v-if="scope === 'starter'" class="mb-2 !text-[12px] text-zaux-dark-grey">
+				{{ translate('zx_builder_starter_hint') }}
+			</p>
+			<label v-if="scope === 'starter'" class="mb-2 flex cursor-pointer items-center gap-1.5 text-[12px] text-zaux-dark">
+				<input v-model="includeImported" type="checkbox" class="!w-auto accent-zaux-accent" />
+				<span>{{ translate("zx_builder_starter_include_imported") }}</span>
+			</label>
+			<p v-if="packageResult.error" role="alert" class="mb-2 !text-[12px] !text-utility-error">
+				{{ translate(packageResult.error) }}
+			</p>
+			<p
+				v-if="
+					format === 'js' &&
+					scope === 'component' &&
+					!Object.keys(jsFiles).length
+				"
+				class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 !text-[11px] !leading-[1.6] !text-utility-error"
+			>
+				{{ translate("zx_builder_source_missing") }}
+			</p>
+			<p
+				v-if="format === 'runtime' && ['component', 'template'].includes(scope)"
+				class="zb-help !mb-2 !mt-1.5 !text-[11px] !leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_runtime_hint") }}
+			</p>
+			<p
+				v-if="format === 'vue'"
+				class="zb-help !mb-2 !mt-1.5 !text-[11px] !leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_vue_hint") }}
+			</p>
+			<BuilderFileExplorer
+				v-if="isPackage"
+				class="mb-1.5"
+				:files="jsFiles"
+				v-model:selected="selectedFile"
+			/>
+			<BuilderCodeEditor
+				v-else
+				:language="format === 'vue' ? 'vue' : 'json'"
+				:modelValue="exportPreview"
+				readonly
+				rows="18"
+				label="Export"
+				@change="exportPreview = $event"
+			/>
+		</template>
+		<template v-else-if="['new-component-json', 'new-partial-json'].includes(modal.type)">
+			<p class="mb-2 !text-[12px] text-zaux-dark-grey">
+				{{ componentHint }}
+			</p>
+			<div
+				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark"
+			>
+				<label for="component-json-format">{{ translate("zx_builder_json_format") }}</label
+				><select id="component-json-format" class="px-2 py-1 border-none bg-zaux-light" v-model="componentFormat">
+					<option value="workspace">{{ translate("zx_builder_json_workspace") }}</option>
+					<option value="simple">{{ translate("zx_builder_json_simple") }}</option>
+				</select>
+			</div>
+			<template v-if="componentFormat === 'simple'">
+				<label class="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-zaux-dark">
+					<input v-model="componentEditable" type="checkbox" class="!w-auto accent-zaux-accent" />
+					<span>{{ translate("zx_builder_json_editable_content") }}</span>
 				</label>
-				<p v-if="packageResult.error" role="alert" class="mb-2 text-[12px] text-utility-error">
-					{{ translate(packageResult.error) }}
+				<p class="zb-help mb-2 !mt-1.5 !text-[11px] !leading-[1.65] text-zaux-dark-grey">
+					{{ translate("zx_builder_json_editable_hint") }}
 				</p>
-				<p
-					v-if="
-						format === 'js' &&
-						scope === 'component' &&
-						!Object.keys(jsFiles).length
-					"
-					class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] leading-[1.6] text-utility-error"
-				>
-					{{ translate("zx_builder_source_missing") }}
-				</p>
-				<p
-					v-if="format === 'runtime' && ['component', 'template'].includes(scope)"
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_runtime_hint") }}
-				</p>
-				<p
-					v-if="format === 'vue'"
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_vue_hint") }}
-				</p>
-				<BuilderFileExplorer
-					v-if="isPackage"
-					class="mb-1.5"
-					:files="jsFiles"
-					v-model:selected="selectedFile"
-				/>
-				<BuilderCodeEditor
-					v-else
-					:language="format === 'vue' ? 'vue' : 'json'"
-					:modelValue="exportPreview"
-					readonly
-					rows="18"
-					label="Export"
-					@change="exportPreview = $event"
-				/>
-				<footer>
-					<span
-						class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-						role="status"
-						>{{ copied ? translate("zx_builder_copied") : "" }}</span
-					><BuilderButton
-						:label="translate('zx_builder_copy')"
-						@click="copy"
-					/><BuilderButton
-						v-if="isPackage"
-						variant="primary"
-						:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : 'zx_builder_download_js')"
-						:disabled="saving || !Object.keys(jsFiles).length"
-						@click="downloadJs"
-					/><BuilderButton
-						v-else
-						variant="primary"
-						:label="translate(format === 'vue' ? 'zx_builder_download_vue' : 'zx_builder_download_json')"
-						@click="downloadFile"
-					/>
-				</footer>
 			</template>
-			<template v-else-if="['new-component-json', 'new-partial-json'].includes(modal.type)">
-				<p class="mb-2 text-[12px] text-zaux-dark-grey">
-					{{ componentHint }}
-				</p>
-				<div
-					class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark"
-				>
-					<label for="component-json-format">{{ translate("zx_builder_json_format") }}</label
-					><select id="component-json-format" class="px-2 py-1 border-none bg-zaux-light" v-model="componentFormat">
-						<option value="workspace">{{ translate("zx_builder_json_workspace") }}</option>
-						<option value="simple">{{ translate("zx_builder_json_simple") }}</option>
-					</select>
-				</div>
-				<template v-if="componentFormat === 'simple'">
-					<label class="mb-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-zaux-dark">
-						<input v-model="componentEditable" type="checkbox" class="!w-auto accent-zaux-accent" />
-						<span>{{ translate("zx_builder_json_editable_content") }}</span>
-					</label>
-					<p class="zb-help mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">
-						{{ translate("zx_builder_json_editable_hint") }}
-					</p>
-				</template>
-				<BuilderCodeEditor
-					v-model="componentText"
-					:label="translate(modal.type === 'new-partial-json' ? 'zx_builder_new_partial_json' : 'zx_builder_new_component_json')"
-					:rows="18"
+			<BuilderCodeEditor
+				v-model="componentText"
+				:label="translate(modal.type === 'new-partial-json' ? 'zx_builder_new_partial_json' : 'zx_builder_new_component_json')"
+				:rows="18"
+			/>
+		</template>
+		<template v-else-if="modal.type === 'import'">
+			<p
+				class="zb-help !mb-2 !mt-0 !text-[11px] !leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_import_hint") }}
+			</p>
+			<label
+				class="zb-file-input my-3 flex flex-col gap-2 rounded-xs border-slim border-dashed border-zaux-light-grey bg-zaux-light p-2.5 text-zaux-dark-grey [&>input]:text-[11px]"
+				><span>{{ translate("zx_builder_choose_file") }}</span
+				><input
+					type="file"
+					accept=".json,application/json"
+					@change="readFile"
+			/></label>
+			<div
+				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
+			>
+				<label for="import-json">{{
+					translate("zx_builder_paste_json")
+				}}</label
+				><BuilderCodeEditor
+					id="import-json"
+					:label="translate('zx_builder_paste_json')"
+					v-model="importText"
+					rows="15"
 				/>
-				<footer>
+			</div>
+			<div
+				v-if="pendingImport"
+				class="zb-context-card mt-3 rounded-xs border-slim border-zaux-light-grey bg-zaux-light/60 p-2 [&_p]:mb-1.5 [&_p]:mt-1 [&_p]:text-[11px] [&_p]:leading-[1.6] [&_p]:text-zaux-dark-grey"
+			>
+				<p>{{ translate("zx_builder_replace_workspace") }}</p>
+				<div class="flex gap-1">
 					<BuilderButton
-						:label="translate('zx_builder_cancel')"
-						@click="close"
-					/><BuilderButton
-						variant="primary"
-						:label="translate('zx_builder_add')"
-						:disabled="!componentText.trim() || !canEditRemote"
-						@click="addComponentJson"
-					/>
-				</footer>
-			</template>
-			<template v-else-if="modal.type === 'import'">
-				<p
-					class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
-				>
-					{{ translate("zx_builder_import_hint") }}
-				</p>
-				<label
-					class="zb-file-input my-3 flex flex-col gap-2 rounded-xs border-slim border-dashed border-zaux-light-grey bg-zaux-light p-2.5 text-zaux-dark-grey [&>input]:text-[11px]"
-					><span>{{ translate("zx_builder_choose_file") }}</span
-					><input
-						type="file"
-						accept=".json,application/json"
-						@change="readFile"
-				/></label>
-				<div
-					class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
-				>
-					<label for="import-json">{{
-						translate("zx_builder_paste_json")
-					}}</label
-					><BuilderCodeEditor
-						id="import-json"
-						:label="translate('zx_builder_paste_json')"
-						v-model="importText"
-						rows="15"
-					/>
-				</div>
-				<div
-					v-if="pendingImport"
-					class="zb-context-card mt-3 rounded-xs border-slim border-zaux-light-grey bg-zaux-light/60 p-2 [&_p]:mb-1.5 [&_p]:mt-1 [&_p]:text-[11px] [&_p]:leading-[1.6] [&_p]:text-zaux-dark-grey"
-				>
-					<p>{{ translate("zx_builder_replace_workspace") }}</p>
-					<BuilderButton
+						size="xs"
 						:label="translate('zx_builder_cancel')"
 						@click="pendingImport = null"
 					/><BuilderButton
+						size="xs"
 						variant="primary"
 						:label="translate('zx_builder_confirm')"
 						@click="applyImport(pendingImport)"
 					/>
 				</div>
-				<footer v-else>
-					<BuilderButton
-						:label="translate('zx_builder_cancel')"
-						@click="close"
-					/><BuilderButton
-						variant="primary"
-						:label="translate('zx_builder_import')"
-						:disabled="!importText.trim()"
-						@click="importJson"
-					/>
-				</footer>
+			</div>
+		</template>
+		<p
+			v-if="localError"
+			class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 !text-[11px] !leading-[1.6] !text-utility-error"
+			role="alert"
+		>
+			{{ translate(localError) }}
+		</p>
+		<p
+			v-if="localErrorDetail"
+			class="mt-1 !text-[10px] !leading-[1.5] text-zaux-dark-grey"
+		>
+			{{
+				translate("zx_builder_remote_error_detail", {
+					detail: localErrorDetail,
+				})
+			}}
+		</p>
+
+		<template v-if="!(modal.type === 'import' && pendingImport)" #footer>
+			<template v-if="nameForm">
+				<BuilderButton
+					size="xs"
+					variant="alt1"
+					:label="translate('zx_builder_cancel')"
+					@click="close"
+				/><BuilderButton
+					size="xs"
+					variant="primary"
+					type="submit"
+					:form="formId"
+					:disabled="saving"
+					:label="translate(saving ? 'zx_builder_remote_saving' : 'zx_builder_save')"
+				/>
 			</template>
-			<p
-				v-if="localError"
-				class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] leading-[1.6] text-utility-error"
-				role="alert"
-			>
-				{{ translate(localError) }}
-			</p>
-			<p
-				v-if="localErrorDetail"
-				class="mt-1 text-[10px] leading-[1.5] text-zaux-dark-grey"
-			>
-				{{
-					translate("zx_builder_remote_error_detail", {
-						detail: localErrorDetail,
-					})
-				}}
-			</p>
-		</section>
-	</div>
+			<template v-else-if="modal.type === 'delete-project'">
+				<BuilderButton
+					size="xs"
+					variant="alt1"
+					:disabled="saving"
+					:label="translate('zx_builder_cancel')"
+					@click="close"
+				/><BuilderButton
+					size="xs"
+					variant="primary"
+					:disabled="saving"
+					:label="
+						translate(
+							saving
+								? 'zx_builder_remote_saving'
+								: 'zx_builder_delete_project',
+						)
+					"
+					@click="deleteProject"
+				/>
+			</template>
+			<template v-else-if="modal.type === 'delete' || modal.type === 'resume'">
+				<BuilderButton
+					size="xs"
+					variant="alt1"
+					:label="translate('zx_builder_cancel')"
+					@click="close"
+				/><BuilderButton
+					size="xs"
+					variant="primary"
+					:label="translate('zx_builder_confirm')"
+					@click="confirmAction"
+				/>
+			</template>
+			<template v-else-if="modal.type === 'export'">
+				<span
+					class="mr-auto text-[11px] text-zaux-dark-grey"
+					role="status"
+					>{{ copied ? translate("zx_builder_copied") : "" }}</span
+				><BuilderButton
+					size="xs"
+					icon="copy"
+					:extraProps="{ actionIcon: false }"
+					:label="translate('zx_builder_copy')"
+					@click="copy"
+				/><BuilderButton
+					v-if="isPackage"
+					size="xs"
+					variant="primary"
+					:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : 'zx_builder_download_js')"
+					:disabled="saving || !Object.keys(jsFiles).length"
+					@click="downloadJs"
+				/><BuilderButton
+					v-else
+					size="xs"
+					variant="primary"
+					:label="translate(format === 'vue' ? 'zx_builder_download_vue' : 'zx_builder_download_json')"
+					@click="downloadFile"
+				/>
+			</template>
+			<template v-else-if="['new-component-json', 'new-partial-json'].includes(modal.type)">
+				<BuilderButton
+					size="xs"
+					variant="alt1"
+					:label="translate('zx_builder_cancel')"
+					@click="close"
+				/><BuilderButton
+					size="xs"
+					variant="primary"
+					:label="translate('zx_builder_add')"
+					:disabled="!componentText.trim() || !canEditRemote"
+					@click="addComponentJson"
+				/>
+			</template>
+			<template v-else-if="modal.type === 'import'">
+				<BuilderButton
+					size="xs"
+					variant="alt1"
+					:label="translate('zx_builder_cancel')"
+					@click="close"
+				/><BuilderButton
+					size="xs"
+					variant="primary"
+					:label="translate('zx_builder_import')"
+					:disabled="!importText.trim()"
+					@click="importJson"
+				/>
+			</template>
+		</template>
+	</BuilderModal>
 </template>
 <script>
 import { freeGroupCandidates } from '../../../domain/template-elements.js';
@@ -347,9 +336,7 @@ import {
 	ref,
 	computed,
 	watch,
-	onMounted,
-	onBeforeUnmount,
-	nextTick,
+	useId,
 } from "vue";
 import { presetCss } from '../../../domain/styles.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
@@ -372,11 +359,15 @@ import { downloadText, downloadZip } from "../../services/files.js";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
 import BuilderFileExplorer from "./BuilderFileExplorer.vue";
+import BuilderModal from "./BuilderModal.vue";
 export default defineComponent({
-	components: { BuilderCodeEditor, BuilderFileExplorer, BuilderButton },
+	components: { BuilderCodeEditor, BuilderFileExplorer, BuilderButton, BuilderModal },
 	setup() {
 		const builder = useBuilder();
-		const dialog = ref(null);
+		const formId = useId();
+		const NAME_FORMS = ['new-component', 'new-partial', 'group-zvc', 'new-template', 'new-project', 'rename-project', 'rename', 'save-library'];
+		const nameForm = computed(() => NAME_FORMS.includes(builder.modal.value.type));
+		const wide = computed(() => ['import', 'export', 'new-component-json', 'new-partial-json'].includes(builder.modal.value.type));
 		const name = ref(builder.modal.value.name ?? "");
 		const groupEnd = ref(builder.modal.value.endId ?? builder.modal.value.instanceId);
 		const groupCandidates = computed(() => freeGroupCandidates(builder.activeTemplate.value, builder.modal.value.instanceId));
@@ -469,7 +460,6 @@ export default defineComponent({
 					: "zx_builder_invalid_json";
 			}
 		}
-		const previousFocus = document.activeElement;
 		const titles = {
 			"new-component-json": "new_component_json",
             "new-partial-json": "new_partial_json",
@@ -675,41 +665,12 @@ export default defineComponent({
 					: "zx_builder_invalid_json";
 			}
 		}
-		function trapFocus(event) {
-			if (event.key === "Escape") {
-				event.stopPropagation();
-				close();
-			}
-			if (event.key !== "Tab") return;
-			const focusable = [
-				...dialog.value.querySelectorAll(
-					'button, input, select, textarea, [tabindex="0"]',
-				),
-			].filter((item) => !item.disabled && item.offsetParent !== null);
-			const first = focusable[0];
-			const last = focusable.at(-1);
-			if (event.shiftKey && document.activeElement === first) {
-				event.preventDefault();
-				last?.focus();
-			}
-			if (!event.shiftKey && document.activeElement === last) {
-				event.preventDefault();
-				first?.focus();
-			}
-		}
-		onMounted(async () => {
-			await nextTick();
-			(
-				dialog.value.querySelector(
-					'input:not([type="file"]), textarea, .cm-content',
-				) ?? dialog.value
-			)?.focus();
-		});
-		onBeforeUnmount(() => previousFocus?.focus());
 		return {
 			groupEnd, groupCandidates,
 			...builder,
-			dialog,
+			formId,
+			nameForm,
+			wide,
 			componentText,
 			componentFormat,
 			componentEditable,
@@ -743,7 +704,6 @@ export default defineComponent({
 			readFile,
 			applyImport,
 			importJson,
-			trapFocus,
 		};
 	},
 });

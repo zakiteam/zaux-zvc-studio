@@ -1,17 +1,5 @@
 <template>
-	<dialog
-		ref="dialog"
-		:aria-labelledby="titleId"
-		class="w-[680px] max-w-[calc(100vw-32px)] max-h-[90dvh] overflow-auto rounded-s border-none bg-zaux-white p-4 font-builder text-zaux-dark shadow-deeper backdrop:bg-zaux-black/40"
-		@keydown.stop
-		@cancel="onCancel"
-		@close="$emit('close')"
-	>
-		<header class="flex items-center justify-between gap-2 mb-3">
-			<h2 :id="titleId" class="text-[20px] font-medium">{{ translate("zx_builder_bridge") }}</h2>
-			<BuilderButton icon="close" iconOnly :label="translate('zx_builder_close')" :disabled="busy" @click="close" />
-		</header>
-
+	<BuilderModal :title="translate('zx_builder_bridge')" size="md" :busy="busy" @close="$emit('close')">
 		<p class="mb-2 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate("zx_builder_bridge_hint") }}</p>
 
 		<p v-if="unsupported" role="alert" class="mb-2 text-[12px] text-utility-error">
@@ -74,20 +62,21 @@
 			<p v-if="error" role="alert" class="mb-2 text-[12px] text-utility-error">{{ translate(error) }}</p>
 			<p v-if="done" role="status" class="mb-2 text-[12px] text-zaux-accent">{{ translate("zx_builder_bridge_done") }}</p>
 
-			<footer class="flex flex-wrap items-center justify-end gap-1 mt-3">
-				<BuilderButton :label="translate('zx_builder_cancel')" :disabled="busy" @click="close" />
-				<BuilderButton
-					variant="primary"
-					:label="translate(busy ? 'zx_builder_bridge_writing' : 'zx_builder_bridge_export')"
-					:disabled="!canExport || busy"
-					@click="writeProject"
-				/>
-			</footer>
 		</template>
-	</dialog>
+		<template v-if="!unsupported" #footer="{ close }">
+			<BuilderButton size="xs" variant="alt1" :label="translate('zx_builder_cancel')" :disabled="busy" @click="close" />
+			<BuilderButton
+				size="xs"
+				variant="primary"
+				:label="translate(busy ? 'zx_builder_bridge_writing' : 'zx_builder_bridge_export')"
+				:disabled="!canExport || busy"
+				@click="writeProject"
+			/>
+		</template>
+	</BuilderModal>
 </template>
 <script>
-import { computed, defineComponent, onBeforeUnmount, onMounted, reactive, ref, useId } from "vue";
+import { computed, defineComponent, reactive, ref } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { projectStarterFiles } from "../../services/starter-export.js";
 import { bridgeFiles, compareZauxVersions } from "../../../domain/zaux-bridge.js";
@@ -100,15 +89,14 @@ import {
 	exportToProject,
 } from "../../services/zaux-bridge.js";
 import BuilderButton from "./BuilderButton.vue";
+import BuilderModal from "./BuilderModal.vue";
 
 export default defineComponent({
-	components: { BuilderButton },
+	components: { BuilderButton, BuilderModal },
 	emits: ["close"],
 	setup() {
 		const builder = useBuilder();
 		const { translate } = builder;
-		const dialog = ref(null);
-		const titleId = useId();
 
 		const unsupported = !isBridgeSupported();
 		const busy = ref(false);
@@ -207,16 +195,8 @@ export default defineComponent({
 				error.value = exception?.message === "zx_builder_bridge_permission" ? "zx_builder_bridge_permission" : "zx_builder_bridge_error";
 			} finally { busy.value = false; }
 		}
-		function close() { if (!busy.value) dialog.value?.close(); }
-		function onCancel(event) { if (busy.value) event.preventDefault(); }
-
-		let previousFocus;
-		onMounted(() => { previousFocus = document.activeElement; dialog.value.showModal(); });
-		onBeforeUnmount(() => { dialog.value?.close(); if (previousFocus?.isConnected) previousFocus.focus(); });
 
 		return {
-			dialog,
-			titleId,
 			translate,
 			unsupported,
 			busy,
@@ -241,8 +221,6 @@ export default defineComponent({
 			enter,
 			up,
 			writeProject,
-			close,
-			onCancel,
 		};
 	},
 });

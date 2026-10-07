@@ -23,3 +23,8 @@ When the user asks to capture progress, keep a concise project session note with
 ## Builder illustrations and icons
 
 For new representative UI illustrations or icons, create simple, readable SVG files under `public/assets/builder/` and reference them as `/assets/builder/<name>.svg`. Use descriptive filenames and a consistent viewBox; reuse these assets across controls. Pair icon controls with translated accessible labels and an explicit selected state. Keep this convention in project-owned code; do not add assets to `vendor/zaux`.
+
+## Modals
+
+Build every modal on `app/components/builder/BuilderModal.vue`: pass `title` (plus `size`, `height`, `busy`, `hint` as needed) and put only the content in its default, `header` and `footer` slots. Do not add new `<dialog>` shells or overlay divs. See `docs/architecture.md` "Shared builder modal".
+

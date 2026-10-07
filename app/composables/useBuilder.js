@@ -1,5 +1,5 @@
 import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
-import { nodeClipboardShortcut } from '../services/node-shortcuts.js';
+import { nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut } from '../services/node-shortcuts.js';
 import { createFreeInstance, groupFreeInstances } from '../../domain/template-elements.js';
 import { outlineKey, outlineRows, outlineRoots, canMoveOutline, moveOutline } from '../../domain/outline.js';
 import { activeDefinitionOnly, addVariant, selectVariant, renameVariant, removeVariant } from '../../domain/variants.js';
@@ -134,7 +134,7 @@ export function createBuilder({ projectId = null } = {}) {
     collapsedOutline.value = next;
     revealOutlineTarget.value = { instanceId, nodeId };
   }
-  const leftTab = ref('library');
+  const leftTab = ref('layers');
   const libraryCategory = ref('imported');
   const librarySearch = ref('');
   const libraryKind = ref('zvc');
@@ -162,6 +162,41 @@ export function createBuilder({ projectId = null } = {}) {
   const previewOnly = ref(false);
   const previewHeaderHidden = ref(false);
   const canvasDark = ref(false);
+  // Session-only canvas layout: 'fit' or a fixed scale; canvasScale is the scale actually applied.
+  const canvasZoom = ref('fit');
+  const canvasScale = ref(1);
+  const sidebarCollapsed = ref(false);
+  const inspectorCollapsed = ref(false);
+  const commandPaletteOpen = ref(false);
+  // Asks the left panel to focus a search field: { tab: 'elements' | 'library', token }.
+  const panelFocusRequest = ref(null);
+  const zoomSteps = [0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3];
+  function zoomBy(direction) {
+    const current = canvasScale.value;
+    const next = direction > 0 ? zoomSteps.find(step => step > current + 0.001) : zoomSteps.findLast(step => step < current - 0.001);
+    canvasZoom.value = next ?? (direction > 0 ? zoomSteps.at(-1) : zoomSteps[0]);
+  }
+  function runLayoutShortcut(action) {
+    if (action === 'toggle-panels') {
+      const hide = !(sidebarCollapsed.value && inspectorCollapsed.value);
+      sidebarCollapsed.value = hide; inspectorCollapsed.value = hide;
+    }
+    if (action === 'zoom-in') zoomBy(1);
+    if (action === 'zoom-out') zoomBy(-1);
+    if (action === 'zoom-fit') canvasZoom.value = 'fit';
+    if (action === 'zoom-reset') canvasZoom.value = 1;
+    if (action === 'focus-elements' || action === 'focus-library') {
+      const tab = action === 'focus-elements' ? 'elements' : 'library';
+      previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = tab;
+      panelFocusRequest.value = { tab, token: Date.now() };
+    }
+    if (action === 'command-palette') commandPaletteOpen.value = true;
+    if (['tab-layers', 'tab-library', 'tab-elements'].includes(action)) {
+      previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = action.slice(4);
+      // Structure scrolls to the current selection, expanding collapsed ancestors.
+      if (action === 'tab-layers' && (nodeId.value || mode.value === 'template' && instanceId.value)) revealOutline(mode.value === 'library' ? 'library' : instanceId.value, nodeId.value);
+    }
+  }
   function updateBodyBackground(value) {
     commit(workspace => {
       if (value) workspace.styles.bodyBackground = value;
@@ -902,7 +937,7 @@ export function createBuilder({ projectId = null } = {}) {
     const copy = visualSourceCopy(activeDefinition.value, mode.value === 'template' ? activeInstance.value.data : {});
     if (isSourceBase.value) { copy.id = uid(); copy.name += ' (' + i18n.translate('zx_builder_visual') + ')'; commit(workspace => appendLibraryDefinition(workspace, copy)); selectLibrary(copy.id); }
     else commit(() => { Object.keys(activeDefinition.value).forEach(key => delete activeDefinition.value[key]); Object.assign(activeDefinition.value, copy); if (mode.value === 'template') activeInstance.value.data = {}; });
-    nodeId.value = null; inspectorTab.value = 'properties'; leftTab.value = 'library';
+    nodeId.value = null; inspectorTab.value = 'properties'; leftTab.value = 'layers';
   }
   function updateData(key, value) { if (activeInstance.value) commit(() => { if (value === undefined) delete activeInstance.value.data[key]; else activeInstance.value.data[key] = value; }); }
   function saveToLibrary(name) {
@@ -933,9 +968,14 @@ export function createBuilder({ projectId = null } = {}) {
     try { incoming.value = validateWorkspace(parseJson(event.newValue)); clearTimeout(timer); } catch { error.value = 'zx_builder_invalid_document'; }
   }
   function hotkey(event) {
-    const clipboardAction = nodeClipboardShortcut(event);
+    const clipboardAction = nodeClipboardShortcut(event) ?? nodeDeleteShortcut(event);
     if (clipboardAction && !modal.value && !previewOnly.value && workspaceView.value === 'design') {
       const allowed = clipboardAction === 'paste-node' ? canPasteNode.value : canCopyNode.value && (clipboardAction === 'copy-node' || canEditRemote.value);
+      if (allowed && clipboardAction === 'delete-node') {
+        event.preventDefault();
+        if (!event.repeat) deleteNode();
+        return;
+      }
       if (allowed) {
         event.preventDefault();
         if (!event.repeat) {
@@ -947,6 +987,8 @@ export function createBuilder({ projectId = null } = {}) {
         return;
       }
     }
+    const layoutAction = !modal.value && workspaceView.value === 'design' ? layoutShortcut(event) : null;
+    if (layoutAction) { event.preventDefault(); if (!event.repeat) runLayoutShortcut(layoutAction); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || modal.value) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); flushSave(); }
@@ -988,7 +1030,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
     collapsedOutline.value = next;
   }
-  const api = { syncActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { commandPaletteOpen, panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });

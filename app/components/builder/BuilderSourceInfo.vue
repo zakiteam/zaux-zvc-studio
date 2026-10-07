@@ -5,8 +5,8 @@
     <code>app/zvc/{{ activeDefinition.sourceKey }}</code>
     <p v-if="!hasSource" class="zb-field-error !mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] leading-[1.6] text-utility-error">{{ translate('zx_builder_source_missing') }}</p>
     <div class="zb-source-actions flex flex-col items-start gap-1">
-      <BuilderButton v-if="isSourceBase" icon="duplicate" :label="translate('zx_builder_configure_copy')" @click="duplicate('library', activeDefinition.id)" />
-      <BuilderButton icon="edit" :label="translate('zx_builder_convert_visual')" @click="convertToVisual" />
+      <BuilderButton size="xs" v-if="isSourceBase" icon="duplicate" :label="translate('zx_builder_configure_copy')" @click="duplicate('library', activeDefinition.id)" />
+      <BuilderButton icon="edit" size="xs" :label="translate('zx_builder_convert_visual')" @click="convertToVisual" />
     </div>
   </div>
 </template>

@@ -1,11 +1,10 @@
 <template>
-  <nav v-if="tabs.length" :aria-label="translate('zx_builder_workspace_tabs')"
-    class="min-w-0 border-t-slim border-zaux-light-grey pt-1">
-    <div ref="strip" class="flex min-w-0 gap-1 overflow-x-auto pb-1"
+  <nav v-if="tabs.length" :aria-label="translate('zx_builder_workspace_tabs')" class="min-w-0">
+    <div ref="strip" class="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       @dragover="dragOver" @drop="drop" @dragleave="leaveStrip" @dragend="clearDrag">
       <div v-for="tab in tabs" :key="tab.key" :data-workspace-tab="tab.key"
-        class="relative flex shrink-0 items-center rounded-xxs border-slim text-[11px]"
-        :class="[tab.key === activeKey ? 'border-zaux-accent bg-zaux-light text-zaux-accent' : 'border-zaux-light-grey bg-zaux-white text-zaux-dark-grey', { 'opacity-50': draggedKey === tab.key }]">
+        class="group/tab relative flex h-[30px] shrink-0 items-center rounded-xxs text-[11px]"
+        :class="[tab.key === activeKey ? 'bg-zaux-light text-zaux-dark' : 'text-zaux-dark-grey hover:bg-zaux-light/60', { 'opacity-50': draggedKey === tab.key }]">
         <span v-if="dropTarget?.key === tab.key" aria-hidden="true"
           class="pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-zaux-accent"
           :class="dropTarget.after ? 'right-0' : 'left-0'" />
@@ -14,15 +13,17 @@
           @dragstart="startDrag($event, tab)" @dragend="clearDrag"
           @keydown.alt.left.prevent="moveWithKeyboard(tab, -1)" @keydown.alt.right.prevent="moveWithKeyboard(tab, 1)"
           :aria-current="tab.key === activeKey ? 'page' : undefined" :disabled="remoteProjectBusy"
-          class="flex min-w-0 items-center gap-1.5 hover:rounded-r-xxs rounded-l-xxs rounded-tl-xxs rounded-bl-xxs  px-2 py-1 text-left hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          class="flex h-full min-w-0 items-center gap-1 rounded-xxs py-0 pl-1.5 text-left focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          :class="tabs.length > 1 ? 'pr-0.5' : 'pr-1.5'"
           @click="open(tab)">
-          <span class="shrink-0 text-[9px] uppercase tracking-wide">{{ tab.label }}</span>
-          <span class="max-w-[180px] truncate font-semibold">{{ tab.name }}</span>
+          <span class="shrink-0 text-[9px] font-semibold uppercase tracking-wide" :class="tab.key === activeKey ? 'text-zaux-accent' : ''">{{ tab.label }}</span>
+          <span class="max-w-[160px] truncate" :class="{ 'font-semibold': tab.key === activeKey }">{{ tab.name }}</span>
         </button>
         <button v-if="tabs.length > 1" type="button"
           :title="translate('zx_builder_workspace_tab_close', { name: tab.name })"
           :aria-label="translate('zx_builder_workspace_tab_close', { name: tab.name })" :disabled="remoteProjectBusy"
-          class="mr-0.25 rounded-xxs px-1 py-0.5 text-[14px] leading-none hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          class="mr-0.25 grid h-[20px] w-[20px] place-items-center rounded-xxs text-[14px] leading-none hover:bg-zaux-light-grey/60 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          :class="tab.key === activeKey ? 'opacity-100' : 'opacity-0 group-hover/tab:opacity-100'"
           @click="close(tab)"><span aria-hidden="true">×</span></button>
       </div>
     </div>

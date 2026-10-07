@@ -15,6 +15,8 @@ function filesIn(folder) {
 
 export function generateThemeCatalog() {
   const catalog = [];
+  let caseVariants = [];
+  try { caseVariants = JSON.parse(readFileSync(resolve(source, '.zaux-release.json'), 'utf8')).caseVariants ?? []; } catch {}
   for (const file of ['core', 'project'].flatMap(area => filesIn(resolve(source, area, 'components'))).filter(file => file.endsWith('.theme.scss'))) {
     const text = readFileSync(file, 'utf8');
     const componentClass = text.match(/\$component\s*:\s*["']([^"']+)/)?.[1];
@@ -41,7 +43,10 @@ export function generateThemeCatalog() {
     const name = basename(file, '.theme.scss');
     const themes = [...new Set([...css.matchAll(/--theme-([\w-]+)/g)].map(match => match[1]))];
     const variables = [...new Set([...text.matchAll(/(--zx-[\w-]+)/g)].map(match => match[1]).filter(name => name.startsWith('--zx-' + componentClass + '-')))];
-    catalog.push({ id: name, componentClass, variables, source: relative(root, file).replaceAll('\\', '/'), themes, rules });
+    const entry = { id: name, componentClass, variables, source: relative(root, file).replaceAll('\\', '/'), themes, rules };
+    // Case-only duplicates (Zsection.theme.scss) keep their upstream id as well.
+    const aliases = caseVariants.filter(variant => resolve(source, variant.file) === file).map(variant => basename(variant.path, '.theme.scss'));
+    catalog.push(entry, ...aliases.map(id => ({ ...entry, id })));
   }
   const output = resolve(root, 'integrations/zaux/generated');
   mkdirSync(output, { recursive: true });

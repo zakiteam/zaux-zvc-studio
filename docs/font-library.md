@@ -45,7 +45,7 @@ Loading a family does not automatically change typography. In Style settings, th
 | `domain/fonts.js` | Font normalization, validation, link output and export files. |
 | `domain/styles.js` | Validate optional project font snapshots. |
 | `app/services/fonts.js` | Catalog IO, link parsing and preview stylesheet lifecycle. |
-| `app/components/builder/BuilderFontLibrary.vue` | Dashboard management and project selection modal. |
+| `app/components/builder/BuilderFontLibrary.vue` | Dashboard management and project selection modal: searchable catalog with sandboxed per-row samples, side panel with the add/edit form (manage) or the selected fonts, developer downloads and Apply (project). |
 | `app/layouts/hub.vue` | Dashboard font-library entry. |
 | `app/components/builder/BuilderHeader.vue` | Project font action. |
 | `app/components/builder/BuilderStyles.vue` | Project selection and font-token choices. |
@@ -60,3 +60,5 @@ Loading a family does not automatically change typography. In Style settings, th
 ## Verification status
 
 Source and diffs reviewed only. No tests, browser checks, validators or production builds were run under the standing project instruction. The SQL migration has not been applied remotely. Manual verification remains with the user, including provider CSS/font requests, selection/reload/undo, cross-user permissions, concurrent catalog edits, token application and exported links.
+
+Font samples render each catalog stylesheet inside a `sandbox` `srcdoc` iframe, so third-party CSS from the shared catalog never reaches the Studio document. Runtime and visual verification remain manual.

@@ -1,11 +1,14 @@
 <template>
-  <aside class="flex min-h-0 w-[360px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white min-[1500px]:w-[390px] max-[900px]:h-[70dvh] max-[900px]:!w-full" :style="{ width: `${width}px` }">
-    <header class="flex items-start justify-between gap-1 p-2 border-b-slim border-zaux-light-grey">
-      <div><span class="zb-eyebrow block text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">{{ translate('zx_builder_workspace') }}</span><h2 class="mt-1 text-[18px] font-semibold">{{ translate('zx_builder_style_settings') }}</h2></div>
-      <BuilderButton icon="close" iconOnly :label="translate('zx_builder_close')" @click="stylesOpen = false" />
+  <aside class="flex min-h-0 w-[304px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white max-[900px]:h-[70dvh] max-[900px]:!w-full" :style="{ width: `${width}px` }">
+    <header class="flex h-[44px] shrink-0 items-center justify-between gap-1 border-b-slim border-zaux-light-grey px-1.5">
+      <div class="min-w-0">
+        <h2 class="truncate text-[12px] font-semibold leading-tight">{{ translate('zx_builder_style_settings') }}</h2>
+        <p class="truncate text-[9px] font-semibold uppercase leading-tight tracking-[1px] text-zaux-dark-grey">{{ translate('zx_builder_workspace') }}</p>
+      </div>
+      <BuilderButton icon="close" iconOnly size="xs" variant="alt1" :label="translate('zx_builder_close')" @click="stylesOpen = false" />
     </header>
     <ZOverflowContainer class="flex-1 h-full min-h-0" autoOverflow>
-      <div class="p-2">
+      <div class="px-1.5 py-1.5">
         <BuilderButton size="xs" icon="book-open" class="mb-2" :label="translate('zx_builder_fonts_project')" @click="fontsOpen = true" />
         <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_styles_hint') }}</p>
         <BuilderFontLibrary v-if="fontsOpen" :modelValue="preset.fonts ?? []" :readonly="!canEditRemote" @close="fontsOpen = false" @apply="applyFonts" />

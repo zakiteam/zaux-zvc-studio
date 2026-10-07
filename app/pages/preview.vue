@@ -31,7 +31,9 @@ import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import PreviewInstance from '../components/builder/PreviewInstance.vue';
 import { createOutlineVisibility } from '../services/outline-visibility.js';
-import { builderHistoryShortcut, nodeClipboardShortcut } from '../services/node-shortcuts.js';
+import { builderHistoryShortcut, nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut } from '../services/node-shortcuts.js';
+// Authored Zaux overlays (OffCanvas, ZModal) keep role="dialog" in the DOM and must not block shortcuts.
+const AUTHORED = { authored: true };
 export default defineComponent({
   components: { PreviewInstance },
   setup() {
@@ -62,16 +64,23 @@ export default defineComponent({
     let selectionFrame = null;
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
     function hotkey(event) {
+      // Canvas zoom and panel toggles also apply in Preview mode, but never on the standalone page.
+      const layoutAction = state.value.clean ? null : layoutShortcut(event, AUTHORED);
+      if (layoutAction) {
+        event.preventDefault();
+        if (!event.repeat) post({ type: 'layout', action: layoutAction });
+        return;
+      }
       if (!state.value.editable) return;
-      const historyAction = builderHistoryShortcut(event);
+      const historyAction = builderHistoryShortcut(event, AUTHORED);
       if (historyAction) {
         event.preventDefault();
         if (!event.repeat) post({ type: historyAction });
         return;
       }
-      const action = nodeClipboardShortcut(event);
+      const action = nodeClipboardShortcut(event, AUTHORED) ?? nodeDeleteShortcut(event, AUTHORED);
       if (!action) return;
-      const allowed = action === 'paste-node' ? state.value.canPasteNode : action === 'cut-node' ? state.value.canDeleteNode : action === 'duplicate-node' ? state.value.canDuplicateNode : state.value.canCopyNode;
+      const allowed = action === 'paste-node' ? state.value.canPasteNode : ['cut-node', 'delete-node'].includes(action) ? state.value.canDeleteNode : action === 'duplicate-node' ? state.value.canDuplicateNode : state.value.canCopyNode;
       if (!allowed) return;
       event.preventDefault();
       if (!event.repeat) nodeAction(action);

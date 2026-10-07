@@ -57,3 +57,8 @@
 - In the simple format the conversion to a compatible ZVC/ZVP happens in the code. Prop values stay literal; no fields are generated from props. Editable field metadata is declared optionally through a `fields` array, with `children` and `label` also optional.
 - The same dialog offers an opt-out checkbox, selected by default, that transposes the imported content into builder-editable elements: `ComponentsRenderer` wrappers and `Zsection` component content become Structure nodes instead of content properties, reusing the native-source projection in `domain/source-zvc.js`.
 - The imported library name follows `label`, then a declared `ZVCName`/`ZVPName` (runtime descriptors), then the first node of the resulting tree, so rendered snapshots do not all become the same entry named after their first section.
+
+## 2026-10-07 - Figma-like workspace layout (user)
+
+- Overhaul the editor arrangement to maximize canvas space and practicality, as close to Figma as possible, while keeping the existing components and abstractions (BuilderButton, BuilderDropdown, BuilderInput, panels, Zaux components).
+- One slim top bar, tabbed left panel (Structure with templates as pages, Library, Elements), canvas toolbar with zoom, compact Inspector. Panel sizes are per-browser preferences; zoom and collapsed panels are session UI state, never project data.

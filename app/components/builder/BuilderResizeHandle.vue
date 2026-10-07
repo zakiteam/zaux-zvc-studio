@@ -1,18 +1,18 @@
 <template>
 	<button
-		class="relative z-10 p-0 bg-transparent border-0 dark:bg-zaux-light-grey/20 dark:hover:bg-zaux-accent/20 zb-resize-handle group shrink-0 hover:bg-zaux-accent/20 focus-visible:bg-zaux-accent/20"
+		class="relative z-10 p-0 bg-transparent border-0 zb-resize-handle group shrink-0"
 		:class="
 			direction === 'vertical'
-				? 'h-1 w-full cursor-row-resize'
-				: 'w-1 cursor-col-resize'
+				? 'h-[8px] w-full cursor-row-resize'
+				: 'w-[8px] cursor-col-resize'
 		"
 		type="button"
 		:aria-label="label"
 		@pointerdown="start"
 	>
 		<span
-			class="absolute transition-opacity -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 pointer-events-none left-1/2 top-1/2 bg-zaux-light-grey group-hover:opacity-100 group-focus-visible:opacity-100"
-			:class="direction === 'vertical' ? 'h-0.5 w-10' : 'h-10 w-0.5'"
+			class="absolute transition-opacity -translate-x-1/2 -translate-y-1/2 opacity-0 pointer-events-none left-1/2 top-1/2 bg-zaux-accent group-hover:opacity-100 group-focus-visible:opacity-100"
+			:class="direction === 'vertical' ? 'h-[2px] w-full' : 'h-full w-[2px]'"
 		></span>
 	</button>
 </template>

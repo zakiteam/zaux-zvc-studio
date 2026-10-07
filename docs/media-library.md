@@ -55,7 +55,7 @@ Manual verification remains with the user: upload/selection for all three entry 
 
 | File | Change |
 | --- | --- |
-| `app/components/builder/BuilderMediaPicker.vue` | Shared native dialog, catalog, uploads, search, paging, URL selection and archiving. |
+| `app/components/builder/BuilderMediaPicker.vue` | Shared native dialog, catalog, uploads (button, clipboard paste or file drop on the dialog), search, paging, details panel with URL, download and archiving; double-click chooses an image. |
 | `app/components/builder/fields/BuilderImageInput.vue` | Manual URL input with media selection. |
 | `app/components/builder/BuilderHeader.vue` | Project media and cover actions. |
 | `app/components/builder/BuilderSidebar.vue` | ZVC preview display and selection. |

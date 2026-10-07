@@ -1,20 +1,11 @@
 <template>
 	<div class="min-w-0">
 		<Teleport to="body">
-			<dialog ref="dialog" :aria-label="label || translate('zx_builder_code_expanded')"
-				class="zb-code-dialog m-auto h-[90dvh] max-h-[95dvh] w-[1400px] max-w-[calc(100vw-32px)] rounded-s border-none bg-zaux-white p-3 text-zaux-dark shadow-deeper"
-				@cancel.prevent="closeExpanded" @close="closeExpanded" @keydown.stop @keyup.stop>
-				<div class="flex flex-col h-full min-h-0 gap-2">
-					<header class="flex items-center justify-between gap-2 shrink-0">
-						<div class="min-w-0">
-							<h2 class="truncate text-[16px] font-semibold">{{ label || translate('zx_builder_code_expanded') }}</h2>
-							<p class="text-[10px] uppercase tracking-wider text-zaux-dark-grey">{{ language }}</p>
-						</div>
-						<BuilderButton size="xs" icon="close" iconOnly :label="translate('zx_builder_close')" @click="closeExpanded" />
-					</header>
-					<div ref="expandedHost" class="flex-1 min-h-0" />
-				</div>
-			</dialog>
+			<BuilderModal :open="expanded" :title="label || translate('zx_builder_code_expanded')" :subtitle="language"
+				size="full" height="screen" bodyClass="flex flex-col p-2" :initialFocus="false"
+				@close="closeExpanded" @keyup.stop>
+				<div ref="expandedHost" class="flex-1 min-h-0" />
+			</BuilderModal>
 		</Teleport>
 		<Teleport :to="expandedHost || 'body'" :disabled="!expanded">
 			<div :class="{ 'zb-code-expanded flex h-full min-h-0 flex-col': fillMode }" @keydown="editorKeydown" @keyup="editorKeydown" class="min-w-0 overflow-hidden rounded-xxs border-slim border-zaux-light-grey focus-within:outline focus-within:outline-2 focus-within:outline-zaux-accent">
@@ -49,11 +40,12 @@
 	import { html } from "@codemirror/lang-html";
 	import { javascript } from "@codemirror/lang-javascript";
 	import BuilderButton from '../BuilderButton.vue';
+	import BuilderModal from '../BuilderModal.vue';
 	import { useTranslation } from '../../../composables/useTranslation.js';
 	import { formatCode } from '../../../../domain/format-code.js';
 
 	export default defineComponent({
-		components: { BuilderButton },
+		components: { BuilderButton, BuilderModal },
 		props: {
 			modelValue: { type: String, default: "" },
 			language: { default: "json" },
@@ -66,7 +58,6 @@
 		emits: ["update:modelValue", "change"],
 		setup(props, { emit }) {
 			const host = ref(null);
-			const dialog = ref(null);
 			const expandedHost = ref(null);
 			const expanded = ref(false);
 			const fillMode = computed(() => props.fill || expanded.value);
@@ -74,7 +65,6 @@
 			async function openExpanded() {
 				if (props.disabled || expanded.value) return;
 				previousFocus = document.activeElement;
-				dialog.value.showModal();
 				expanded.value = true;
 				await nextTick();
 				view?.requestMeasure();
@@ -84,7 +74,6 @@
 				if (!expanded.value) return;
 				commit();
 				expanded.value = false;
-				dialog.value?.close();
 				await nextTick();
 				view?.requestMeasure();
 				if (previousFocus?.isConnected) previousFocus.focus();
@@ -221,21 +210,16 @@
 			);
 			onBeforeUnmount(() => {
 				revision++;
-				dialog.value?.close();
 				view?.destroy();
 				view = null;
 			});
-			return { host, dialog, expandedHost, expanded, fillMode, openExpanded, closeExpanded, editorKeydown, translate, formatting, formatError, format };
+			return { host, expandedHost, expanded, fillMode, openExpanded, closeExpanded, editorKeydown, translate, formatting, formatError, format };
 		},
 	});
 	
 </script>
 
 <style scoped>
-.zb-code-dialog::backdrop {
-	background: rgb(0 0 0 / 0.4);
-	backdrop-filter: blur(4px);
-}
 .zb-code-expanded :deep(.cm-editor) {
 	height: 100%;
 }

@@ -1,5 +1,5 @@
 <template>
-  <ul class="zb-tree my-0.5 list-none p-0 [&.zb-tree--nested]:ml-1 [&.zb-tree--nested]:border-l-slim [&.zb-tree--nested]:border-zaux-light-grey [&.zb-tree--nested]:pl-0.75" :class="{ 'zb-tree--nested': depth }">
+  <ul class="zb-tree my-0.5 list-none p-0 [&.zb-tree--nested]:ml-1 [&.zb-tree--nested]:border-l-slim [&.zb-tree--nested]:border-zaux-light-grey [&.zb-tree--nested]:pl-0.75" :class="{ 'zb-tree--nested': depth || nested }">
     <li v-for="node in nodes" :key="node.id" class="relative" :data-zb-outline-node="node.id">
       <BuilderDropdown
         :context-menu="true"
@@ -12,7 +12,7 @@
       >
         <template #trigger="{ open, menuId }">
           <div
-            class="zb-tree-item flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light focus-within:bg-zaux-light [&.active]:bg-zaux-accent/5"
+            class="zb-tree-item group/row flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light focus-within:bg-zaux-light [&.active]:bg-zaux-accent/10"
             :class="{ active: outlineSelected(instance, node.id), 'outline outline-1 outline-zaux-accent bg-zaux-accent/10': outlineDrag.position(node.id, instance) === 'inside' }"
             data-zb-outline-drop="node" :data-zb-drop-instance="instance" :data-zb-drop-node="node.id"
             @dragover="outlineDrag.over($event, node, instance)"
@@ -30,7 +30,7 @@
             ><span aria-hidden="true">{{ collapsedOutline.has('node:' + instance + ':' + node.id) ? '▸' : '▾' }}</span></button>
             <span v-else aria-hidden="true" class="w-[24px] shrink-0 text-center text-[10px] text-zaux-dark-grey">&#9671;</span>
             <button
-              class="zb-tree-row select-none flex min-w-0 flex-1 items-center gap-1 rounded-xxs px-0.5 py-1 text-left !text-[10px] [&>span]:truncate [&>small]:ml-auto [&>small]:text-[9px] [&>small]:text-zaux-dark-grey [&.active]:text-zaux-accent"
+              class="zb-tree-row select-none flex min-w-0 flex-1 items-center gap-1 rounded-xxs px-0.5 py-0.5 text-left !text-[11px] [&>span]:truncate [&>small]:ml-auto [&>small]:text-[9px] [&>small]:text-zaux-dark-grey [&.active]:text-zaux-accent"
               :class="{ active: outlineSelected(instance, node.id) }"
               :draggable="canEditRemote"
               :aria-haspopup="canWrap ? 'menu' : undefined"
@@ -48,7 +48,7 @@
                 <Icon iconName="visibility-off" size="text-icon-xxs" aria-hidden="true" />
               </span>
               <small v-if="node.children.length">{{ node.children.length }}</small></button>
-            <div class="zb-tree-actions flex shrink-0 items-center gap-[1px] [&>.zb-button]:!min-w-[25px] [&>.zb-button]:!w-[25px] [&>.zb-button]:!p-0.5">
+            <div class="zb-tree-actions flex shrink-0 items-center gap-[1px] opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 [&>.zb-button]:!min-w-[24px] [&>.zb-button]:!w-[24px] [&>.zb-button]:!p-0.5" :class="{ '!opacity-100': outlineSelected(instance, node.id) }">
               <BuilderButton variant="alt1" icon="duplicate" iconOnly :label="translate('zx_builder_duplicate') + ': ' + node.name" @click.stop="duplicateHere(node.id)" />
               <BuilderButton variant="alt1" icon="delete" iconOnly :label="translate('zx_builder_delete') + ': ' + node.name" @click.stop="deleteHere(node.id)" />
             </div>
@@ -86,7 +86,7 @@
   import BuilderDropdown from './BuilderDropdown.vue';
 
   export default defineComponent({
-    name: 'BuilderTree', components: { BuilderButton, BuilderDropdown }, props: { nodes: Array, instance: String, depth: { default: 0 } },
+    name: 'BuilderTree', components: { BuilderButton, BuilderDropdown }, props: { nodes: Array, instance: String, depth: { default: 0 }, nested: Boolean },
     setup(props) {
       const builder = useBuilder();
       const outlineDrag = useBuilderOutlineDrag();

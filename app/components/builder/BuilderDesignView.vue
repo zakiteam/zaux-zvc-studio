@@ -11,6 +11,7 @@
 			/>
 			<BuilderResizeHandle
 				v-if="!sidebarCollapsed"
+				class="-mx-[4px]"
 				side="left"
 				:label="translate('zx_builder_resize_left')"
 				@resize="resizePanel('left', $event)"
@@ -21,7 +22,7 @@
 				:icon="sidebarCollapsed ? 'chevron-right' : 'chevron-left'"
 				iconOnly
 				size="xs"
-				:label="translate(sidebarCollapsed ? 'zx_builder_show_sidebar' : 'zx_builder_hide_sidebar')"
+				:label="translate(sidebarCollapsed ? 'zx_builder_show_sidebar' : 'zx_builder_hide_sidebar') + ' (Ctrl \\)'"
 				:aria-expanded="!sidebarCollapsed"
 				aria-controls="zb-sidebar-panel"
 				@click="sidebarCollapsed = !sidebarCollapsed"
@@ -30,30 +31,11 @@
 		<main
 			class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
 		>
-			<BuilderPreviewControls class="pt-1.5" />
-			<div
-				v-if="mode === 'library' && !templatesOpen"
-				class="zb-context-line flex flex-wrap items-center justify-between gap-1.5 dark:text-utility-notice bg-utility-notice/30 px-3 py-1.5 text-[10px] text-zaux-dark-grey dark:text-set1-notice [&>button]:whitespace-nowrap [&>button]:text-zaux-accent [&>button]:underline"
-			>
-				<span>{{ translate("zx_builder_library_notice") }}</span>
-				<button class="!text-zaux-dark" @click="selectTemplate(activeTemplate.id)">
-					{{ translate("zx_builder_back_template") }} ↗
-				</button>
-			</div>
 			<BuilderTemplates v-if="templatesOpen" />
-			<BuilderCanvas v-else />
-			<!--
-				<footer
-					class="zb-canvas-footer hidden items-center justify-between gap-3 border-t-slim border-zaux-light-grey bg-zaux-white px-3 py-1.5 text-[9px] leading-[1.5] text-zaux-dark-grey [&>span:last-child]:whitespace-nowrap max-[1200px]:[&>span:last-child]:hidden max-[900px]:hidden"
-				>
-					<span>{{
-						previewOnly
-							? translate("zx_builder_preview_interaction")
-							: translate("zx_builder_drag_hint")
-					}}</span
-					><span>{{ translate("zx_builder_readonly_source") }}</span>
-				</footer>
-				--></main>
+			<BuilderCanvas v-else>
+				<template #toolbar><BuilderPreviewControls /></template>
+			</BuilderCanvas>
+		</main>
 		<div
 			v-show="!previewOnly"
 			class="group/panel relative flex min-h-0 shrink-0"
@@ -61,6 +43,7 @@
 		>
 			<BuilderResizeHandle
 				v-if="stylesOpen || !inspectorCollapsed"
+				class="-mx-[4px]"
 				side="right"
 				:label="translate('zx_builder_resize_right')"
 				@resize="resizePanel('right', $event)"
@@ -81,7 +64,7 @@
 				:icon="inspectorCollapsed ? 'chevron-left' : 'chevron-right'"
 				iconOnly
 				size="xs"
-				:label="translate(inspectorCollapsed ? 'zx_builder_show_inspector' : 'zx_builder_hide_inspector')"
+				:label="translate(inspectorCollapsed ? 'zx_builder_show_inspector' : 'zx_builder_hide_inspector') + ' (Ctrl \\)'"
 				:aria-expanded="!inspectorCollapsed"
 				aria-controls="zb-inspector-panel"
 				@click="inspectorCollapsed = !inspectorCollapsed"
@@ -90,8 +73,9 @@
 	</div>
 </template>
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
+import { readLayoutPreferences, saveLayoutPreferences } from "../../services/layout-preferences.js";
 import BuilderPreviewControls from "./BuilderPreviewControls.vue";
 import BuilderTemplates from "./BuilderTemplates.vue";
 import BuilderSidebar from "./BuilderSidebar.vue";
@@ -100,6 +84,14 @@ import BuilderInspector from "./BuilderInspector.vue";
 import BuilderStyles from "./BuilderStyles.vue";
 import BuilderResizeHandle from "./BuilderResizeHandle.vue";
 import BuilderButton from "./BuilderButton.vue";
+
+// Figma-like proportions: slim side panels leave most of the width to the canvas.
+const LIMITS = { left: [220, 480, 264], right: [260, 720, 304] };
+const clampWidth = (side, value) => {
+	const [min, max, fallback] = LIMITS[side];
+	return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+};
+
 export default defineComponent({
 	components: {
 		BuilderPreviewControls,
@@ -113,23 +105,34 @@ export default defineComponent({
 	},
 	setup() {
 		const builder = useBuilder();
-		const leftWidth = ref(420);
-		const rightWidth = ref(420);
-		const sidebarCollapsed = ref(false);
-		const inspectorCollapsed = ref(false);
+		const leftWidth = ref(LIMITS.left[2]);
+		const rightWidth = ref(LIMITS.right[2]);
+		let saveTimer;
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;
-			target.value = Math.min(
-				side === "left" ? 420 : 1000,
-				Math.max(side === "left" ? 210 : 260, target.value + delta),
-			);
+			target.value = clampWidth(side, target.value + delta);
 		}
+		onMounted(() => {
+			const saved = readLayoutPreferences();
+			leftWidth.value = clampWidth("left", saved.left);
+			rightWidth.value = clampWidth("right", saved.right);
+			builder.sidebarCollapsed.value = saved.sidebarCollapsed === true;
+			builder.inspectorCollapsed.value = saved.inspectorCollapsed === true;
+			watch([leftWidth, rightWidth, builder.sidebarCollapsed, builder.inspectorCollapsed], () => {
+				clearTimeout(saveTimer);
+				saveTimer = setTimeout(() => saveLayoutPreferences({
+					left: leftWidth.value,
+					right: rightWidth.value,
+					sidebarCollapsed: builder.sidebarCollapsed.value,
+					inspectorCollapsed: builder.inspectorCollapsed.value,
+				}), 250);
+			});
+		});
+		onBeforeUnmount(() => clearTimeout(saveTimer));
 		return {
 			...builder,
 			leftWidth,
 			rightWidth,
-			sidebarCollapsed,
-			inspectorCollapsed,
 			resizePanel,
 		};
 	},

@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-h-0 flex-1 max-[900px]:flex-col">
-    <aside class="flex w-[440px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[900px]:max-h-[240px] max-[900px]:w-full">
+    <aside class="flex w-[264px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[900px]:max-h-[240px] max-[900px]:w-full">
       <div class="p-2 space-y-2 border-b-slim border-zaux-light-grey">
         <h1 class="font-semibold">{{ translate('zx_builder_theme_editor') }}</h1>
         <BuilderInput v-model="search" :label="translate('zx_builder_theme_search')" :placeholder="translate('zx_builder_theme_search')" class="w-full" />
@@ -44,7 +44,7 @@
           </template>
           <p v-else role="status" class="p-2">{{ translate('zx_builder_theme_preview_missing') }}</p>
         </section>
-        <section class="flex min-h-0 w-[600px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white max-[1100px]:w-full max-[1100px]:min-h-[440px]">
+        <section class="flex min-h-0 w-[440px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-white max-[1100px]:w-full max-[1100px]:min-h-[440px]">
           <div class="flex gap-1 p-2 border-b-slim border-zaux-light-grey">
             <BuilderButton size="xs" :label="translate('zx_builder_theme_variables')" :aria-pressed="editMode === 'variables'" @click="editMode = 'variables'" />
             <BuilderButton size="xs" :label="translate('zx_builder_theme_css')" :aria-pressed="editMode === 'css'" @click="editMode = 'css'" />

@@ -1,73 +1,115 @@
 <template>
-  <dialog ref="dialog" :aria-labelledby="titleId" @keydown.stop @paste="paste" @cancel="cancel" @close="$emit('close')"
-    class="w-[1400px] max-w-[calc(100vw-32px)] max-h-[90dvh] overflow-auto rounded-s border-none bg-zaux-white p-4 font-builder text-zaux-dark shadow-deeper backdrop:bg-zaux-black/40">
-    <header class="flex items-center justify-between gap-2 mb-3">
-      <h2 :id="titleId" class="text-[20px] font-medium">{{ translate('zx_builder_media_library') }}</h2>
-      <BuilderButton icon="close" iconOnly :label="translate('zx_builder_close')" :disabled="busy" @click="dialog.close()" />
-    </header>
-    <div class="flex flex-wrap gap-1 mb-2" role="group" :aria-label="translate('zx_builder_media_scope')">
-      <BuilderButton v-for="item in scopes" :key="item" :label="translate('zx_builder_media_' + item)"
-        :aria-pressed="scope === item" :variant="scope === item ? 'primary' : 'secondary'"
-        :disabled="busy" @click="scope = item" />
-    </div>
-    <p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate(scope === 'global' ? 'zx_builder_media_global_hint' : 'zx_builder_media_project_hint') }}</p>
-    <p class="mb-3 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_media_public_hint') }}</p>
-    <BuilderInput v-model="search" type="search" maxlength="100" :disabled="busy" :label="translate('zx_builder_media_search')"
-      :placeholder="translate('zx_builder_media_search')" class="w-full mb-2" />
-    <label v-if="canManage" class="mb-3 block rounded-xs border-slim border-dashed border-zaux-light-grey p-2 text-[12px]">
-      <span class="block mb-1">{{ translate('zx_builder_media_upload') }} · {{ translate('zx_builder_media_' + scope) }}</span>
-      <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml,.svg" :disabled="busy || loading" @change="upload" />
-      <span class="mt-1 block text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_media_upload_hint') }}</span>
-    </label>
-    <p v-if="error" role="alert" class="mb-2 text-[12px] text-utility-error">{{ translate(error) }}</p>
-    <p v-if="loading || busy" role="status" class="py-2 text-[12px]">{{ translate('zx_builder_loading') }}</p>
-    <p v-if="!loading && !assets.length" class="py-3 text-[12px] text-zaux-dark-grey">{{ translate('zx_builder_media_empty') }}</p>
-    <div class="grid grid-cols-2 gap-2 min-[600px]:grid-cols-4">
-      <div v-for="asset in assets" :key="asset.id" class="relative min-w-0">
-        <button type="button" :disabled="busy || loading"
-          class="w-full min-w-0 p-1 overflow-hidden text-left rounded-xs border-slim focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent"
-          :class="selected?.id === asset.id ? 'border-zaux-accent bg-zaux-accent/10' : 'border-zaux-light-grey'"
-          :aria-pressed="selected?.id === asset.id" @click="selected = asset">
-          <img :src="asset.thumbnailUrl" alt="" loading="lazy" class="h-[100px] w-full object-contain bg-zaux-light" />
-          <span class="mt-1 block truncate text-[11px]" :title="asset.name">{{ asset.name }}</span>
-          <span class="block text-[10px] text-zaux-dark-grey">{{ asset.width }} × {{ asset.height }}</span>
+  <BuilderModal :title="translate('zx_builder_media_library')" size="xl" height="fill" :busy="busy" bodyClass="flex flex-col p-0"
+    @close="$emit('close')" @paste="paste" @dragenter="dragEnter" @dragover="dragOver" @dragleave="dragLeave" @drop="drop">
+    <template #header>
+      <div v-if="scopes.length > 1" class="flex gap-[2px] rounded-xxs bg-zaux-light p-[2px]" role="group" :aria-label="translate('zx_builder_media_scope')">
+        <button v-for="item in scopes" :key="item" type="button"
+          class="rounded-xxs px-1 py-0.25 text-[11px] font-semibold focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          :class="scope === item ? 'bg-zaux-white text-zaux-dark shadow-sm' : 'text-zaux-dark-grey hover:text-zaux-dark'"
+          :aria-pressed="scope === item" :disabled="busy" @click="scope = item">
+          {{ translate('zx_builder_media_' + item) }}
         </button>
-        <BuilderButton class="absolute top-2 right-2" icon="download" iconOnly size="xs" variant="light1"
-          :label="translate('zx_builder_media_download') + ': ' + asset.name"
-          :disabled="busy || loading" @click="download(asset)" />
+      </div>
+      <span v-else class="rounded-xxs bg-zaux-light px-1 py-0.25 text-[11px] font-semibold text-zaux-dark-grey">{{ translate('zx_builder_media_' + scope) }}</span>
+    </template>
+
+    <div class="flex shrink-0 flex-wrap items-center gap-1 border-b-slim border-zaux-light-grey px-2 py-1.5">
+      <BuilderInput v-model="search" type="search" maxlength="100" :disabled="busy" :label="translate('zx_builder_media_search')"
+        :placeholder="translate('zx_builder_media_search')" class="min-w-[200px] flex-1" />
+      <span v-if="loading || busy" role="status" class="text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_loading') }}</span>
+      <template v-if="canManage">
+        <input ref="fileInput" class="sr-only" type="file" tabindex="-1" aria-hidden="true" accept="image/jpeg,image/png,image/webp,image/svg+xml,.svg" :disabled="busy || loading" @change="upload" />
+        <BuilderButton size="xs" icon="upload" :extraProps="{ actionIcon: false }" :disabled="busy || loading"
+          :label="translate('zx_builder_media_upload') + ' · ' + translate('zx_builder_media_' + scope)"
+          :title="translate('zx_builder_media_upload_hint')" @click="fileInput.click()" />
+      </template>
+    </div>
+    <p v-if="error" role="alert" class="mx-2 mt-1.5 rounded-xxs bg-utility-error/10 p-1 text-[11px] text-utility-error">{{ translate(error) }}</p>
+
+    <div class="relative flex flex-1 min-h-0 max-[760px]:flex-col max-[760px]:overflow-auto">
+      <!-- Asset grid. Double-click chooses directly. -->
+      <div class="flex-1 min-w-0 min-h-0 p-2 overflow-auto zb-scroll" :aria-busy="loading">
+        <div v-if="!loading && !assets.length" class="flex flex-col items-center justify-center gap-1 py-8 text-center text-zaux-dark-grey">
+          <Icon iconName="media-gallery" size="text-icon-m" aria-hidden="true" />
+          <p>{{ translate('zx_builder_media_empty') }}</p>
+          <p v-if="canManage" class="max-w-[420px] text-[11px]">{{ translate('zx_builder_media_upload_hint') }}</p>
+        </div>
+        <ul class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1.5 p-0">
+          <li v-for="asset in assets" :key="asset.id" class="relative min-w-0 group">
+            <button type="button" :disabled="busy || loading"
+              class="w-full min-w-0 overflow-hidden text-left rounded-xs border-slim p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent"
+              :class="selected?.id === asset.id ? 'border-zaux-accent bg-zaux-accent/10 outline outline-1 outline-zaux-accent' : 'border-zaux-light-grey hover:border-zaux-dark-grey'"
+              :aria-pressed="selected?.id === asset.id" @click="selected = asset" @dblclick="!manageOnly && $emit('select', asset)">
+              <img :src="asset.thumbnailUrl" alt="" loading="lazy" class="aspect-[4/3] w-full rounded-xxs bg-zaux-light object-contain" />
+              <span class="mt-0.5 block truncate px-0.25 text-[11px]" :title="asset.name">{{ asset.name }}</span>
+              <span class="block px-0.25 text-[10px] text-zaux-dark-grey tabular-nums">{{ asset.width }} &times; {{ asset.height }}</span>
+            </button>
+            <BuilderButton class="absolute right-1 top-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100" icon="download" iconOnly size="xs" variant="light1"
+              :label="translate('zx_builder_media_download') + ': ' + asset.name"
+              :disabled="busy || loading" @click="download(asset)" />
+          </li>
+        </ul>
+      </div>
+
+      <!-- Details of the selected asset, or the library notes. -->
+      <aside class="flex w-[300px] shrink-0 flex-col border-l-slim border-zaux-light-grey bg-zaux-light/40 max-[760px]:w-full max-[760px]:border-l-0 max-[760px]:border-t-slim" :aria-label="translate('zx_builder_media_details')">
+        <div class="flex-1 min-h-0 p-2 overflow-auto zb-scroll">
+          <template v-if="selected">
+            <img :src="selected.thumbnailUrl" alt="" class="aspect-[4/3] w-full rounded-xs border-slim border-zaux-light-grey bg-zaux-light object-contain" />
+            <p class="mt-1 break-words text-[12px] font-semibold">{{ selected.name }}</p>
+            <p class="text-[11px] text-zaux-dark-grey tabular-nums">{{ selected.width }} &times; {{ selected.height }}</p>
+            <BuilderInput class="mt-1 w-full font-mono !text-[10px]" readonly :modelValue="selected.url"
+              :label="translate('zx_builder_media_url')" @focus="$event.target.select()" />
+            <div class="flex flex-wrap gap-1 mt-1">
+              <BuilderButton size="xs" icon="download" :extraProps="{ actionIcon: false }" :label="translate('zx_builder_media_download')" :disabled="busy || loading" @click="download(selected)" />
+              <BuilderButton v-if="canManage" size="xs" variant="alt1" icon="delete" :extraProps="{ actionIcon: false }" class="[&.zb-button]:!text-utility-error"
+                :label="translate('zx_builder_media_archive')" :disabled="busy || loading" @click="archive" />
+            </div>
+            <p v-if="canManage" class="mt-1 text-[10px] leading-relaxed text-zaux-dark-grey">{{ translate('zx_builder_media_archive_hint') }}</p>
+          </template>
+          <div v-else class="space-y-1 text-[11px] leading-relaxed text-zaux-dark-grey">
+            <p class="font-semibold text-zaux-dark">{{ translate('zx_builder_media_no_selection') }}</p>
+            <p>{{ translate(scope === 'global' ? 'zx_builder_media_global_hint' : 'zx_builder_media_project_hint') }}</p>
+            <p>{{ translate('zx_builder_media_public_hint') }}</p>
+            <p v-if="canManage">{{ translate('zx_builder_media_upload_hint') }}</p>
+          </div>
+        </div>
+      </aside>
+
+      <div v-if="dragging" aria-hidden="true"
+        class="pointer-events-none absolute inset-1.5 z-10 grid place-items-center rounded-s border-2 border-dashed border-zaux-accent bg-zaux-white/85 text-[13px] font-semibold text-zaux-accent">
+        {{ translate('zx_builder_media_drop') }} &middot; {{ translate('zx_builder_media_' + scope) }}
       </div>
     </div>
-    <div class="flex items-center justify-center gap-2 mt-3">
-      <BuilderButton :label="translate('zx_builder_media_previous')" :disabled="!page || busy || loading" @click="page--" />
-      <span class="text-[11px]">{{ page + 1 }}</span>
-      <BuilderButton :label="translate('zx_builder_media_next')" :disabled="!hasMore || busy || loading" @click="page++" />
-    </div>
-    <BuilderInput v-if="selected" class="mt-3 w-full text-[11px]" readonly :modelValue="selected.url"
-      :label="translate('zx_builder_media_url')" @focus="$event.target.select()" />
-    <footer class="flex flex-wrap items-center justify-end gap-1 mt-3">
-      <BuilderButton v-if="canManage && selected" :label="translate('zx_builder_media_archive')" :disabled="busy || loading" @click="archive" />
-      <BuilderButton v-if="!manageOnly && clearable" :label="translate('zx_builder_media_remove')" :disabled="busy" @click="$emit('select', null)" />
-      <BuilderButton v-if="!manageOnly" variant="primary" :label="translate('zx_builder_media_choose')" :disabled="!selected || busy || loading" @click="$emit('select', selected)" />
-    </footer>
-    <p v-if="canManage" class="mt-2 text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_media_archive_hint') }}</p>
-  </dialog>
+
+    <template #footer="{ close }">
+      <div class="flex items-center mr-auto gap-0.5">
+        <BuilderButton size="xs" variant="alt1" icon="chevron-left" iconOnly :label="translate('zx_builder_media_previous')" :disabled="!page || busy || loading" @click="page--" />
+        <span class="min-w-[24px] text-center text-[11px] tabular-nums">{{ page + 1 }}</span>
+        <BuilderButton size="xs" variant="alt1" icon="chevron-right" iconOnly :label="translate('zx_builder_media_next')" :disabled="!hasMore || busy || loading" @click="page++" />
+      </div>
+      <BuilderButton v-if="!manageOnly && clearable" size="xs" variant="alt1" :label="translate('zx_builder_media_remove')" :disabled="busy" @click="$emit('select', null)" />
+      <BuilderButton v-if="manageOnly" size="xs" :label="translate('zx_builder_close')" :disabled="busy" @click="close" />
+      <BuilderButton v-else size="xs" variant="primary" :label="translate('zx_builder_media_choose')" :disabled="!selected || busy || loading" @click="$emit('select', selected)" />
+    </template>
+  </BuilderModal>
 </template>
 <script>
-import { computed, defineComponent, onBeforeUnmount, onMounted, nextTick, ref, useId, watch } from 'vue';
+import { computed, defineComponent, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue';
 import { useTranslation } from '../../composables/useTranslation.js';
 import { listMedia, uploadMedia, archiveMedia, downloadMedia } from '../../services/media.js';
 import BuilderButton from './BuilderButton.vue';
+import BuilderModal from './BuilderModal.vue';
 import BuilderInput from './fields/BuilderInput.vue';
 
 export default defineComponent({
-  components: { BuilderButton, BuilderInput },
+  components: { BuilderButton, BuilderInput, BuilderModal },
   props: {
     projectId: String, initialScope: String, scopeOnly: String,
     canManageProject: Boolean, readonly: Boolean, manageOnly: Boolean, clearable: Boolean
   },
   emits: ['select', 'close'],
   setup(props) {
-    const dialog = ref(null);
     const scopes = computed(() => props.scopeOnly ? [props.scopeOnly] : props.projectId ? ['project', 'global'] : ['global']);
     const scope = ref(props.scopeOnly || props.initialScope || (props.projectId ? 'project' : 'global'));
     const canManage = computed(() => !props.readonly && (scope.value === 'global' || props.canManageProject));
@@ -82,7 +124,6 @@ export default defineComponent({
     let request = 0;
     let timer;
     let disposed = false;
-    let previousFocus;
     function failure(exception) { error.value = exception.message?.startsWith('zx_builder_media_') ? exception.message : 'zx_builder_media_error'; }
     async function load() {
       const current = ++request;
@@ -160,13 +201,39 @@ export default defineComponent({
       catch (exception) { if (!disposed) failure(exception); }
       finally { if (!disposed) busy.value = false; }
     }
-    function cancel(event) { if (busy.value) event.preventDefault(); }
-    onMounted(() => { previousFocus = document.activeElement; dialog.value.showModal(); load(); });
-    onBeforeUnmount(() => {
-      disposed = true; request++; clearTimeout(timer); dialog.value?.close();
-      if (previousFocus?.isConnected) previousFocus.focus();
-    });
-    return { ...useTranslation(), titleId: useId(), dialog, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, paste, download, archive, cancel };
+    // Dropping an image file anywhere in the dialog uploads it to the current scope.
+    const fileInput = ref(null);
+    const dragging = ref(false);
+    let dragDepth = 0;
+    const hasFiles = event => !!event.dataTransfer && [...event.dataTransfer.types].includes('Files');
+    function dragEnter(event) {
+      if (!hasFiles(event) || !canManage.value) return;
+      event.preventDefault();
+      dragDepth++;
+      dragging.value = true;
+    }
+    function dragOver(event) {
+      if (!hasFiles(event) || !canManage.value) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = busy.value || loading.value ? 'none' : 'copy';
+    }
+    function dragLeave(event) {
+      if (!hasFiles(event)) return;
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (!dragDepth) dragging.value = false;
+    }
+    function drop(event) {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      dragDepth = 0;
+      dragging.value = false;
+      if (!canManage.value || busy.value || loading.value) return;
+      const files = [...event.dataTransfer.files];
+      uploadFile(files.find(file => file.type.startsWith('image/')) ?? files[0]);
+    }
+    onMounted(load);
+    onBeforeUnmount(() => { disposed = true; request++; clearTimeout(timer); });
+    return { ...useTranslation(), fileInput, dragging, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, paste, download, archive, dragEnter, dragOver, dragLeave, drop };
   }
 });
 </script>
