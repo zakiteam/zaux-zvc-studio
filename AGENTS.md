@@ -3,7 +3,7 @@
 Read `docs/ai/INDEX.md` first, then `docs/ai/memory/STATE.md` and the relevant architecture section.
 
 ## Ownership and implementation
-- `vendor/zaux` is a Git submodule and is read-only. Never edit it, generate files in it, run its setup scripts, commit in it, or change its tracked revision unless the user asks to update the dependency.
+- `vendor/zaux` is a gitignored, read-only Zaux release installed by `scripts/zaux/install.mjs` from the private `zakiteam/zaux` repository (version in `package.json#zaux.version`). Never edit it, generate files in it or run its setup scripts. Change the pinned release only when the user asks to update the dependency.
 - Project code uses JavaScript and Vue Composition API with ordinary `<script>`, `defineComponent` and `setup()`. Do not introduce TypeScript or `<script setup>`.
 - Follow the closest project component. Keep domain transformations in `domain/`, browser IO in `app/services/`, and editor state in `app/composables/useBuilder.js`.
 - Use actual Zaux components, tokens and styles. Adapt integration in `integrations/zaux/`, `scripts/zaux/` and `nuxt.config.js`; do not fork its components.

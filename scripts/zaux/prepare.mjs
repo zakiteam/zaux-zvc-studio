@@ -2,13 +2,12 @@ import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from 
 import { resolve, relative, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateThemeCatalog } from './theme-catalog.mjs';
+import { installZaux } from './install.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const source = resolve(root, 'vendor/zaux');
 const output = resolve(root, 'integrations/zaux/generated');
-if (!existsSync(resolve(source, 'core/setup.js'))) {
-  throw new Error('Zaux missing. Run git submodule update --init --recursive.');
-}
+await installZaux();
 mkdirSync(output, { recursive: true });
 const slash = value => value.replaceAll('\\', '/');
 const toImport = path => './' + slash(relative(output, path));
@@ -42,7 +41,7 @@ for (const area of ['core', 'project']) {
 }
 
 // The upstream configuration expects generated local files. Redirect only those
-// imports here; the submodule is never a write destination.
+// imports here; the installed release is never a write destination.
 const tailwindPath = resolve(source, 'style/tailwind.config.js');
 const tailwind = readFileSync(tailwindPath, 'utf8').replace(/from\s+(["'])(\.[^"']+)\1/g, (match, quote, specifier) => {
   const path = specifier.includes('_local/tailwind') ? resolve(root, 'integrations/zaux/safelist.js') : resolve(dirname(tailwindPath), specifier);
@@ -69,4 +68,4 @@ for (const area of ['core', 'project']) {
 }
 write('styles.scss', [...new Set(styles)].map(path => `@use ${JSON.stringify(toImport(path))} as *;`).join('\n') + '\n');
 generateThemeCatalog();
-console.log('Zaux bridge prepared outside the read-only submodule.');
+console.log('Zaux bridge prepared outside the read-only release.');

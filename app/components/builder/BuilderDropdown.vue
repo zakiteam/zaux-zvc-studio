@@ -105,7 +105,6 @@
 								item?.class
 							]"
 							@click="select(item)"
-							:theme="btnTheme"
 						/>
 					</template>
 					<p

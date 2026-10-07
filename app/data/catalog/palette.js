@@ -27,6 +27,14 @@ export default [
     props: { startSelector: '', endSelector: '', endTriggerPosition: 'bottom', disableAfter: null, revealClass: '' },
     createChildren: t => [{ name: 'div', props: { class: 'rounded-s bg-zaux-light p-3', textContent: t('zx_builder_reveal_sample') } }]
   },
+  {
+    // contentSlots holds { name, props } descriptors; the Inspector edits them.
+    name: 'ScrollTopSentinel', container: true,
+    createProps: t => ({
+      mode: 'default', unScrolledClasses: '', scrolledClasses: '',
+      contentSlots: { content: { type: 'component', name: 'Paragraph', props: { contentHTML: '<p>' + t('zx_builder_scroll_sentinel_sample') + '</p>', size: 'm' } } }
+    })
+  },
   ...contentComponents,
   ...formComponents,
   ...Object.entries(sliderControls).map(([name, config]) => ({ name, props: config.props })),

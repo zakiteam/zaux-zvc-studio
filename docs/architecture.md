@@ -20,9 +20,9 @@
 | app/components/builder/BuilderProjectBridge.vue | Filesystem picker modal and project-link export |
 | integrations/zaux/version.js | Builder's pinned Zaux core version |
 | integrations/zaux | Read-only dependency adapter and generated files |
-| scripts/zaux | Generate registries and stylesheet imports outside Zaux |
+| scripts/zaux | Install the pinned Zaux release; generate registries and stylesheet imports outside Zaux |
 | server/api/preview-css.post.js | Compile Tailwind classes authored at runtime |
-| vendor/zaux | Read-only Git submodule |
+| vendor/zaux | Read-only installed Zaux release (gitignored) |
 | tests | Domain and browser behavior checks |
 | docs/ai | Decisions, knowledge index and resumable session state |
 | .agents/skills | Discoverable project skill |
@@ -51,7 +51,7 @@ The prior builder primarily composes registered definitions and edits fields; BY
 
 ## Integration
 
-The submodule is pinned to `a495ac536ee7932b2875f341c1106375dacc590f`. The source checkout contained uncommitted work; the submodule uses the committed version.
+The Zaux release is pinned in `package.json#zaux` (`repository`, `version` tag). `scripts/zaux/install.mjs`, run first by `prepare.mjs` (so by `dev` and `build`), installs it into `vendor/zaux` when `vendor/zaux/.zaux-release.json` does not match. Sources, in order: `ZAUX_SOURCE_DIR` (copy of a local checkout, without `.git`/`node_modules`), the cached zip in `.cache/zaux/<version>.zip`, the GitHub API zipball of the private repository authenticated with `ZAUX_GITHUB_TOKEN` (`.env` is loaded by the script). Extraction goes to `vendor/zaux.staging` and replaces `vendor/zaux` only on success; a Git checkout in `vendor/zaux` is never deleted. `ZAUX_VERSION` overrides the pinned tag for a single run; it must be listed in `package.json#zaux.supported` unless `ZAUX_ALLOW_UNSUPPORTED=1`. The hub page (`app/pages/index.vue`) shows the active version from `integrations/zaux/version.js`. In production, either build where the token is available and deploy `.output`, or set the token in the build environment.
 
 Nuxt initializes the original Zaux vendor/zaux/project setup in a client plugin. A preparation script mirrors the upstream component registration convention while writing indexes, stylesheet imports, attribute metadata and resolved Tailwind data under `integrations/zaux/generated`. Aliases redirect upstream imports of generated files there.
 

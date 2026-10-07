@@ -121,6 +121,12 @@
 				:node="selectedNode"
 			/>
 
+			<BuilderContentSlots
+				v-if="contentSlotConfig && contentSlotsEditable"
+				:key="selectedNode.id + selectedNode.name"
+				:node="selectedNode"
+			/>
+
 			<BuilderMedia
 				v-if="mediaConfig"
 				:key="selectedNode.id + selectedNode.name"
@@ -228,8 +234,10 @@ import BuilderLightbox from "../fields/lightbox/BuilderLightbox.vue";
 import BuilderLightboxTrigger from "../fields/lightbox/BuilderLightboxTrigger.vue";
 import BuilderOverlayContent from "../fields/overlay/BuilderOverlayContent.vue";
 import BuilderMedia from "../fields/BuilderMedia.vue";
+import BuilderContentSlots from "../fields/slots/BuilderContentSlots.vue";
 import { sliderControls } from "../../../../integrations/zaux/controls/slider-controls.js";
 import { lightboxControls, isLightboxTrigger } from "../../../../integrations/zaux/controls/lightbox-controls.js";
+import { contentSlotControls } from "../../../../integrations/zaux/controls/content-slot-controls.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
 import BuilderButton from "../BuilderButton.vue";
 import BuilderInput from "../fields/BuilderInput.vue";
@@ -243,6 +251,7 @@ export default defineComponent({
 		BuilderLightboxTrigger,
 		BuilderOverlayContent,
 		BuilderMedia,
+		BuilderContentSlots,
 		BuilderButton,
 		BuilderInput,
 		BuilderProperty,
@@ -268,6 +277,14 @@ export default defineComponent({
 		const mediaConfig = computed(
 			() => builder.selectedNode.value?.name === "Media",
 		);
+		const contentSlotConfig = computed(
+			() => contentSlotControls[builder.selectedNode.value?.name],
+		);
+		// A bound or non-object contentSlots value keeps the generic editor.
+		const contentSlotsEditable = computed(() => {
+			const value = builder.selectedNode.value?.props?.contentSlots;
+			return value == null || isPlainRecord(value);
+		});
 		function specializedProperty(key) {
 			if (
 				mediaConfig.value &&
@@ -278,6 +295,8 @@ export default defineComponent({
 				builder.selectedPartial.value?.fields.some((field) => field.key === key)
 			)
 				return true;
+			if (contentSlotConfig.value && key === "contentSlots")
+				return contentSlotsEditable.value;
 			const node = builder.selectedNode.value;
 			if (lightboxConfig.value) {
 				return ["id", "items", "options"].includes(key);
@@ -404,6 +423,8 @@ export default defineComponent({
 			lightboxTrigger,
 			overlayContent,
 			mediaConfig,
+			contentSlotConfig,
+			contentSlotsEditable,
 			catalog,
 			descriptors,
 			visibleProperties,

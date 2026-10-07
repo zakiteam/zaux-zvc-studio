@@ -5,7 +5,7 @@
 - Nuxt 4, JavaScript only, Vue Composition API without script setup.
 - Visual page builder: drag and drop, plus selection directly in the preview.
 - Library of ZVC definitions; templates instantiate independent copies.
-- Zaux as a read-only Git submodule; no direct changes to Zaux.
+- Zaux as a read-only dependency; no direct changes to Zaux. (Git submodule until 2026-10-06, then release archives.)
 - Browser localStorage persistence; JSON transport prepared for server-side storage.
 - Export component JSON and conventional Zaux JavaScript modules.
 - Minimal translation function and semantically organized folders.
@@ -20,6 +20,12 @@
 ## Implementation choices
 
 - `vendor/zaux` contains the pinned dependency. Generated bridges live elsewhere.
+
+## 2026-10-06 - Zaux releases instead of submodule (user)
+
+- Git submodules are impractical in production. `package.json#zaux` pins `repository` and `version` (a release tag); `scripts/zaux/install.mjs` downloads the GitHub zipball with `ZAUX_GITHUB_TOKEN` (private repo), caches it in `.cache/zaux/` and extracts it into the gitignored `vendor/zaux`, marked by `.zaux-release.json`.
+- `vendor/zaux` stays the stable path of the active release so existing imports and aliases do not change. Overrides: `ZAUX_VERSION`, `ZAUX_SOURCE_DIR` (local checkout).
+- Version switching happens at build time only (user choice; no side-by-side builds or live switcher). `package.json#zaux.supported` is the curated list of releases the builder has been adapted to; other tags are refused unless `ZAUX_ALLOW_UNSUPPORTED=1` (porting). The hub shows the active Zaux version.
 - Client-rendered Nuxt editor with a same-origin preview iframe.
 - Explicit JSON `$bind` markers preserve editable data bindings.
 - Pure domain helpers and a single editor-state composable; no generic framework or plugin engine.

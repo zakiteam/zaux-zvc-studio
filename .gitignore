@@ -7,3 +7,5 @@ test-results/
 *.log
 .env
 integrations/zaux/generated/
+vendor/zaux/
+vendor/zaux.staging/

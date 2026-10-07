@@ -5,6 +5,7 @@
         <p class="mb-1 text-[11px] uppercase tracking-wider text-zaux-dark-grey">ZAUX STUDIO</p>
         <h1 tabindex="-1" class="text-[28px] font-medium">{{ translate('zx_builder_projects') }}</h1>
         <p class="mt-1 text-[13px] text-zaux-dark-grey">{{ translate('zx_builder_hub_intro') }}</p>
+        <p class="mt-1 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_hub_zaux_version', { version: zauxProjectVersion }) }}</p>
       </div>
       <BuilderButton variant="outlined" :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
     </header>
@@ -48,6 +49,7 @@ import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
 import { listRemoteProjects, renameRemoteProject, deleteRemoteProject, duplicateRemoteProject } from '../services/projects.js';
+import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import BuilderButton from '../components/builder/BuilderButton.vue';
 import BuilderInput from '../components/builder/fields/BuilderInput.vue';
@@ -129,7 +131,7 @@ export default defineComponent({
     }
     onMounted(loadProjects);
     onBeforeUnmount(() => { disposed = true; });
-    return { studioLogo, translate, projects, search, filteredProjects, loading, error, action, actionError, busy, loadProjects, duplicateProject, openAction, submitAction, formatDate };
+    return { studioLogo, zauxProjectVersion, translate, projects, search, filteredProjects, loading, error, action, actionError, busy, loadProjects, duplicateProject, openAction, submitAction, formatDate };
   }
 });
 </script>

@@ -1,5 +1,6 @@
 import card from '../../../vendor/zaux/core/components/shared/card/Card.meta.js';
 import input from '../../../vendor/zaux/core/components/shared/input/Input.meta.js';
+import scrollTopSentinel from '../../../vendor/zaux/core/components/utils/scrolltopsentinel/ScrollTopSentinel.meta.js';
 
 // Source: each component's Vue template, theme SCSS and input stories.
 // The pinned multiselect metadata lists outlined-light2, but its SCSS implements outlined-dark1 instead.
@@ -35,5 +36,6 @@ export const componentSelects = {
   OffCanvas: { position: ['left', 'right', 'top', 'bottom'], contentType: ['default', 'html', 'component', 'teleport-html'] },
   InputText: { type: ['text', 'email', 'password', 'number', 'tel', 'url', 'search', 'date', 'datetime-local', 'time', 'month', 'week', 'color', 'range', 'hidden'] },
   InputMultiSelect: { outputMode: ['json', 'classic'] },
-  ZForm: { method: ['GET', 'POST'], sendMethod: ['sync', 'async'], spinnerTheme: ['light1', 'light2', 'light3', 'light4'] }
+  ZForm: { method: ['GET', 'POST'], sendMethod: ['sync', 'async'], spinnerTheme: ['light1', 'light2', 'light3', 'light4'] },
+  ScrollTopSentinel: { mode: scrollTopSentinel.modes }
 };
