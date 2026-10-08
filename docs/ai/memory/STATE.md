@@ -132,3 +132,15 @@ The inline row under a selected ZVC instance (Rename, Restore from library, Edit
 
 ## Outline instance menu — 2026-10-08
 The outline right-click menu on a ZVC instance (template mode, `instanceContextItems` in `BuilderSidebar.vue`) now lists Edit in library first, then Rename, Export ZVC (`zx_builder_export_instance`: selects the instance if needed and calls `openExport({ scope: 'component' })`, allowed for viewers), Sync with original and Reset. Workspace tabs also close on middle click. Source reading only.
+
+## CSS box-model inspector — 2026-10-08
+New canvas toggle (icon `scan`, next to follow viewport/canvas color; Shift+M via `layoutShortcut` → `toggle-css-inspect`) and programmatic `highlightNodeCSS(nodeId, { instanceId, details, properties })` / `clearNodeCSSHighlight()` in `useBuilder.js`. `PreviewCssInspector.vue` (in the preview iframe) draws margin/border/padding/content, spacing labels, size badge and a hover details panel; defaults in `app/data/css-inspector.js`. Locale keys `zx_builder_css_inspect*`. Source reading only; no runtime checks.
+
+## Style quickpad redesign — 2026-10-08
+Redrew the 17 `quickpad-*.svg` icons (thin rounded strokes, secondary strokes at 50% opacity) and rebuilt the quickpad in `BuilderInspectorStyleTab.vue`: segmented groups, mask-colored icons (accent when active, no `dark:invert`), a section caption and scroll-spy instead of clearing on user scroll. Source reading only; no runtime checks.
+
+## Zaux component previews in Elements and command palette — 2026-10-08
+Zaux palette components now get a rendered preview through the Library thumbnail pipeline. `useBuilder.js` resolves pseudo-ids `element:<Name>` (non-HTML catalog entries only) to a memoized free definition built with `catalogNode`, so `ensureLibraryThumbnail`/`refreshLibraryThumbnail` and `libraryThumbnails` work unchanged (IndexedDB cache scoped per workspace). The Elements panel (also reached with Ctrl+K) shows a floating preview beside the sidebar on hover/focus via the new `BuilderElementPreview.vue` (Zaux components and ZVPs; HTML elements excluded). Follow-up: Zaux components and ZVPs in the Elements panel are now cards with an always-visible capture (`BuilderElementThumbnail.vue`, requested lazily while in view, like `BuilderLibraryThumbnail`); HTML elements keep the compact list. `BuilderCmdPalette.vue` shows inline thumbnails and the side preview for Zaux components, plus a "Rigenera" action when a capture failed. No new locale keys. Reviewed by source reading only; runtime verification remains manual.
+
+## Configurable thumbnail capture timing — 2026-10-08
+Capture timings now live in `app/data/thumbnail-capture.js` (`settleDelay` raised from 250 to 1500 ms, stylesheet/font/image/resource/total timeouts, `cacheVersion`). `capture-thumbnail.js` waits for fonts again after the settle delay plus two animation frames; `library-thumbnails.js` prefixes IndexedDB keys with `v<cacheVersion>:`, so bumping it (now 2) discards previous captures. Old entries stay in IndexedDB unused. Reviewed by source reading only; runtime verification remains manual.

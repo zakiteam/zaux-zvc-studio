@@ -28,7 +28,8 @@ export function nodeClipboardShortcut(event, options) {
   return { c: 'copy-node', v: 'paste-node', x: 'cut-node', d: 'duplicate-node' }[event.key.toLowerCase()] ?? null;
 }
 
-// Figma-style canvas/layout keys: Ctrl+\ toggles the panels, Shift+1 fits, Shift+0 is 100%, Ctrl +/- zooms.
+// Figma-style canvas/layout keys: Ctrl+\ toggles the panels, Shift+1 fits, Shift+0 is 100%, Ctrl +/- zooms,
+// Shift+M toggles the CSS box-model inspector.
 // Navigation keys work from form fields too (not from code/rich-text editors, where Ctrl+L selects a line):
 // Ctrl+P opens the command palette, Ctrl+K focuses the Elements search, Ctrl+L the Library search,
 // Ctrl+E opens the export dialog on the selected ZVC.
@@ -53,6 +54,8 @@ export function layoutShortcut(event, options) {
   if (command && event.key === '-') return 'zoom-out';
   if (!command && event.shiftKey && event.code === 'Digit1') return 'zoom-fit';
   if (!command && event.shiftKey && event.code === 'Digit0') return 'zoom-reset';
+  // Shift+M ("measure") toggles the box-model inspector on the canvas.
+  if (!command && event.shiftKey && event.code === 'KeyM') return 'toggle-css-inspect';
   return null;
 }
 

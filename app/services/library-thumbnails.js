@@ -1,4 +1,5 @@
 import { runtimeNodes } from '../../domain/nodes.js';
+import { thumbnailCapture } from '../data/thumbnail-capture.js';
 
 
 // Optional browser cache: failures must never prevent rendering or workspace saves.
@@ -51,7 +52,7 @@ export function createLibraryThumbnailRenderer() {
       // can initialize. Opacity hides it without suppressing layout or intersections.
       frame.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px;border:0;pointer-events:none;opacity:0;z-index:-1;';
       let sent = false;
-      const timer = setTimeout(() => finish(new Error('Thumbnail timed out')), 60000);
+      const timer = setTimeout(() => finish(new Error('Thumbnail timed out')), thumbnailCapture.totalTimeout);
       const cancel = () => finish(new Error('Thumbnail cancelled'));
       cancelCapture = cancel;
       function finish(error, url) {
@@ -84,7 +85,9 @@ export function createLibraryThumbnailRenderer() {
         if (disposed || !isCurrent()) throw new Error('Thumbnail request superseded');
       };
       // Cache reads bypass the rendering queue: existing images appear immediately.
-      const cached = await cacheEntry(key);
+      // The capture settings version is part of the stored key, so bumping it discards older images.
+      const storedKey = `v${thumbnailCapture.cacheVersion}:${key}`;
+      const cached = await cacheEntry(storedKey);
       checkCurrent();
       if (!force && cached?.url) return cached.url;
       if (!force && cached?.error) throw new Error(cached.error);
@@ -98,11 +101,11 @@ export function createLibraryThumbnailRenderer() {
           checkCurrent();
           const url = await capture({ ...state, css: css.css }, force);
           checkCurrent();
-          await cacheEntry(key, { url });
+          await cacheEntry(storedKey, { url });
           return url;
         } catch (error) {
           // Remember the first attempt, including failure; retry is always manual.
-          if (!disposed && isCurrent() && !cached?.url) await cacheEntry(key, { error: error.message || 'Thumbnail capture failed' });
+          if (!disposed && isCurrent() && !cached?.url) await cacheEntry(storedKey, { error: error.message || 'Thumbnail capture failed' });
           if (cached?.url) error.thumbnailUrl = cached.url;
           throw error;
         }

@@ -49,6 +49,10 @@
           :label="translate('zx_builder_follow_viewport_styles')" :aria-pressed="followViewportStyles"
           :extraProps="{ inheritedUIFlags: { HOVER: followViewportStyles } }"
           @click="followViewportStyles = !followViewportStyles" />
+        <!-- Filled variant while active, like the Preview/Design toggle. -->
+        <BuilderButton size="xs" :variant="cssInspect ? 'primary' : 'alt1'" icon="scan" iconOnly
+          :label="translate('zx_builder_css_inspect') + ' (Shift M)'" :aria-pressed="cssInspect"
+          @click="cssInspect = !cssInspect" />
         <BuilderButton size="xs" variant="alt1" :icon="canvasDark ? 'light-mode' : 'dark-mode'" iconOnly
           :label="translate(canvasDark ? 'zx_builder_canvas_light' : 'zx_builder_canvas_dark')"
           @click="canvasDark = !canvasDark" />

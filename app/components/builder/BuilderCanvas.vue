@@ -10,7 +10,7 @@
         <div class="relative" :style="{ height: `${layout.height * layout.scale}px` }">
           <div class="zb-preview-frame absolute left-0 top-0 origin-top-left overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep [&>iframe]:block [&>iframe]:h-full [&>iframe]:w-full [&>iframe]:border-none"
             :style="{ width: `${layout.width}px`, height: `${layout.height}px`, transform: layout.scale === 1 ? null : `scale(${layout.scale})` }">
-            <iframe ref="frame" src="/preview" :style="{ backgroundColor: canvasDark ? '#18181b' : '#ffffff' }" :title="translate('zx_builder_preview_title')" @load="sendState" />
+            <iframe ref="frame" src="/preview" :style="{ backgroundColor: canvasDark ? '#18181b' : '#ffffff' }" :title="translate('zx_builder_preview_title')" @load="sendState(); sendInspect()" />
           </div>
         </div>
       </div>
@@ -73,6 +73,10 @@ export default defineComponent({
     function sendState() {
       frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
+    // Lightweight message: hover-driven highlightNodeCSS calls must not resend the whole state.
+    function sendInspect() {
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'css-inspect', enabled: builder.cssInspect.value, properties: [...builder.cssInspectProperties.value], highlight: builder.cssHighlight.value ? JSON.parse(JSON.stringify(builder.cssHighlight.value)) : null }, window.location.origin);
+    }
     function receive(event) {
       if (event.origin !== window.location.origin || event.source !== frame.value?.contentWindow || event.data?.channel !== 'zaux-studio') return;
       const message = event.data;
@@ -94,7 +98,7 @@ export default defineComponent({
         if (message.type === 'delete-node') builder.deleteNode();
       }
       if (message.type === 'layout') { if (!builder.modal.value) builder.runLayoutShortcut(message.action); return; }
-      if (message.type === 'ready') sendState();
+      if (message.type === 'ready') { sendState(); sendInspect(); }
       if (message.type === 'context-menu') { if (!builder.previewOnly.value && !builder.modal.value) openContextMenu(message); return; }
       if (message.type === 'select') {
         // A click inside the iframe never reaches this document's pointer listeners.
@@ -113,6 +117,7 @@ export default defineComponent({
     }
     watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
+    watch([builder.cssInspect, builder.cssInspectProperties, builder.cssHighlight], sendInspect, { deep: true });
     watch(() => builder.revealTarget.value, (target) => {
       if (!target) return;
       frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'reveal', instanceId: target.instanceId, nodeId: target.nodeId }, window.location.origin);
@@ -126,7 +131,7 @@ export default defineComponent({
       stageObserver.observe(stage.value);
     });
     onBeforeUnmount(() => { stageObserver?.disconnect(); builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
-    return { ...builder, frame, stage, layout, sendState, contextMenu, contextItems, contextAction };
+    return { ...builder, frame, stage, layout, sendState, sendInspect, contextMenu, contextItems, contextAction };
   }
 });
 </script>

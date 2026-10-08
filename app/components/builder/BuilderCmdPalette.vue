@@ -37,7 +37,7 @@
 				v-for="(item, index) in results"
 				:key="item.id"
 				:id="optionId(item)"
-				:data-zb-thumb="item.kind === 'element' ? undefined : item.id"
+				:data-zb-thumb="hasPreview(item) ? item.id : undefined"
 				role="option"
 				:aria-selected="index === activeIndex"
 				class="group flex cursor-pointer items-center gap-1 rounded-xxs py-0.5 pl-1 pr-1.5"
@@ -49,10 +49,10 @@
 					class="w-[30px] shrink-0 rounded-xxs py-0.25 text-center text-[9px] font-semibold"
 					:class="kindClass(item)"
 				>{{ kindLabel(item) }}</span>
-				<!-- Inline thumbnail: the cached Library capture, requested lazily while the row is in view. -->
+				<!-- Inline thumbnail: the cached Library capture (Zaux components included), requested lazily while the row is in view. -->
 				<span class="grid h-[36px] w-[48px] shrink-0 place-items-center overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white" aria-hidden="true">
-					<span v-if="item.kind === 'element'" class="text-[16px] text-zaux-accent">{{ containers.includes(item.name) ? "▤" : "◇" }}</span>
-					<img v-else-if="thumbnailOf(item)" :src="thumbnailOf(item)" alt="" loading="lazy" class="h-full w-full" :class="item.previewImage ? 'object-cover' : 'object-contain object-top'" />
+					<img v-if="thumbnailOf(item)" :src="thumbnailOf(item)" alt="" loading="lazy" class="h-full w-full" :class="item.previewImage ? 'object-cover' : 'object-contain object-top'" />
+					<span v-else-if="item.kind === 'element'" class="text-[16px] text-zaux-accent">{{ containers.includes(item.name) ? "▤" : "◇" }}</span>
 				</span>
 				<span class="min-w-0 flex-1">
 					<span class="block truncate text-[12px] font-semibold">{{ item.name }}</span>
@@ -100,7 +100,7 @@
 			:aria-label="translate('zx_builder_cmd_preview')"
 		>
 			<div class="relative grid aspect-[4/3] w-full shrink-0 place-items-center overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white">
-				<span v-if="activeItem.kind === 'element'" class="text-[48px] text-zaux-accent" aria-hidden="true">{{ containers.includes(activeItem.name) ? "▤" : "◇" }}</span>
+				<span v-if="!hasPreview(activeItem)" class="text-[48px] text-zaux-accent" aria-hidden="true">{{ containers.includes(activeItem.name) ? "▤" : "◇" }}</span>
 				<img v-else-if="previewImage" :src="previewImage" alt="" class="h-full w-full" :class="activeItem.previewImage ? 'object-cover' : 'object-contain object-top'" />
 				<span v-else class="px-2 text-center text-[11px] text-zaux-dark-grey" :title="previewEntry?.error">
 					{{ translate(previewEntry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}
@@ -120,6 +120,8 @@
 				</template>
 			</div>
 			<div class="mt-auto flex flex-wrap gap-1">
+				<BuilderButton v-if="hasPreview(activeItem) && !activeItem.previewImage && previewEntry?.status === 'error'" size="xs" icon="refresh" tabindex="-1" :extraProps="{ actionIcon: false }"
+					:label="translate('zx_builder_thumbnail_refresh')" @click="refreshPreview(activeItem)" />
 				<BuilderButton v-if="activeItem.kind !== 'element'" size="xs" icon="enter" tabindex="-1" :extraProps="{ actionIcon: false }" :label="translate('zx_builder_cmd_open')" @click="openItem(activeItem)" />
 				<BuilderButton size="xs" variant="primary" icon="plus" tabindex="-1" :extraProps="{ actionIcon: false }"
 					:label="translate('zx_builder_cmd_insert')" :title="insertTitle(activeItem)" :disabled="!canInsert(activeItem)" @click="insertItem(activeItem)" />
@@ -142,7 +144,9 @@ import BuilderModal from "./BuilderModal.vue";
 const LIMIT = 100;
 
 // Palette elements can only be inserted; library definitions can also be opened for editing.
-const ELEMENTS = catalog.map((entry) => ({ id: "element:" + entry.name, kind: "element", name: entry.name, group: entry.group }));
+const ELEMENTS = catalog.map((entry) => ({ id: "element:" + entry.name, kind: "element", name: entry.name, group: entry.group, html: Boolean(entry.html) }));
+// Library definitions and Zaux components have a rendered capture; HTML elements keep their glyph.
+const hasPreview = (item) => !(item.kind === "element" && item.html);
 
 // 3: prefix, 2: substring, 1: characters in order (fuzzy, as in a quick-open), 0: no match.
 function matchScore(text, query) {
@@ -189,7 +193,7 @@ export default defineComponent({
 		let previewTimer;
 		watch(activeItem, (item) => {
 			clearTimeout(previewTimer);
-			if (item && item.kind !== "element" && !item.previewImage) previewTimer = setTimeout(() => builder.ensureLibraryThumbnail(item.id), 250);
+			if (item && hasPreview(item) && !item.previewImage) previewTimer = setTimeout(() => builder.ensureLibraryThumbnail(item.id), 250);
 		}, { immediate: true });
 		// Inline thumbnails: request captures only for rows that stay in view for a moment.
 		const rowTimers = new Map();
@@ -211,8 +215,9 @@ export default defineComponent({
 				}
 			}, { root: list.value, rootMargin: "60px" });
 			for (const row of list.value.querySelectorAll("[data-zb-thumb]")) {
-				const definition = builder.document.value.library.find((item) => item.id === row.dataset.zbThumb);
-				if (definition && !definition.previewImage) observer.observe(row);
+				const id = row.dataset.zbThumb;
+				const definition = builder.document.value.library.find((item) => item.id === id);
+				if (definition ? !definition.previewImage : id.startsWith("element:")) observer.observe(row);
 			}
 		}
 		watch(results, observeRows, { flush: "post", immediate: true });
@@ -242,6 +247,7 @@ export default defineComponent({
 			if (builder.mode.value === "library" && !builder.isSource.value && (item.kind ?? "zvc") === "zvc") return builder.translate("zx_builder_cmd_insert_zvc");
 			return builder.translate("zx_builder_cmd_insert_unavailable");
 		}
+		function refreshPreview(item) { builder.refreshLibraryThumbnail(item.id); }
 		function close() { builder.commandPaletteOpen.value = false; }
 		function openItem(item) {
 			if (item.kind === "element") return;
@@ -287,7 +293,7 @@ export default defineComponent({
 			libraryId: builder.libraryId,
 			containers,
 			query, activeIndex, list, listId, optionId, results, insertTarget, activeItem, previewEntry, previewImage, thumbnailOf,
-			kindLabel, kindClass, canInsert, insertTitle, close, openItem, insertItem, onKeydown,
+			hasPreview, refreshPreview, kindLabel, kindClass, canInsert, insertTitle, close, openItem, insertItem, onKeydown,
 		};
 	},
 });

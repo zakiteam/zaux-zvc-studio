@@ -17,7 +17,7 @@ import { createWorkspace, createDefinition, copyDefinition, createInstance, crea
 import { ancestorIds, clone, uid, createNode, dataFor, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
-import { catalogNode, containers } from '../services/catalog.js';
+import { catalog, catalogNode, containers } from '../services/catalog.js';
 import { descendingStyles } from '../../integrations/zaux/responsive-styles.js';
 import { viewports, simpleViewports, previewWidth, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
 import { mergeSourceLibrary, refreshSourceSnapshots, visualSourceCopy, sourceAvailable } from '../services/source-zvc.js';
@@ -25,6 +25,7 @@ import { setStyleVariable, setUIValue, validateStylePreset } from '../../domain/
 import { createStyleBridge } from '../services/styles.js';
 import stylePreset from '../data/styles/preset.js';
 import { useTranslation } from './useTranslation.js';
+import { cssInspectorProperties, normalizeInspectorProperties } from '../data/css-inspector.js';
 import { listRemoteProjects, getRemoteProject, createRemoteProject as createRemoteProjectRecord, saveRemoteProject, renameRemoteProject as renameRemoteProjectRecord, deleteRemoteProject as deleteRemoteProjectRecord } from '../services/projects.js';
 import { useAuth } from './useAuth.js';
 
@@ -39,8 +40,28 @@ export function createBuilder({ projectId = null } = {}) {
   const libraryThumbnails = ref(Object.create(null));
   const thumbnailRenderer = createLibraryThumbnailRenderer();
   const thumbnailRequests = new Map();
+  // Zaux palette entries ('element:<Name>') render through the same capture pipeline as a definition built from their preset.
+  // The preset is memoized per language so its generated node ids, and therefore the capture source, stay stable.
+  const elementThumbnailDefinitions = new Map();
+  function elementThumbnailDefinition(id) {
+    const name = id.slice('element:'.length);
+    if (!catalog.some(entry => entry.name === name && !entry.html)) return null;
+    const cacheKey = JSON.stringify([name, i18n.language.value]);
+    if (!elementThumbnailDefinitions.has(cacheKey)) {
+      let definition = null;
+      try {
+        definition = { ...createDefinition(name), id };
+        definition.tree.push(catalogNode(name));
+      } catch { definition = null; }
+      elementThumbnailDefinitions.set(cacheKey, definition);
+    }
+    return elementThumbnailDefinitions.get(cacheKey);
+  }
+  function thumbnailDefinition(id) {
+    return String(id).startsWith('element:') ? elementThumbnailDefinition(id) : document.value.library.find(item => item.id === id);
+  }
   function libraryThumbnailSource(id) {
-    const definition = document.value.library.find(item => item.id === id);
+    const definition = thumbnailDefinition(id);
     return definition ? JSON.stringify(libraryThumbnailState(definition, document.value, i18n.language.value)) : '';
   }
   function requestLibraryThumbnail(id, force) {
@@ -56,7 +77,7 @@ export function createBuilder({ projectId = null } = {}) {
     const entry = { source, url: current?.url ?? '', status: 'loading' };
     libraryThumbnails.value[id] = entry;
     const isCurrent = () => !disposed && document.value.id === workspaceId && libraryThumbnails.value[id]?.source === source
-      && thumbnailRequests.get(key) === task && document.value.library.some(item => item.id === id);
+      && thumbnailRequests.get(key) === task && Boolean(thumbnailDefinition(id));
     const task = thumbnailRenderer.render(key, JSON.parse(source), { force, isCurrent }).then(url => {
       if (isCurrent()) libraryThumbnails.value[id] = { ...entry, url, status: 'ready' };
       return url;
@@ -162,6 +183,23 @@ export function createBuilder({ projectId = null } = {}) {
   const previewOnly = ref(false);
   const previewHeaderHidden = ref(false);
   const canvasDark = ref(false);
+  // Session-only box-model inspector (toolbar toggle and Shift+M); see app/data/css-inspector.js.
+  const cssInspect = ref(false);
+  const cssInspectProperties = ref([...cssInspectorProperties]);
+  // Programmatic highlight, independent of the toggle: { instanceId, nodeId, details, properties } or null.
+  const cssHighlight = ref(null);
+  // Options: instanceId (defaults to the current context), details (show the CSS panel without hover),
+  // properties (overrides cssInspectProperties for this highlight). A falsy nodeId clears the highlight.
+  function highlightNodeCSS(id, options = {}) {
+    if (!id) { cssHighlight.value = null; return; }
+    cssHighlight.value = {
+      instanceId: options.instanceId ?? (mode.value === 'library' ? 'library' : instanceId.value),
+      nodeId: id, details: !!options.details,
+      properties: options.properties ? normalizeInspectorProperties(options.properties) : null
+    };
+  }
+  function clearNodeCSSHighlight() { cssHighlight.value = null; }
+  function setCssInspectProperties(properties) { cssInspectProperties.value = normalizeInspectorProperties(properties); }
   // Session-only canvas layout: 'fit' or a fixed scale; canvasScale is the scale actually applied.
   const canvasZoom = ref('fit');
   const canvasScale = ref(1);
@@ -185,6 +223,7 @@ export function createBuilder({ projectId = null } = {}) {
     if (action === 'zoom-out') zoomBy(-1);
     if (action === 'zoom-fit') canvasZoom.value = 'fit';
     if (action === 'zoom-reset') canvasZoom.value = 1;
+    if (action === 'toggle-css-inspect') cssInspect.value = !cssInspect.value;
     if (action === 'focus-elements' || action === 'focus-library') {
       const tab = action === 'focus-elements' ? 'elements' : 'library';
       previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = tab;
@@ -1050,7 +1089,7 @@ export function createBuilder({ projectId = null } = {}) {
     }
     collapsedOutline.value = next;
   }
-  const api = { commandPaletteOpen, panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });

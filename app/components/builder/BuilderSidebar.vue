@@ -464,7 +464,7 @@
 					:label="translate('zx_builder_insert_destination')"
 					:options="[{ value: 'template', label: translate('zx_builder_insert_template') }, { value: 'selection', label: translate('zx_builder_insert_selection') }]" />
 			</div>
-			<div class="flex-1 min-h-0 px-1.5 py-2 overflow-auto zb-scroll">
+			<div class="flex-1 min-h-0 px-1.5 pb-2 overflow-auto zb-scroll" @scroll.passive="hideElementPreview">
 				<div
 					v-for="group in [
 						'zx_builder_partials',
@@ -479,7 +479,34 @@
 					>
 						{{ translate(group) }}
 					</h3>
+					<!-- Zaux components and ZVPs: cards with an always-visible capture, as in the Library. -->
 					<div
+						v-if="group !== 'zx_builder_native'"
+						class="zb-element-cards grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-1"
+					>
+						<button
+							v-for="entry in filtered.filter((item) => item.group === group)"
+							:key="entry.name"
+							type="button"
+							class="flex min-w-0 cursor-grab flex-col overflow-hidden rounded-xs border-slim border-zaux-light-grey text-left transition-colors hover:border-zaux-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							:draggable="canEditRemote"
+							:title="translate('zx_builder_drag_hint')"
+							@dragstart="hideElementPreview(); drag($event, { kind: 'catalog', name: entry.name })"
+							@mouseenter="showElementPreview($event, entry)"
+							@mouseleave="hideElementPreview"
+							@focus="showElementPreview($event, entry)"
+							@blur="hideElementPreview"
+							@click="mode === 'template' && elementDestination === 'template' ? addTemplateElement(entry.name) : addElement(entry.name)"
+						>
+							<BuilderElementThumbnail v-if="elementPreviewId(entry)" :previewId="elementPreviewId(entry)" />
+							<span class="flex min-w-0 items-center gap-0.5 px-0.5 py-0.25">
+								<span class="shrink-0 text-[11px] text-zaux-accent" aria-hidden="true">{{ containers.includes(entry.name) ? "▤" : "◇" }}</span>
+								<span class="truncate text-[11px]">{{ entry.name }}</span>
+							</span>
+						</button>
+					</div>
+					<div
+						v-else
 						class="zb-element-list flex flex-col gap-1.5 [&>button]:flex [&>button]:cursor-grab [&>button]:items-center [&>button]:gap-1 [&>button]:rounded-xxs [&>button]:px-0.5 [&>button]:py-0.25 [&>button]:text-left [&>button]:text-[11px] [&>button:hover]:bg-zaux-light"
 					>
 						<button
@@ -509,6 +536,12 @@
 				</p>
 			</div>
 		</section>
+		<BuilderElementPreview
+			v-if="elementPreview"
+			:previewId="elementPreview.id"
+			:name="elementPreview.name"
+			:anchor="elementPreview.anchor"
+		/>
 		<BuilderMediaPicker
 			v-if="previewId"
 			scopeOnly="global"
@@ -525,6 +558,8 @@ import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
 import BuilderDropdown from "./BuilderDropdown.vue";
+import BuilderElementPreview from "./BuilderElementPreview.vue";
+import BuilderElementThumbnail from "./BuilderElementThumbnail.vue";
 import BuilderLibraryThumbnail from "./BuilderLibraryThumbnail.vue";
 import BuilderButton from "./BuilderButton.vue";
 import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
@@ -542,6 +577,8 @@ export default defineComponent({
 	components: {
 		BuilderLibraryThumbnail,
 		BuilderDropdown,
+		BuilderElementPreview,
+		BuilderElementThumbnail,
 		BuilderCodeEditor,
 		BuilderButton,
 		BuilderTree,
@@ -648,6 +685,21 @@ export default defineComponent({
 			),
 		);
 		const drag = outlineDrag.start;
+		// Zaux components and ZVPs show an inline capture plus a larger one beside the sidebar on hover/focus; HTML elements have none.
+		const elementPreview = ref(null);
+		function elementPreviewId(entry) {
+			if (entry.group === "zx_builder_partials") return builder.document.value.library.find((item) => item.kind === "zvp" && item.exportName === entry.name)?.id ?? null;
+			return entry.html ? null : "element:" + entry.name;
+		}
+		function showElementPreview(event, entry) {
+			const id = elementPreviewId(entry);
+			if (!id) { elementPreview.value = null; return; }
+			const row = event.currentTarget.getBoundingClientRect();
+			const sidebar = event.currentTarget.closest(".zb-sidebar").getBoundingClientRect();
+			elementPreview.value = { id, name: entry.name, anchor: { top: row.top, bottom: row.bottom, left: sidebar.right } };
+		}
+		function hideElementPreview() { elementPreview.value = null; }
+		watch(() => builder.leftTab.value, hideElementPreview);
 
 		function revealInstance(id, event) {
 			builder.selectOutlineRow(id, null, event.shiftKey);
@@ -699,6 +751,10 @@ export default defineComponent({
 			instanceContextItems,
 			instanceContextAction,
 			hintsOpen,
+			elementPreview,
+			elementPreviewId,
+			showElementPreview,
+			hideElementPreview,
 		};
 	},
 });

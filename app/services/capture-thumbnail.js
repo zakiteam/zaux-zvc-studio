@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { thumbnailCapture } from '../data/thumbnail-capture.js';
 
 // html-to-image treats xlink:href as a CSS selector. External Zaux sprites must
 // become embedded symbols, with modern href references, before cloning the DOM.
@@ -55,14 +56,15 @@ export async function captureThumbnail() {
   document.head.appendChild(freeze);
   try {
     stage.style.minHeight = '0';
-    const waitFor = (element, ready) => ready() ? Promise.resolve() : new Promise(resolve => {
+    const waitFor = (element, ready, timeout) => ready() ? Promise.resolve() : new Promise(resolve => {
       const done = () => { clearTimeout(timer); element.removeEventListener('load', done); element.removeEventListener('error', done); resolve(); };
-      const timer = setTimeout(done, 4000);
+      const timer = setTimeout(done, timeout);
       element.addEventListener('load', done, { once: true });
       element.addEventListener('error', done, { once: true });
     });
-    await Promise.all([...document.querySelectorAll('link[rel="stylesheet"]')].map(link => waitFor(link, () => !!link.sheet)));
-    await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 4000))]);
+    await Promise.all([...document.querySelectorAll('link[rel="stylesheet"]')].map(link => waitFor(link, () => !!link.sheet, thumbnailCapture.stylesheetTimeout)));
+    const fontsReady = () => Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, thumbnailCapture.fontTimeout))]);
+    await fontsReady();
     // The capture iframe is offscreen: explicitly reveal lazy images there only.
     for (const source of stage.querySelectorAll('source[data-srcset]')) source.srcset = source.dataset.srcset;
     const images = [...stage.querySelectorAll('img')];
@@ -88,18 +90,21 @@ export async function captureThumbnail() {
       video.replaceWith(poster);
       images.push(poster);
     }
-    await Promise.all(images.map(img => waitFor(img, () => img.complete)));
+    await Promise.all(images.map(img => waitFor(img, () => img.complete, thumbnailCapture.imageTimeout)));
     // Embed the desktop source selected by <picture>, then omit source elements
     // from the clone so their external URLs cannot override the embedded image.
     for (const img of images) if (img.currentSrc) img.src = img.currentSrc;
-    // Allow layout-driven components to settle without requiring user interaction.
-    await new Promise(resolve => setTimeout(resolve, 250));
+    // Allow layout-driven components to settle without requiring user interaction; fonts requested
+    // by that layout (or applied late) are awaited again before two frames commit the final paint.
+    await new Promise(resolve => setTimeout(resolve, thumbnailCapture.settleDelay));
+    await fontsReady();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     if (stage.querySelector('.zb-preview-failure')) throw new Error('Component render failed');
     await embedSvgSymbols(stage);
     const height = Math.max(160, Math.min(900, Math.ceil(stage.getBoundingClientRect().height)));
     const { toJpeg } = await import('html-to-image');
     const controller = new AbortController();
-    const resourceTimer = setTimeout(() => controller.abort(), 15000);
+    const resourceTimer = setTimeout(() => controller.abort(), thumbnailCapture.resourceTimeout);
     const options = {
       width: 1200, height, canvasWidth: 480, canvasHeight: Math.round(height * .4),
       pixelRatio: 1, quality: .82, preferredFontFormat: 'woff2',
