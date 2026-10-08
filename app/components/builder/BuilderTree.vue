@@ -82,11 +82,9 @@
   import { computed, defineComponent } from 'vue';
   import { useBuilder } from '../../composables/useBuilder.js';
   import { useBuilderOutlineDrag } from '../../composables/useBuilderOutlineDrag.js';
-  import BuilderButton from './BuilderButton.vue';
-  import BuilderDropdown from './BuilderDropdown.vue';
 
   export default defineComponent({
-    name: 'BuilderTree', components: { BuilderButton, BuilderDropdown }, props: { nodes: Array, instance: String, depth: { default: 0 }, nested: Boolean },
+    name: 'BuilderTree', props: { nodes: Array, instance: String, depth: { default: 0 }, nested: Boolean },
     setup(props) {
       const builder = useBuilder();
       const outlineDrag = useBuilderOutlineDrag();

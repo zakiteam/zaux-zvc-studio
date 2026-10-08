@@ -76,14 +76,6 @@
 import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { readLayoutPreferences, saveLayoutPreferences } from "../../services/layout-preferences.js";
-import BuilderPreviewControls from "./BuilderPreviewControls.vue";
-import BuilderTemplates from "./BuilderTemplates.vue";
-import BuilderSidebar from "./BuilderSidebar.vue";
-import BuilderCanvas from "./BuilderCanvas.vue";
-import BuilderInspector from "./BuilderInspector.vue";
-import BuilderStyles from "./BuilderStyles.vue";
-import BuilderResizeHandle from "./BuilderResizeHandle.vue";
-import BuilderButton from "./BuilderButton.vue";
 
 // Figma-like proportions: slim side panels leave most of the width to the canvas.
 const LIMITS = { left: [220, 480, 264], right: [260, 720, 304] };
@@ -93,16 +85,6 @@ const clampWidth = (side, value) => {
 };
 
 export default defineComponent({
-	components: {
-		BuilderPreviewControls,
-		BuilderTemplates,
-		BuilderSidebar,
-		BuilderCanvas,
-		BuilderInspector,
-		BuilderStyles,
-		BuilderResizeHandle,
-		BuilderButton,
-	},
 	setup() {
 		const builder = useBuilder();
 		const leftWidth = ref(LIMITS.left[2]);

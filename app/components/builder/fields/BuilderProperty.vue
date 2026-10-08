@@ -125,14 +125,9 @@
 import { defineComponent, computed, ref, watch } from "vue";
 import { isBinding, clone } from "../../../../domain/nodes.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
-import BuilderValue from "./BuilderValue.vue";
-import BuilderInput from "./BuilderInput.vue";
-import BuilderMediaInput from "./BuilderMediaInput.vue";
-import BuilderButton from "../BuilderButton.vue";
 import { propertyValueType } from "../../../../domain/properties.js";
 export default defineComponent({
 	name: "BuilderProperty",
-	components: { BuilderValue, BuilderInput, BuilderMediaInput, BuilderButton },
 	props: {
 		property: String,
 		path: String,

@@ -148,9 +148,6 @@
 
 <script>
 	import { defineComponent, ref, computed, watch } from "vue";
-	import BuilderButton from "../BuilderButton.vue";
-	import BuilderInput from "./BuilderInput.vue";
-	import BuilderCodeEditor from "./BuilderCodeEditor.vue";
 	import { useTranslation } from "../../../composables/useTranslation.js";
 	import { parseJson } from "../../../../domain/validation.js";
 	import buttonMeta from "@zx_core/components/shared/button/ZButton.meta.js";
@@ -181,11 +178,6 @@
 	}
 
 	export default defineComponent({
-		components: {
-			BuilderButton,
-			BuilderInput,
-			BuilderCodeEditor,
-		},
 		props: {
 			label: { default: null },
 			modelValue: { default: null },

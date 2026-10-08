@@ -13,8 +13,8 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "node scripts/zaux/prepare.mjs && nuxt dev --host 127.0.0.1",
-    "build": "node scripts/zaux/prepare.mjs && nuxt build",
+    "dev": "node scripts/zaux/install.mjs && node scripts/zaux/prepare.mjs && nuxt dev --host 127.0.0.1",
+    "build": "node scripts/zaux/install.mjs && node scripts/zaux/prepare.mjs && nuxt build",
     "preview": "nuxt preview",
     "install:zaux": "node scripts/zaux/install.mjs",
     "prepare:zaux": "node scripts/zaux/prepare.mjs",

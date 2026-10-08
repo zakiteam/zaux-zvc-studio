@@ -25,9 +25,7 @@ import studioLogo from '../../assets/images/logo-studio.svg?url';
 import { defineComponent, ref } from 'vue';
 import { useAuth } from '../../composables/useAuth.js';
 import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderInput from './fields/BuilderInput.vue';
 export default defineComponent({
-  components: { BuilderInput },
   setup() {
     const auth = useAuth(); const translation = useTranslation(); const email = ref(''); const password = ref(''); const loading = ref(false);
     async function submit() { loading.value = true; await auth.signIn(email.value.trim(), password.value); loading.value = false; }

@@ -24,6 +24,8 @@ export default defineNuxtConfig({
     }
   },
   devtools: { enabled: true },
+  // Project components are auto-imported by file name (no directory prefix); Zaux components keep their own registration.
+  components: [{ path: '~/components', pathPrefix: false }],
   alias: {
     ...aliases,
     '@zx_core/storybook/data/_generated/attributes-hooks.json': path('./integrations/zaux/generated/attributes-hooks.json'),

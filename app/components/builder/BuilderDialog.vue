@@ -39,6 +39,9 @@
 				translate("zx_builder_delete_project_confirm", { name: modal.name })
 			}}
 		</p>
+		<p v-else-if="modal.type === 'reset-instances'">
+			{{ translate("zx_builder_reset_instances_confirm", { name: modal.name }) }}
+		</p>
 		<p v-else-if="modal.type === 'delete' || modal.type === 'resume'">
 			{{
 				translate(
@@ -259,7 +262,7 @@
 					@click="deleteProject"
 				/>
 			</template>
-			<template v-else-if="modal.type === 'delete' || modal.type === 'resume'">
+			<template v-else-if="['delete', 'resume', 'reset-instances'].includes(modal.type)">
 				<BuilderButton
 					size="xs"
 					variant="alt1"
@@ -356,12 +359,7 @@ import { fontFiles } from "../../../domain/fonts.js";
 import { filesForDefinition } from "../../services/source-zvc.js";
 import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
 import { downloadText, downloadZip } from "../../services/files.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
-import BuilderFileExplorer from "./BuilderFileExplorer.vue";
-import BuilderModal from "./BuilderModal.vue";
 export default defineComponent({
-	components: { BuilderCodeEditor, BuilderFileExplorer, BuilderButton, BuilderModal },
 	setup() {
 		const builder = useBuilder();
 		const formId = useId();
@@ -473,6 +471,7 @@ export default defineComponent({
 			"delete-project": "delete_project",
 			rename: "rename",
 			delete: "delete",
+			"reset-instances": "reset_instances",
 			import: "import",
 			export: "export",
 			resume: "resume_saving",
@@ -600,6 +599,8 @@ export default defineComponent({
 		function confirmAction() {
 			if (builder.modal.value.type === "delete")
 				builder.remove(builder.modal.value.kind, builder.modal.value.id);
+			else if (builder.modal.value.type === "reset-instances")
+				builder.resetActiveLibraryInstances();
 			else {
 				builder.recovery.value = null;
 				builder.scheduleSave();

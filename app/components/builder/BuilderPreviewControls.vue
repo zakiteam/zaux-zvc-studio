@@ -72,13 +72,8 @@
 <script>
 import { computed, defineComponent } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderButton from './BuilderButton.vue';
-import BuilderDropdown from './BuilderDropdown.vue';
-import BuilderInput from './fields/BuilderInput.vue';
-import BuilderStyleSelect from './fields/styles/BuilderStyleSelect.vue';
 import { tokenGroups } from '../../data/styles/tokens.js';
 export default defineComponent({
-  components: { BuilderButton, BuilderDropdown, BuilderInput, BuilderStyleSelect },
   setup() {
     const builder = useBuilder();
     const bodyColors = computed(() => {

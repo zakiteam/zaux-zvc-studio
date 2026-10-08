@@ -31,15 +31,12 @@ import { definitionCss } from '../../domain/partials.js';
 import { findNode } from '../../domain/nodes.js';
 import { containers } from '../services/catalog.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import PreviewInstance from '../components/builder/PreviewInstance.vue';
-import PreviewCssInspector from '../components/builder/PreviewCssInspector.vue';
 import { normalizeInspectorProperties } from '../data/css-inspector.js';
 import { createOutlineVisibility } from '../services/outline-visibility.js';
 import { builderHistoryShortcut, nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut } from '../services/node-shortcuts.js';
 // Authored Zaux overlays (OffCanvas, ZModal) keep role="dialog" in the DOM and must not block shortcuts.
 const AUTHORED = { authored: true };
 export default defineComponent({
-  components: { PreviewInstance, PreviewCssInspector },
   setup() {
     useHead({ link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] });
     const translation = useTranslation();

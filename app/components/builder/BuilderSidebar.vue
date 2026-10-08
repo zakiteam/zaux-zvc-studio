@@ -57,6 +57,10 @@
 								:label="translate('zx_builder_sync_instances') + ': ' + translate('zx_builder_sync_instances_hint')"
 								:disabled="!canEditRemote || !activeDefinition"
 								@click="syncActiveLibraryInstances" />
+							<BuilderButton v-if="mode === 'library'" variant="alt1" size="xs" icon="refresh" iconOnly
+								:label="translate('zx_builder_reset_instances') + ': ' + translate('zx_builder_reset_instances_hint')"
+								:disabled="!canEditRemote || !activeDefinition"
+								@click="modal = { type: 'reset-instances', name: activeDefinition.name }" />
 							<BuilderButton variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
 							<BuilderButton variant="alt1" size="xs" icon="help" iconOnly :label="translate('zx_builder_outline_help')"
 								:aria-pressed="hintsOpen" :aria-expanded="hintsOpen" aria-controls="zb-outline-hints"
@@ -67,6 +71,7 @@
 						<p>{{ translate('zx_builder_outline_shift_hint') }}</p>
 						<p>{{ translate("zx_builder_outline_drag_hint") }}</p>
 						<p v-if="mode === 'library'">{{ translate('zx_builder_sync_instances_hint') }}</p>
+						<p v-if="mode === 'library'">{{ translate('zx_builder_reset_instances_hint') }}</p>
 					</div>
 					<button v-if="clipboardNodeName" type="button" class="mb-1 flex w-full min-w-0 items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-accent/50 px-1 py-0.5 text-left text-[10px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
 						<span aria-hidden="true">⠿</span><span class="truncate">{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}</span>
@@ -286,6 +291,7 @@
 						:extraTriggerProps="{ iconName: 'plus', hasIcon: true, actionIcon: false }"
 						btnTheme="alt1"
 						align="end"
+						content-class="!w-max"
 						:items="createItems"
 						:disabled="!canEditRemote"
 						@select="modal = { type: $event.id }"
@@ -552,20 +558,10 @@
 	</aside>
 </template>
 <script>
-import BuilderMediaPicker from "./BuilderMediaPicker.vue";
 import { defineComponent, computed, ref, watch, nextTick, onBeforeUnmount } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
 import { createBuilderOutlineDrag } from "../../composables/useBuilderOutlineDrag.js";
-import BuilderDropdown from "./BuilderDropdown.vue";
-import BuilderElementPreview from "./BuilderElementPreview.vue";
-import BuilderElementThumbnail from "./BuilderElementThumbnail.vue";
-import BuilderLibraryThumbnail from "./BuilderLibraryThumbnail.vue";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
-import BuilderTree from "./BuilderTree.vue";
-import BuilderInput from "./fields/BuilderInput.vue";
-import BuilderPages from "./BuilderPages.vue";
 
 const TABS = [
 	{ id: "layers", label: "zx_builder_outline" },
@@ -574,18 +570,6 @@ const TABS = [
 ];
 
 export default defineComponent({
-	components: {
-		BuilderLibraryThumbnail,
-		BuilderDropdown,
-		BuilderElementPreview,
-		BuilderElementThumbnail,
-		BuilderCodeEditor,
-		BuilderButton,
-		BuilderTree,
-		BuilderInput,
-		BuilderMediaPicker,
-		BuilderPages,
-	},
 	props: { width: { default: 264 } },
 	setup() {
 		const builder = useBuilder();

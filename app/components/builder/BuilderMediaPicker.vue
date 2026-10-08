@@ -98,12 +98,8 @@
 import { computed, defineComponent, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue';
 import { useTranslation } from '../../composables/useTranslation.js';
 import { listMedia, uploadMedia, archiveMedia, downloadMedia } from '../../services/media.js';
-import BuilderButton from './BuilderButton.vue';
-import BuilderModal from './BuilderModal.vue';
-import BuilderInput from './fields/BuilderInput.vue';
 
 export default defineComponent({
-  components: { BuilderButton, BuilderInput, BuilderModal },
   props: {
     projectId: String, initialScope: String, scopeOnly: String,
     canManageProject: Boolean, readonly: Boolean, manageOnly: Boolean, clearable: Boolean

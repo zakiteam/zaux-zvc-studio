@@ -9,10 +9,8 @@
 import { defineComponent, onMounted } from 'vue';
 import { useAuth } from '../../composables/useAuth.js';
 import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderLogin from '../builder/BuilderLogin.vue';
 
 export default defineComponent({
-  components: { BuilderLogin },
   setup() {
     const auth = useAuth();
     const translation = useTranslation();

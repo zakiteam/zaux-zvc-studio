@@ -48,13 +48,8 @@ import { defineComponent, ref, watch } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
 import { clone } from '../../../../../domain/nodes.js';
 import { defaultLightboxItem } from '../../../../../integrations/zaux/controls/lightbox-controls.js';
-import BuilderButton from '../../BuilderButton.vue';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderImageInput from '../BuilderImageInput.vue';
-import BuilderValue from '../BuilderValue.vue';
 
 export default defineComponent({
-  components: { BuilderButton, BuilderInput, BuilderImageInput, BuilderValue },
   props: { modelValue: Array },
   emits: ['update:modelValue'],
   setup(props, { emit }) {

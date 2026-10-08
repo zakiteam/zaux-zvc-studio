@@ -104,18 +104,11 @@
 	import { isPlainRecord } from "../../../../../domain/slider.js";
 	import { contentSlotDescriptor, contentSlotItems, setContentSlot } from "../../../../../domain/content-slots.js";
 	import { contentSlotControls } from "../../../../../integrations/zaux/controls/content-slot-controls.js";
-	import BuilderButton from "../../BuilderButton.vue";
-	import BuilderDropdown from "../../BuilderDropdown.vue";
-	import BuilderInput from "../BuilderInput.vue";
-	import BuilderValue from "../BuilderValue.vue";
-	import BuilderProperty from "../BuilderProperty.vue";
-	import BuilderPartialFields from "../BuilderPartialFields.vue";
 
 	// Edits a component's contentSlots prop: each slot holds catalog components
 	// and ZVP partials as JSON descriptors, stored in the Zaux { name, props } shape.
 	export default defineComponent({
 		name: "BuilderContentSlots",
-		components: { BuilderButton, BuilderDropdown, BuilderInput, BuilderValue, BuilderProperty, BuilderPartialFields },
 		props: { node: Object },
 		setup(props) {
 			const { translate } = useTranslation();

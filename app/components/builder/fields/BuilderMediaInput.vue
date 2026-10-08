@@ -52,14 +52,9 @@ import { clone } from '../../../../domain/nodes.js';
 import {
   hasClass, isMediaObject, mediaClassSurface, mediaType, setClass, setObjectFit
 } from '../../../../domain/media.js';
-import BuilderButton from '../BuilderButton.vue';
-import BuilderInput from './BuilderInput.vue';
-import BuilderImageInput from './BuilderImageInput.vue';
-import BuilderValue from './BuilderValue.vue';
 
 export default defineComponent({
   name: 'BuilderMediaInput',
-  components: { BuilderButton, BuilderInput, BuilderImageInput, BuilderValue },
   props: {
     modelValue: { default: null },
     id: String,

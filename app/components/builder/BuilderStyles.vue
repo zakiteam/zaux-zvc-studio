@@ -74,12 +74,7 @@ import { mergeUISettings, validateStylePreset, presetCss } from '../../../domain
 import { getValue, clone } from '../../../domain/nodes.js';
 import { parseJson } from '../../../domain/validation.js';
 import { downloadText } from '../../services/files.js';
-import BuilderButton from './BuilderButton.vue';
-import BuilderFontLibrary from './BuilderFontLibrary.vue';
-import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
-import BuilderInput from './fields/BuilderInput.vue';
 export default defineComponent({
-  components: { BuilderCodeEditor, BuilderButton, BuilderInput, BuilderFontLibrary },
   props: { width: { default: 360 } },
   setup() {
     const builder = useBuilder();

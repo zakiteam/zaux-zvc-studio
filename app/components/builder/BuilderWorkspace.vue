@@ -57,13 +57,7 @@ import { defineComponent, ref, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { createBuilder } from '../../composables/useBuilder.js';
 import { downloadText } from '../../services/files.js';
-import BuilderHeader from './BuilderHeader.vue';
-import BuilderDialog from './BuilderDialog.vue';
-import BuilderDesignView from './BuilderDesignView.vue';
-import BuilderThemeEditor from './BuilderThemeEditor.vue';
-import BuilderCmdPalette from './BuilderCmdPalette.vue';
 export default defineComponent({
-  components: { BuilderHeader, BuilderDialog, BuilderDesignView, BuilderThemeEditor, BuilderCmdPalette },
   props: { projectId: { type: String, default: null } },
   setup(props) {
     const builder = createBuilder({ projectId: props.projectId });

@@ -90,25 +90,7 @@
 <script>
 import { defineComponent, ref, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderSourceInfo from "./BuilderSourceInfo.vue";
-import BuilderVariants from "./BuilderVariants.vue";
-import BuilderInspectorPropertiesTab from "./inspector/BuilderInspectorPropertiesTab.vue";
-import BuilderInspectorStyleTab from "./inspector/BuilderInspectorStyleTab.vue";
-import BuilderInspectorDataTab from "./inspector/BuilderInspectorDataTab.vue";
-import BuilderInspectorFieldsTab from "./inspector/BuilderInspectorFieldsTab.vue";
-import BuilderInspectorCodeTab from "./inspector/BuilderInspectorCodeTab.vue";
 export default defineComponent({
-	components: {
-		BuilderButton,
-		BuilderSourceInfo,
-		BuilderVariants,
-		BuilderInspectorPropertiesTab,
-		BuilderInspectorStyleTab,
-		BuilderInspectorDataTab,
-		BuilderInspectorFieldsTab,
-		BuilderInspectorCodeTab,
-	},
 	props: { width: { default: 298 } },
 	setup() {
 		const builder = useBuilder();

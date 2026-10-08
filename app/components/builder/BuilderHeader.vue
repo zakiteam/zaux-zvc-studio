@@ -180,26 +180,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { useAuth } from "../../composables/useAuth.js";
 import { useStudioTheme } from "../../composables/useStudioTheme.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderDropdown from "./BuilderDropdown.vue";
-import BuilderModeSwitcher from "./BuilderModeSwitcher.vue";
-import BuilderWorkspaceTabs from "./BuilderWorkspaceTabs.vue";
-import BuilderThumbnailControls from "./BuilderThumbnailControls.vue";
-import BuilderMediaPicker from "./BuilderMediaPicker.vue";
-import BuilderFontLibrary from "./BuilderFontLibrary.vue";
-import BuilderProjectBridge from "./BuilderProjectBridge.vue";
 
 export default defineComponent({
-	components: {
-		BuilderThumbnailControls,
-		BuilderButton,
-		BuilderDropdown,
-		BuilderModeSwitcher,
-		BuilderWorkspaceTabs,
-		BuilderMediaPicker,
-		BuilderFontLibrary,
-		BuilderProjectBridge,
-	},
 	setup() {
 		const builder = useBuilder();
 		const router = useRouter();

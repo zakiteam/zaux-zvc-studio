@@ -19,11 +19,7 @@
 <script>
 import { defineComponent, ref, useId } from 'vue';
 import { useTranslation } from '../../composables/useTranslation.js';
-import BuilderInput from '../builder/fields/BuilderInput.vue';
-import BuilderButton from '../builder/BuilderButton.vue';
-import BuilderModal from '../builder/BuilderModal.vue';
 export default defineComponent({
-  components: { BuilderInput, BuilderButton, BuilderModal },
   props: { project: { type: Object, required: true }, action: String, busy: Boolean, error: String },
   emits: ['submit', 'close'],
   setup(props, { emit }) {

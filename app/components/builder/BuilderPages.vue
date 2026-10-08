@@ -50,11 +50,9 @@
 <script>
 import { defineComponent, ref } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderButton from './BuilderButton.vue';
 
 // Compact template list for the Structure panel, like Figma's Pages section.
 export default defineComponent({
-  components: { BuilderButton },
   setup() {
     const builder = useBuilder();
     const open = ref(true);

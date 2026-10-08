@@ -17,10 +17,8 @@
 <script>
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderButton from './BuilderButton.vue';
 
 export default defineComponent({
-  components: { BuilderButton },
   props: { definition: { type: Object, required: true } },
   emits: ['insert', 'choose-image'],
   setup(props) {

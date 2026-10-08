@@ -142,17 +142,12 @@ import { useTranslation } from '../composables/useTranslation.js';
 import { listRemoteProjects, renameRemoteProject, deleteRemoteProject, duplicateRemoteProject } from '../services/projects.js';
 import { readHubPreferences, saveHubPreferences } from '../services/layout-preferences.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
-import BuilderButton from '../components/builder/BuilderButton.vue';
-import BuilderDropdown from '../components/builder/BuilderDropdown.vue';
-import BuilderInput from '../components/builder/fields/BuilderInput.vue';
-import ProjectActionDialog from '../components/studio/ProjectActionDialog.vue';
 
 const FILTERS = ['all', 'owned', 'shared'];
 const canEdit = project => ['owner', 'editor'].includes(project.role);
 
 definePageMeta({ layout: 'hub' });
 export default defineComponent({
-  components: { BuilderButton, BuilderDropdown, BuilderInput, ProjectActionDialog },
   setup() {
     const router = useRouter();
     const { user } = useAuth();

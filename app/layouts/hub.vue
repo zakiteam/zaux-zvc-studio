@@ -41,16 +41,13 @@
   </div>
 </template>
 <script>
-import BuilderFontLibrary from '../components/builder/BuilderFontLibrary.vue';
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import BuilderDropdown from '../components/builder/BuilderDropdown.vue';
 import { useStudioTheme } from '../composables/useStudioTheme.js';
 import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 export default defineComponent({
-  components: { BuilderDropdown, BuilderFontLibrary },
   setup() {
     const fontsOpen = ref(false);
     const auth = useAuth();

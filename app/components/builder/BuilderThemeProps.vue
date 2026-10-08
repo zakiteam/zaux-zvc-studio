@@ -33,12 +33,8 @@
   import { useTranslation } from '../../composables/useTranslation.js';
   import { parseJson } from '../../../domain/validation.js';
   import { clone } from '../../../domain/nodes.js';
-  import BuilderButton from './BuilderButton.vue';
-  import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
-  import BuilderValue from './fields/BuilderValue.vue';
   
   export default defineComponent({
-    components: { BuilderButton, BuilderCodeEditor, BuilderValue },
     props: { modelValue: { type: Object, required: true }, fields: { type: Array, default: () => [] } },
     emits: ['apply'],
     setup(props, { emit }) {

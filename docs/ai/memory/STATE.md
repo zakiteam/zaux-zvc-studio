@@ -144,3 +144,9 @@ Zaux palette components now get a rendered preview through the Library thumbnail
 
 ## Configurable thumbnail capture timing — 2026-10-08
 Capture timings now live in `app/data/thumbnail-capture.js` (`settleDelay` raised from 250 to 1500 ms, stylesheet/font/image/resource/total timeouts, `cacheVersion`). `capture-thumbnail.js` waits for fonts again after the settle delay plus two animation frames; `library-thumbnails.js` prefixes IndexedDB keys with `v<cacheVersion>:`, so bumping it (now 2) discards previous captures. Old entries stay in IndexedDB unused. Reviewed by source reading only; runtime verification remains manual.
+
+## Component auto-import and Zaux branch mode — 2026-10-08
+`nuxt.config.js` sets `components: [{ path: '~/components', pathPrefix: false }]`; explicit imports and `components` entries for `app/components` were removed from 60 `.vue` files (app, layouts, pages, components). `BuilderValue.vue` uses `<LazyBuilderRichTextEditor>` instead of `defineAsyncComponent`. Remaining `components` options: `EditorContent` (tiptap) and `ComponentsRenderer` (Zaux). `scripts/zaux/install.mjs` supports `ZAUX_GITHUB_DOWNLOAD_MODE=branch` with `ZAUX_GITHUB_BRANCH` (default `main`): latest commit via the commits API, per-commit cache, marker `version` `<branch>@<sha7>`. `.env.example`, architecture and decisions updated. Source reading only; dev server, install and runtime not run.
+
+## Reset instances from library edit mode — 2026-10-08
+Outline toolbar button (icon `refresh`, next to Sync instances, library mode only) opens the `reset-instances` confirmation in `BuilderDialog.vue`; confirming calls `resetActiveLibraryInstances` → `domain/sync-instances.js#resetLibraryInstances` (hard reset of all ZVC instances and nested ZVP copies, all variants). Locale keys `zx_builder_reset_instances`, `_hint`, `_confirm`. Source reading only; runtime verification remains manual.

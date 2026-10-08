@@ -123,10 +123,7 @@
 <script>
 import { defineComponent, ref, computed, nextTick, watch, useId, onMounted, onBeforeUnmount } from "vue";
 import { useTranslation } from "../../composables/useTranslation.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderInput from "./fields/BuilderInput.vue";
 export default defineComponent({
-	components: { BuilderButton, BuilderInput },
 	props: {
 		btnTheme : { default : 'secondary' },
 		label: { type: String, required: true },

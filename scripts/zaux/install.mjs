@@ -1,12 +1,14 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, renameSync, cpSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, renameSync, cpSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 
 // Installs the requested Zaux release into vendor/zaux (gitignored).
-// Version: ZAUX_VERSION env, else package.json#zaux.version.
+// Mode: ZAUX_GITHUB_DOWNLOAD_MODE "tag" (default) or "branch".
+// Tag mode: ZAUX_VERSION env, else package.json#zaux.version.
+// Branch mode: the latest commit of ZAUX_GITHUB_BRANCH (default main).
 // Source: ZAUX_SOURCE_DIR (local checkout, copied as-is), else the cached
-// release zip in .cache/zaux, else a download from the private GitHub repo
+// zip in .cache/zaux, else a download from the private GitHub repo
 // authenticated with ZAUX_GITHUB_TOKEN.
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const target = resolve(root, 'vendor/zaux');
@@ -22,32 +24,72 @@ function readMarker() {
 function settings() {
   const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
   const repository = process.env.ZAUX_REPOSITORY || pkg.zaux?.repository;
+  const sourceDir = process.env.ZAUX_SOURCE_DIR || '';
+  const mode = process.env.ZAUX_GITHUB_DOWNLOAD_MODE || 'tag';
+  if (mode !== 'tag' && mode !== 'branch') throw new Error(`ZAUX_GITHUB_DOWNLOAD_MODE must be "tag" or "branch" (got "${mode}").`);
+  if (!repository) throw new Error('Zaux repository missing: set package.json#zaux.repository.');
+  if (mode === 'branch') return { repository, mode, branch: process.env.ZAUX_GITHUB_BRANCH || 'main', sourceDir };
   const version = process.env.ZAUX_VERSION || pkg.zaux?.version;
-  if (!repository || !version) throw new Error('Zaux release missing: set package.json#zaux.repository and #zaux.version.');
+  if (!version) throw new Error('Zaux release missing: set package.json#zaux.version.');
   // Only releases the builder has been adapted to; ZAUX_ALLOW_UNSUPPORTED=1 while porting a new one.
   const supported = pkg.zaux?.supported ?? [version];
   if (!supported.includes(version) && process.env.ZAUX_ALLOW_UNSUPPORTED !== '1') {
     throw new Error(`Zaux ${version} is not in package.json#zaux.supported (${supported.join(', ')}). Set ZAUX_ALLOW_UNSUPPORTED=1 to try it anyway.`);
   }
-  return { repository, version, sourceDir: process.env.ZAUX_SOURCE_DIR || '' };
+  return { repository, mode, version, sourceDir };
 }
 
-async function download(repository, version) {
+function githubToken(repository, what) {
   const token = process.env.ZAUX_GITHUB_TOKEN;
-  if (!token) throw new Error(`Zaux ${version} is not cached. Set ZAUX_GITHUB_TOKEN (read access to ${repository}) in .env to download it.`);
-  const response = await fetch(`https://api.github.com/repos/${repository}/zipball/${encodeURIComponent(version)}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'zaux-builder' }
+  if (!token) throw new Error(`${what}: set ZAUX_GITHUB_TOKEN (read access to ${repository}) in .env.`);
+  return token;
+}
+
+function githubHeaders(token, accept = 'application/vnd.github+json') {
+  return { Authorization: `Bearer ${token}`, Accept: accept, 'User-Agent': 'zaux-builder' };
+}
+
+// Latest commit SHA of a branch (the vnd.github.sha media type returns it as plain text).
+async function branchHead(repository, branch) {
+  const token = githubToken(repository, `Cannot resolve Zaux branch ${branch}`);
+  const response = await fetch(`https://api.github.com/repos/${repository}/commits/${encodeURIComponent(branch)}`, {
+    headers: githubHeaders(token, 'application/vnd.github.sha')
   });
-  if (!response.ok) throw new Error(`Zaux ${version} download failed: ${response.status} ${response.statusText}.`);
+  if (!response.ok) throw new Error(`Zaux branch ${branch} lookup failed: ${response.status} ${response.statusText}.`);
+  const sha = (await response.text()).trim();
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`Zaux branch ${branch} lookup returned an unexpected response.`);
+  return sha;
+}
+
+async function download(repository, ref, label) {
+  const token = githubToken(repository, `Zaux ${label} is not cached`);
+  const response = await fetch(`https://api.github.com/repos/${repository}/zipball/${encodeURIComponent(ref)}`, {
+    headers: githubHeaders(token)
+  });
+  if (!response.ok) throw new Error(`Zaux ${label} download failed: ${response.status} ${response.statusText}.`);
   return Buffer.from(await response.arrayBuffer());
 }
 
-async function releaseZip(repository, version) {
-  const cached = resolve(cacheDir, `${version.replace(/[^\w.-]/g, '_')}.zip`);
+const cacheName = value => value.replace(/[^\w.-]/g, '_');
+
+async function cachedZip(repository, ref, label, file) {
+  const cached = resolve(cacheDir, file);
   if (existsSync(cached)) return readFileSync(cached);
-  const buffer = await download(repository, version);
+  const buffer = await download(repository, ref, label);
   mkdirSync(cacheDir, { recursive: true });
   writeFileSync(cached, buffer);
+  return buffer;
+}
+
+const releaseZip = (repository, version) => cachedZip(repository, version, version, `${cacheName(version)}.zip`);
+
+// Branch archives are cached per commit; older commits of the same branch are dropped.
+async function branchZip(repository, branch, commit) {
+  const prefix = `branch-${cacheName(branch)}-`;
+  const buffer = await cachedZip(repository, commit, `${branch}@${commit.slice(0, 7)}`, `${prefix}${commit}.zip`);
+  for (const file of readdirSync(cacheDir)) {
+    if (file.startsWith(prefix) && file !== `${prefix}${commit}.zip`) await removeWithRetry(resolve(cacheDir, file));
+  }
   return buffer;
 }
 
@@ -144,12 +186,27 @@ async function replaceTarget(staging) {
   await removeWithRetry(backup);
 }
 
+// Branch mode resolves the branch head on every run. Offline (or without a token)
+// an existing install of the same branch is kept instead of failing the dev server.
+async function wantedBranch(repository, branch, current) {
+  try {
+    const commit = await branchHead(repository, branch);
+    return { version: `${branch}@${commit.slice(0, 7)}`, repository, mode: 'branch', branch, commit };
+  } catch (error) {
+    if (current?.mode !== 'branch' || current.branch !== branch || current.repository !== repository) throw error;
+    console.warn(`${error.message}\nKeeping the installed Zaux ${current.version}.`);
+    return current;
+  }
+}
+
 export async function installZaux() {
-  const { repository, version, sourceDir } = settings();
-  const wanted = sourceDir ? { version: 'local', source: resolve(root, sourceDir) } : { version, repository };
+  const { repository, mode, version, branch, sourceDir } = settings();
   const current = readMarker();
+  const wanted = sourceDir
+    ? { version: 'local', source: resolve(root, sourceDir) }
+    : mode === 'branch' ? await wantedBranch(repository, branch, current) : { version, repository };
   // Installs made before caseVariants was recorded are refreshed once from the cache.
-  if (!sourceDir && current?.version === version && current?.repository === repository && Array.isArray(current.caseVariants)) return current;
+  if (!sourceDir && current?.version === wanted.version && current?.repository === repository && (current.commit ?? null) === (wanted.commit ?? null) && Array.isArray(current.caseVariants)) return current;
 
   const staging = `${target}.staging`;
   await removeWithRetry(staging);
@@ -159,10 +216,12 @@ export async function installZaux() {
     if (sourceDir) {
       cpSync(wanted.source, staging, { recursive: true, filter: path => !/[\\/](\.git|node_modules)([\\/]|$)/.test(path.slice(wanted.source.length)) });
     } else {
-      caseVariants = await extract(await releaseZip(repository, version), staging);
+      const zip = mode === 'branch' ? await branchZip(repository, branch, wanted.commit) : await releaseZip(repository, version);
+      caseVariants = await extract(zip, staging);
     }
     if (!existsSync(resolve(staging, 'core/setup.js'))) throw new Error(`Zaux ${wanted.version} does not look like a Zaux release (core/setup.js missing).`);
-    writeFileSync(resolve(staging, '.zaux-release.json'), JSON.stringify({ ...wanted, caseVariants, installedAt: new Date().toISOString() }, null, 2) + '\n');
+    const { caseVariants: _previous, installedAt: _installed, ...release } = wanted;
+    writeFileSync(resolve(staging, '.zaux-release.json'), JSON.stringify({ ...release, caseVariants, installedAt: new Date().toISOString() }, null, 2) + '\n');
     await replaceTarget(staging);
   } catch (error) {
     await removeWithRetry(staging);

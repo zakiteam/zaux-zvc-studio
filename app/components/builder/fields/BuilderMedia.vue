@@ -8,11 +8,9 @@
 import { defineComponent } from 'vue';
 import { useBuilder } from '../../../composables/useBuilder.js';
 import { useTranslation } from '../../../composables/useTranslation.js';
-import BuilderMediaInput from './BuilderMediaInput.vue';
 
 export default defineComponent({
   name: 'BuilderMedia',
-  components: { BuilderMediaInput },
   props: { node: Object },
   setup(props) {
     const builder = useBuilder();

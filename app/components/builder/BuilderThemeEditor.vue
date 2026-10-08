@@ -99,16 +99,9 @@ import catalog from '../../../integrations/zaux/generated/component-themes.json'
 import { themePreviewConfig } from '../../../integrations/zaux/theme/theme-preview.js';
 import { componentThemesCss, parseThemeCss, setThemeVariable, themeVariableOverrides, ruleConditions } from '../../../domain/component-themes.js';
 import { isThemeColorVariable } from '../../../domain/theme-colors.js';
-import BuilderThemeColorInput from './fields/BuilderThemeColorInput.vue';
 import { downloadText } from '../../services/files.js';
-import BuilderButton from './BuilderButton.vue';
-import BuilderInput from './fields/BuilderInput.vue';
-import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
-import BuilderThemePreview from './BuilderThemePreview.vue';
-import BuilderThemeProps from './BuilderThemeProps.vue';
 
 export default defineComponent({
-  components: { BuilderThemeColorInput, BuilderButton, BuilderInput, BuilderCodeEditor, BuilderThemePreview, BuilderThemeProps },
   setup() {
     const builder = useBuilder();
     const t = builder.translate;

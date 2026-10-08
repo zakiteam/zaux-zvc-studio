@@ -29,11 +29,8 @@ import { computed, defineComponent, ref, watch } from 'vue';
 import { useTranslation } from '../../../composables/useTranslation.js';
 import { tokenGroups } from '../../../data/styles/tokens.js';
 import { colorCssValue, themeColorTokenValue } from '../../../../domain/theme-colors.js';
-import BuilderInput from './BuilderInput.vue';
-import BuilderDropdown from '../BuilderDropdown.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderDropdown },
   props: { id: String, label: String, modelValue: { type: String, default: '' }, defaultValue: { type: String, default: '' },
     variables: { type: Object, default: () => ({}) }, disabled: Boolean },
   emits: ['change'],

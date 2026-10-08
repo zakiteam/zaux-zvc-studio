@@ -128,14 +128,8 @@ import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, s
 import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
 import { nodeStyleSections, styleBreakpoints } from '../../../../../integrations/zaux/controls/node-style-controls.js';
 import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
-import BuilderImageStyles from './BuilderImageStyles.vue';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderStyleField from './BuilderStyleField.vue';
-import BuilderStyleSelect from './BuilderStyleSelect.vue';
-import BuilderStyleChoices from './BuilderStyleChoices.vue';
 
 export default defineComponent({
-  components: { BuilderStyleField, BuilderImageStyles, BuilderInput, BuilderStyleSelect, BuilderStyleChoices },
   props: { modelValue: { default: '' }, nodeName: String, nodeId: String, preferredScope: { type: String, default: null }, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
   emits: ['update:modelValue', 'update:imgClasses', 'update:viewportStyles', 'viewport-chosen', 'update:scope'],
   setup(props, { emit }) {

@@ -17,12 +17,8 @@
 <script>
 import { defineComponent, useId } from 'vue';
 import { useBuilder } from '../../../../composables/useBuilder.js';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderValue from '../BuilderValue.vue';
-import BuilderLightboxItems from './BuilderLightboxItems.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderValue, BuilderLightboxItems },
   props: { node: Object },
   setup(props) {
     const builder = useBuilder();

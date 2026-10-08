@@ -39,13 +39,10 @@
 	import { css } from "@codemirror/lang-css";
 	import { html } from "@codemirror/lang-html";
 	import { javascript } from "@codemirror/lang-javascript";
-	import BuilderButton from '../BuilderButton.vue';
-	import BuilderModal from '../BuilderModal.vue';
 	import { useTranslation } from '../../../composables/useTranslation.js';
 	import { formatCode } from '../../../../domain/format-code.js';
 
 	export default defineComponent({
-		components: { BuilderButton, BuilderModal },
 		props: {
 			modelValue: { type: String, default: "" },
 			language: { default: "json" },

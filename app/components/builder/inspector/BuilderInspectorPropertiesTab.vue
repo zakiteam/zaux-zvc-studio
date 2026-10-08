@@ -228,35 +228,11 @@ import { useBuilder } from "../../../composables/useBuilder.js";
 import { catalog, propertyInfo } from "../../../services/catalog.js";
 import { parseJson } from "../../../../domain/validation.js";
 import { clone, isBinding } from "../../../../domain/nodes.js";
-import BuilderPartialFields from "../fields/BuilderPartialFields.vue";
-import BuilderSlider from "../fields/slides/BuilderSlider.vue";
-import BuilderLightbox from "../fields/lightbox/BuilderLightbox.vue";
-import BuilderLightboxTrigger from "../fields/lightbox/BuilderLightboxTrigger.vue";
-import BuilderOverlayContent from "../fields/overlay/BuilderOverlayContent.vue";
-import BuilderMedia from "../fields/BuilderMedia.vue";
-import BuilderContentSlots from "../fields/slots/BuilderContentSlots.vue";
 import { sliderControls } from "../../../../integrations/zaux/controls/slider-controls.js";
 import { lightboxControls, isLightboxTrigger } from "../../../../integrations/zaux/controls/lightbox-controls.js";
 import { contentSlotControls } from "../../../../integrations/zaux/controls/content-slot-controls.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
-import BuilderButton from "../BuilderButton.vue";
-import BuilderInput from "../fields/BuilderInput.vue";
-import BuilderProperty from "../fields/BuilderProperty.vue";
-import BuilderCodeEditor from "../fields/BuilderCodeEditor.vue";
 export default defineComponent({
-	components: {
-		BuilderPartialFields,
-		BuilderSlider,
-		BuilderLightbox,
-		BuilderLightboxTrigger,
-		BuilderOverlayContent,
-		BuilderMedia,
-		BuilderContentSlots,
-		BuilderButton,
-		BuilderInput,
-		BuilderProperty,
-		BuilderCodeEditor,
-	},
 	props: { active: Boolean },
 	emits: ["error"],
 	setup(_props, { emit }) {

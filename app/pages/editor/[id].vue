@@ -3,6 +3,5 @@
 </template>
 <script>
 import { defineComponent } from 'vue';
-import BuilderWorkspace from '../../components/builder/BuilderWorkspace.vue';
-export default defineComponent({ components: { BuilderWorkspace } });
+export default defineComponent({});
 </script>

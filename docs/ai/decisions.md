@@ -25,6 +25,8 @@
 
 - Git submodules are impractical in production. `package.json#zaux` pins `repository` and `version` (a release tag); `scripts/zaux/install.mjs` downloads the GitHub zipball with `ZAUX_GITHUB_TOKEN` (private repo), caches it in `.cache/zaux/` and extracts it into the gitignored `vendor/zaux`, marked by `.zaux-release.json`.
 - `vendor/zaux` stays the stable path of the active release so existing imports and aliases do not change. Overrides: `ZAUX_VERSION`, `ZAUX_SOURCE_DIR` (local checkout).
+- 2026-10-08 (user): `ZAUX_GITHUB_DOWNLOAD_MODE` = `tag` (release tag from `ZAUX_VERSION`/package.json) or `branch` (latest commit of `ZAUX_GITHUB_BRANCH`, default `main`).
+- 2026-10-08 (user): project components under `app/components` are auto-imported by Nuxt (no explicit imports in `.vue` files); Zaux components stay read-only with their own registration.
 - Version switching happens at build time only (user choice; no side-by-side builds or live switcher). `package.json#zaux.supported` is the curated list of releases the builder has been adapted to; other tags are refused unless `ZAUX_ALLOW_UNSUPPORTED=1` (porting). The hub shows the active Zaux version.
 - Client-rendered Nuxt editor with a same-origin preview iframe.
 - Explicit JSON `$bind` markers preserve editable data bindings.

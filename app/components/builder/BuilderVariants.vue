@@ -34,11 +34,8 @@
 <script>
 import { computed, defineComponent, ref, useId, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderInput from './fields/BuilderInput.vue';
-import BuilderButton from './BuilderButton.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderButton },
   setup() {
     const builder = useBuilder();
     const selectId = useId();

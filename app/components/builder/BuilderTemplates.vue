@@ -38,10 +38,8 @@
 <script>
 import { defineComponent } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderButton from './BuilderButton.vue';
 
 export default defineComponent({
-  components: { BuilderButton },
   setup() {
     const builder = useBuilder();
     function duplicateTemplate(id) {

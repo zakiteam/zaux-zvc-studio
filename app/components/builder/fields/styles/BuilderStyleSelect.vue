@@ -38,11 +38,8 @@
 <script>
 import { computed, defineComponent } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderDropdown from '../../BuilderDropdown.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderDropdown },
   props: {
     modelValue: { type: String, default: '' },
     label: String,

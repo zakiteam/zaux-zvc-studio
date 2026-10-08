@@ -27,7 +27,6 @@
 <script>
 import { defineComponent, computed } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
-import BuilderButton from "./BuilderButton.vue";
 
 // Built-in modes: plain shortcuts over the existing workspace state.
 const MODES = {
@@ -37,7 +36,6 @@ const MODES = {
 };
 
 export default defineComponent({
-	components: { BuilderButton },
 	props: {
 		// Mode ids, or objects overriding a built-in mode: { id, icon?, label? }.
 		modes: { type: Array, default: () => ["design", "tokens", "themes"] },

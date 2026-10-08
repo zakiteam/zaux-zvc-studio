@@ -37,11 +37,8 @@
 import { defineComponent, computed } from 'vue';
 import { useBuilder } from '../../../../composables/useBuilder.js';
 import { LIGHTBOX_ID_ATTR, LIGHTBOX_INDEX_ATTR, TRIGGER_ATTR, lightboxIndex } from '../../../../../integrations/zaux/controls/lightbox-controls.js';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderButton from '../../BuilderButton.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderButton },
   props: { node: Object },
   setup(props) {
     const builder = useBuilder();

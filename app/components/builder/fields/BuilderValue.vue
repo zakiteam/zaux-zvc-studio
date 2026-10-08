@@ -80,7 +80,7 @@
 					@click="textMode = 'rich'"
 				/>
 			</div>
-			<BuilderRichTextEditor
+			<LazyBuilderRichTextEditor
 				v-if="textMode === 'rich'"
 				:modelValue="String(draft)"
 				:label="label"
@@ -132,30 +132,12 @@
 <script>
 import {
 	defineComponent,
-	defineAsyncComponent,
 	ref,
 	watch,
 } from "vue";
 import { parseJson } from "../../../../domain/validation.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
-import BuilderInput from "./BuilderInput.vue";
-import BuilderImageInput from "./BuilderImageInput.vue";
-import BuilderCodeEditor from "./BuilderCodeEditor.vue";
-import BuilderButton from "../BuilderButton.vue";
-import BuilderButtonGroupInput from "./BuilderButtonGroupInput.vue";
-import BuilderStyleInput from "./BuilderStyleInput.vue";
 export default defineComponent({
-	components: {
-		BuilderInput,
-		BuilderStyleInput,
-		BuilderImageInput,
-		BuilderCodeEditor,
-		BuilderButton,
-		BuilderButtonGroupInput,
-		BuilderRichTextEditor: defineAsyncComponent(
-			() => import("./BuilderRichTextEditor.vue"),
-		),
-	},
 	props: {
 		disabled: Boolean,
 		image: Boolean,

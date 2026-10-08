@@ -88,11 +88,8 @@ import {
 	detectProject,
 	exportToProject,
 } from "../../services/zaux-bridge.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderModal from "./BuilderModal.vue";
 
 export default defineComponent({
-	components: { BuilderButton, BuilderModal },
 	emits: ["close"],
 	setup() {
 		const builder = useBuilder();

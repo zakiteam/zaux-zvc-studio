@@ -10,12 +10,8 @@
 import { computed, defineComponent, ref, watch } from 'vue';
 import { useBuilder } from '../../../composables/useBuilder.js';
 import { useTranslation } from '../../../composables/useTranslation.js';
-import BuilderInput from './BuilderInput.vue';
-import BuilderButton from '../BuilderButton.vue';
-import BuilderMediaPicker from '../BuilderMediaPicker.vue';
 
 export default defineComponent({
-  components: { BuilderInput, BuilderButton, BuilderMediaPicker },
   props: { modelValue: { default: '' }, id: String, label: String, disabled: Boolean },
   emits: ['update:modelValue'],
   setup(props, { emit }) {

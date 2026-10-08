@@ -19,15 +19,11 @@
   </div>
 </template>
 <script>
-import BuilderImageInput from "../BuilderImageInput.vue";
 import { isImageField } from "../../../../../domain/media.js";
 import { defineComponent, useId } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
 import { pathValue, changePath, boundPath } from '../../../../../domain/slider.js';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderValue from '../BuilderValue.vue';
 export default defineComponent({
-  components: { BuilderInput, BuilderValue, BuilderImageInput },
   props: { modelValue: { type: Object, required: true }, fields: Array, fallback: { default: () => ({}) } },
   emits: ['change'],
   setup(props, { emit }) {

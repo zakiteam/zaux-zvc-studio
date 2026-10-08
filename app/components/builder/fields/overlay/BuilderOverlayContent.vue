@@ -74,12 +74,9 @@
 	import { useBuilder } from "../../../../composables/useBuilder.js";
 	import { catalog } from "../../../../services/catalog.js";
 	import { useTranslation } from "../../../../composables/useTranslation.js";
-	import BuilderButton from "../../BuilderButton.vue";
-	import BuilderDropdown from "../../BuilderDropdown.vue";
 
 	export default defineComponent({
 		name: "BuilderOverlayContent",
-		components: { BuilderButton, BuilderDropdown },
 		props: { node: Object },
 		setup(props) {
 			const { translate } = useTranslation();

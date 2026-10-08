@@ -97,15 +97,10 @@ import { useStudioTheme } from '../../composables/useStudioTheme.js';
 import { listFonts, saveFont, archiveFont, parseFontLink } from '../../services/fonts.js';
 import { fontEntry, fontLinks, projectFonts } from '../../../domain/fonts.js';
 import { downloadText } from '../../services/files.js';
-import BuilderInput from './fields/BuilderInput.vue';
-import BuilderCodeEditor from './fields/BuilderCodeEditor.vue';
-import BuilderButton from './BuilderButton.vue';
-import BuilderModal from './BuilderModal.vue';
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 export default defineComponent({
-  components: { BuilderInput, BuilderCodeEditor, BuilderButton, BuilderModal },
   props: { manage: Boolean, readonly: Boolean, modelValue: { default: () => [] } },
   emits: ['apply', 'close'],
   setup(props) {

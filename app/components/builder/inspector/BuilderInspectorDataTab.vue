@@ -60,10 +60,7 @@ import { defineComponent, computed } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { fieldInputType, isFieldVisible } from "../../../../domain/fields.js";
 import { clone, dataFor, getValue } from "../../../../domain/nodes.js";
-import BuilderPartialFields from "../fields/BuilderPartialFields.vue";
-import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
-	components: { BuilderValue, BuilderPartialFields },
 	props: { active: Boolean },
 	setup() {
 		const builder = useBuilder();

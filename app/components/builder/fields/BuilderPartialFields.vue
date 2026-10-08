@@ -39,12 +39,8 @@ import { fieldInputType, isFieldVisible } from '../../../../domain/fields.js';
 import { isImageField } from '../../../../domain/media.js';
 import { useBuilder } from '../../../composables/useBuilder.js';
 import { useTranslation } from '../../../composables/useTranslation.js';
-import BuilderButton from "../BuilderButton.vue";
 import { sourceAvailable } from "../../../services/source-zvc.js";
-import BuilderValue from './BuilderValue.vue';
-import BuilderInput from './BuilderInput.vue';
 export default defineComponent({
-  components: { BuilderValue, BuilderButton, BuilderInput },
   props: { reference: Object, bindings: { type: Array, default: () => [] }, definition: Object, modelValue: { type: Object, default: () => ({}) } },
   emits: ['change'],
   setup(props, { emit }) {

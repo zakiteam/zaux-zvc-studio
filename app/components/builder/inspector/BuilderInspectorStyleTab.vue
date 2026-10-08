@@ -96,11 +96,7 @@ import { useBuilder } from "../../../composables/useBuilder.js";
 import { styleVisibility, visibleStyleSections } from "../../../../integrations/zaux/style-visibility.js";
 import { nodeStyleSections } from "../../../../integrations/zaux/controls/node-style-controls.js";
 import { imageStyleTarget } from "../../../../integrations/zaux/controls/image-style-controls.js";
-import BuilderValue from "../fields/BuilderValue.vue";
-import BuilderStyleInput from "../fields/BuilderStyleInput.vue";
-import BuilderNodeStyles from "../fields/styles/BuilderNodeStyles.vue";
 export default defineComponent({
-	components: { BuilderValue, BuilderStyleInput, BuilderNodeStyles },
 	props: { active: Boolean },
 	setup() {
 		const builder = useBuilder();

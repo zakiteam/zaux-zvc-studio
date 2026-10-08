@@ -180,10 +180,7 @@
 import { defineComponent, nextTick, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { fieldInputType, moveField } from "../../../../domain/fields.js";
-import BuilderButton from "../BuilderButton.vue";
-import BuilderValue from "../fields/BuilderValue.vue";
 export default defineComponent({
-	components: { BuilderButton, BuilderValue },
 	setup() {
 		const builder = useBuilder();
 		const newKey = ref("");

@@ -138,8 +138,6 @@
 import { computed, defineComponent, nextTick, onBeforeUnmount, ref, useId, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { catalog, containers } from "../../services/catalog.js";
-import BuilderButton from "./BuilderButton.vue";
-import BuilderModal from "./BuilderModal.vue";
 
 const LIMIT = 100;
 
@@ -164,7 +162,6 @@ function matchScore(text, query) {
 
 // Quick-open for ZVC/ZVP definitions and palette elements: Enter inserts into the current context, Shift+Enter edits a definition.
 export default defineComponent({
-	components: { BuilderButton, BuilderModal },
 	setup() {
 		const builder = useBuilder();
 		const query = ref("");

@@ -33,18 +33,12 @@
 
   import { defineComponent, computed, nextTick, ref, watch } from 'vue';
   import { useBuilder } from '../../../../composables/useBuilder.js';
-  import BuilderPartialFields from '../BuilderPartialFields.vue';
   import slideComponents from '../../../../data/catalog/slide-components.js';
   import { clone } from '../../../../../domain/nodes.js';
   import { isPlainRecord } from '../../../../../domain/slider.js';
   import { useTranslation } from '../../../../composables/useTranslation.js';
-  import BuilderButton from '../../BuilderButton.vue';
-  import BuilderDropdown from '../../BuilderDropdown.vue';
-  import BuilderValue from '../BuilderValue.vue';
-  import BuilderSliderFields from './BuilderSliderFields.vue';
   
   export default defineComponent({
-    components: { BuilderPartialFields, BuilderButton, BuilderDropdown, BuilderValue, BuilderSliderFields },
     props: { modelValue: Array }, emits: ['change'],
     setup(props, { emit }) {
       const { translate } = useTranslation();

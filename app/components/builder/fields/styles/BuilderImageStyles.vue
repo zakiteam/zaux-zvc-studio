@@ -56,13 +56,8 @@ import { literalClasses, readPositionValue, positionValueClass } from '../../../
 import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
 import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, setResponsiveImportant, needsResponsiveBase } from '../../../../../domain/responsive-node-styles.js';
 import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
-import BuilderStyleSelect from './BuilderStyleSelect.vue';
-import BuilderStyleChoices from './BuilderStyleChoices.vue';
-import BuilderInput from '../BuilderInput.vue';
-import BuilderStyleField from './BuilderStyleField.vue';
 
 export default defineComponent({
-  components: { BuilderStyleField, BuilderStyleSelect, BuilderStyleChoices, BuilderInput },
   props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, disabled: Boolean },
   emits: ['update:modelValue', 'edit-error'],
   setup(props, { emit }) {

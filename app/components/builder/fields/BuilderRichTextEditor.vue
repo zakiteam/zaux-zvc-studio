@@ -18,10 +18,9 @@ import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
 import { richTextContent, sanitizeRichText } from '../../../services/richtext.js';
 import { useTranslation } from '../../../composables/useTranslation.js';
-import BuilderButton from '../BuilderButton.vue';
 
 export default defineComponent({
-  components: { EditorContent, BuilderButton },
+  components: { EditorContent },
   props: { modelValue: { type: String, default: '' }, label: String, disabled: Boolean },
   emits: ['update:modelValue'],
   setup(props, { emit }) {

@@ -27,9 +27,7 @@ import { computed, defineComponent, ref, watch, onMounted, onBeforeUnmount } fro
 import { runtimeNodes } from '../../../domain/nodes.js';
 import { componentThemesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
-import BuilderDropdown from './BuilderDropdown.vue';
 export default defineComponent({
-  components: { BuilderDropdown },
   setup() {
     const builder = useBuilder();
     const frame = ref(null);

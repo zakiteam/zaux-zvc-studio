@@ -6,11 +6,9 @@
 </template>
 <script>
 import { computed, defineComponent } from 'vue';
-import StudioAccess from './components/studio/StudioAccess.vue';
 import { useHead, useRoute } from '#imports';
 import { useStudioTheme } from './composables/useStudioTheme.js';
 export default defineComponent({
-  components: { StudioAccess },
   setup() {
     const route = useRoute();
     const { theme } = useStudioTheme();

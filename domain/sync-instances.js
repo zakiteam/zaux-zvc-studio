@@ -1,5 +1,6 @@
 import { clone } from './nodes.js';
 import { restoreInstance } from './restore-instance.js';
+import { copyDefinition, createInstance } from './workspace.js';
 
 // Explicit propagation only: ordinary library edits keep copies independent.
 export function syncLibraryInstances(workspace, source) {
@@ -66,4 +67,54 @@ export function syncLibraryInstances(workspace, source) {
       else if (original.kind === 'zvp') syncPartials(instance.definition, instance.data);
     }
   }
+}
+
+// Hard reset, like "Reset instance" on every copy: template instances become fresh
+// copies of the library definition (data and edits discarded, every variant).
+// Nested ZVP copies get a fresh definition and their references lose their props.
+// Returns the replaced template instance ids mapped to the new ones.
+export function resetLibraryInstances(workspace, source) {
+  const original = clone(source);
+  const replaced = {};
+  function resetPartials(owner, data = {}) {
+    for (const variant of owner.variants ?? []) {
+      if (variant.content) resetPartials(variant.content, data);
+    }
+    for (const partial of [...(owner.partials ?? [])]) {
+      if ((partial.libraryId ?? partial.id) !== original.id) {
+        resetPartials(partial);
+        continue;
+      }
+      function visit(value) {
+        if (!value || typeof value !== 'object') return;
+        Object.values(value).forEach(visit);
+        if (value.name === partial.exportName && value.props && typeof value.props === 'object') value.props = {};
+      }
+      // Source snapshots are regenerated at commit; only authored data is mutable.
+      if (!owner.sourceKey) visit(owner.tree);
+      visit(owner.defaults);
+      for (const field of owner.fields ?? []) visit(field.default);
+      visit(data);
+      const fresh = copyDefinition(original);
+      fresh.libraryId = original.id;
+      fresh.exportName = partial.exportName;
+      owner.partials.splice(owner.partials.indexOf(partial), 1, fresh);
+    }
+  }
+  if (original.kind === 'zvp') {
+    for (const definition of workspace.library) {
+      if (definition.id !== original.id) resetPartials(definition);
+    }
+  }
+  for (const template of workspace.templates) {
+    template.instances.forEach((instance, index) => {
+      if (instance.sourceId === original.id) {
+        const fresh = createInstance(original);
+        replaced[instance.id] = fresh.id;
+        template.instances.splice(index, 1, fresh);
+      }
+      else if (original.kind === 'zvp') resetPartials(instance.definition, instance.data);
+    });
+  }
+  return replaced;
 }

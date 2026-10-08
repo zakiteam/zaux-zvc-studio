@@ -43,13 +43,10 @@
 <script>
 	import { computed, defineComponent, reactive, ref, watch } from "vue";
 	import { useTranslation } from "../../composables/useTranslation.js";
-	import BuilderCodeEditor from "./fields/BuilderCodeEditor.vue";
-	import BuilderFileTree from "./BuilderFileTree.vue";
 	import { buildFileTree, filterFileTree } from "../../../domain/file-tree.js";
 
 	export default defineComponent({
 		name: "BuilderFileExplorer",
-		components: { BuilderCodeEditor, BuilderFileTree },
 		props: {
 			files: { type: Object, default: () => ({}) },
 			selected: { type: String, default: "" },

@@ -32,7 +32,6 @@
 <script>
 import { defineComponent, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
 import { useTranslation } from "../../composables/useTranslation.js";
-import BuilderButton from "./BuilderButton.vue";
 
 const SIZES = {
 	sm: "w-[440px]",
@@ -52,7 +51,6 @@ const FIELDS = '[autofocus], input:not([type="file"]):not([type="hidden"]):not([
 // Consumers only provide the slot content; Escape, focus trapping and the top layer come from <dialog>.
 export default defineComponent({
 	name: "BuilderModal",
-	components: { BuilderButton },
 	props: {
 		title: { type: String, required: true },
 		subtitle: String,
