@@ -15,6 +15,7 @@ export const componentVariants = {
   Accordion: { sizes: ['s', 'm', 'l'], themes: ['light1', 'dark1'] },
   OffCanvas: { sizes: ['s', 'm'], themes: ['light1', 'lightblur1', 'darkblur1', 'transparent'] },
   ZModal: { sizes: ['s', 'm'], themes: ['light1', 'dark1', 'lightblur1', 'darkblur1'] },
+  Dropdown: { sizes: ['s', 'm'], themes: ['light1', 'light2', 'dark1', 'lightblur1', 'darkblur1'] },
   InputText: { sizes: ['m', 'l'], themes: textThemes },
   InputTextarea: { sizes: ['m', 'l'], themes: textThemes },
   InputSelect: { sizes: ['m', 'l'], themes: textThemes },
@@ -33,6 +34,8 @@ export const componentSelects = {
   Snippetlabel: { layout: ['horizontal', 'stacked'], align: ['left', 'center', 'right'], verticalAlign: ['top', 'center', 'bottom'] },
   ButtonBlock: { align: ['left', 'center', 'right'] },
   Accordion: { type: ['naked', 'wrapped'] },
+  // Popover.vue validates these positions.
+  Dropdown: { position: ['bottom', 'bottom-left', 'bottom-right', 'top', 'top-left', 'top-right', 'left', 'right'] },
   OffCanvas: { position: ['left', 'right', 'top', 'bottom'], contentType: ['default', 'html', 'component', 'teleport-html'] },
   InputText: { type: ['text', 'email', 'password', 'number', 'tel', 'url', 'search', 'date', 'datetime-local', 'time', 'month', 'week', 'color', 'range', 'hidden'] },
   InputMultiSelect: { outputMode: ['json', 'classic'] },

@@ -19,7 +19,7 @@ export function createBuilderOutlineDrag(builder) {
   let scrollArea = null;
   let pointer = null;
   let previousTime = null;
-  const wholeBlocks = payload => ['library', 'instance'].includes(payload?.kind)
+  const wholeBlocks = payload => ['library', 'instance'].includes(payload?.kind) || payload?.kind === 'global' && !payload.zvp
     || payload?.kind === 'selection' && Array.isArray(payload.rows) && payload.rows.some(row => row && !row.nodeId);
   function stopScroll() {
     if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
@@ -121,7 +121,7 @@ export function createBuilderOutlineDrag(builder) {
       return;
     }
     event.preventDefault();
-    event.dataTransfer.dropEffect = (source.value ? ['library', 'catalog', 'clipboard'].includes(source.value.kind) : event.dataTransfer.effectAllowed === 'copy') ? 'copy' : 'move';
+    event.dataTransfer.dropEffect = (source.value ? ['library', 'global', 'catalog', 'clipboard'].includes(source.value.kind) : event.dataTransfer.effectAllowed === 'copy') ? 'copy' : 'move';
     setTarget(next);
   }
   function leave(event) {

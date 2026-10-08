@@ -245,7 +245,41 @@ export const nodeStyleSections = [
   ] },
   { id: 'text', controls: [
     control('typography', Object.keys(typography.styles).map(name => `text-${name}`)),
-    colorControl('text_color', 'text')
+    colorControl('text_color', 'text'),
+    // Tailwind's default weight scale: Zaux tokens extend fontFamily only.
+    control('font_weight', [], {
+      options: ['thin', 'extralight', 'light', 'normal', 'medium', 'semibold', 'bold', 'extrabold', 'black']
+        .map((name, index) => ({ value: `font-${name}`, label: `zx_builder_style_font_weight_${name}`, modeLabel: String((index + 1) * 100) }))
+    }),
+    control('font_style', [], {
+      options: [
+        { value: 'italic', label: 'zx_builder_style_font_style_italic' },
+        { value: 'not-italic', label: 'zx_builder_style_font_style_normal' }
+      ]
+    }),
+    control('text_decoration', [], {
+      options: ['underline', 'overline', 'line-through', 'no-underline']
+        .map(value => ({ value, label: `zx_builder_style_text_decoration_${value.replace('-', '_')}` }))
+    }),
+    control('decoration_style', [], {
+      options: ['solid', 'double', 'dotted', 'dashed', 'wavy']
+        .map(name => ({ value: `decoration-${name}`, label: `zx_builder_style_decoration_style_${name}` }))
+    }),
+    // matchValues stays empty: tailwind-merge lets line-clamp override display/overflow,
+    // which must not make those classes read as a clamp value.
+    control('line_clamp', [], {
+      integer: true,
+      positive: true,
+      prefix: 'line-clamp',
+      pattern: /^line-clamp-.+$/,
+      matchValues: [],
+      placeholder: 'zx_builder_style_line_clamp_placeholder',
+      invalid: 'zx_builder_style_line_clamp_invalid',
+      options: [
+        ...[1, 2, 3, 4, 5, 6].map(value => ({ value: `line-clamp-${value}`, label: String(value) })),
+        { value: 'line-clamp-none', label: 'zx_builder_style_line_clamp_none' }
+      ]
+    })
   ] },
   { id: 'fill', controls: [
     colorControl('background', 'bg'),

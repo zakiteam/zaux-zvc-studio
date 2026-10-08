@@ -13,7 +13,9 @@ import { projectFonts } from '../../domain/fonts.js';
 import { restoreInstance } from '../../domain/restore-instance.js';
 import { syncLibraryInstances, resetLibraryInstances } from '../../domain/sync-instances.js';
 import { computed, inject, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
-import { createWorkspace, createDefinition, copyDefinition, createInstance, createTemplate, exportName } from '../../domain/workspace.js';
+import { createWorkspace, createDefinition, copyDefinition, createInstance, createTemplate, exportName, signZauxVersion } from '../../domain/workspace.js';
+import { zauxCompatibility } from '../../domain/global-components.js';
+import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 import { ancestorIds, clone, uid, createNode, dataFor, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
@@ -28,15 +30,18 @@ import { useTranslation } from './useTranslation.js';
 import { cssInspectorProperties, normalizeInspectorProperties } from '../data/css-inspector.js';
 import { listRemoteProjects, getRemoteProject, createRemoteProject as createRemoteProjectRecord, saveRemoteProject, renameRemoteProject as renameRemoteProjectRecord, deleteRemoteProject as deleteRemoteProjectRecord } from '../services/projects.js';
 import { useAuth } from './useAuth.js';
+import { createGlobalDesigner } from './globalDesigner.js';
+import { createGlobalLinks } from './globalLinks.js';
 
 const key = Symbol('zaux-builder');
 export function useBuilder() { return inject(key); }
-export function createBuilder({ projectId = null } = {}) {
+// designer: the Component designer, an isolated workspace whose library is the shared global library.
+export function createBuilder({ projectId = null, designer = false, designerComponentId = null } = {}) {
   const storageKey = projectId ? STORAGE_KEY + ':project:' + projectId : STORAGE_KEY;
   const workspaceReady = ref(false);
   let disposed = false;
   const i18n = useTranslation();
-  const document = ref(createWorkspace());
+  const document = ref(signZauxVersion(createWorkspace(), zauxProjectVersion, { created: true }));
   const libraryThumbnails = ref(Object.create(null));
   const thumbnailRenderer = createLibraryThumbnailRenderer();
   const thumbnailRequests = new Map();
@@ -125,7 +130,7 @@ export function createBuilder({ projectId = null } = {}) {
     } finally { thumbnailBatch.value = { ...progress, running: false }; }
   }
   watch(() => document.value.id, () => { libraryThumbnails.value = Object.create(null); });
-  const mode = ref('template');
+  const mode = ref(designer ? 'library' : 'template');
   const templatesOpen = ref(false);
   const templateId = ref(document.value.templates[0].id);
   const libraryId = ref(document.value.library[0]?.id);
@@ -252,7 +257,7 @@ export function createBuilder({ projectId = null } = {}) {
     try {
       flushSave();
       openPreviewWindow(document.value, {
-        projectId: activeRemoteProject.value?.id ?? 'local',
+        projectId: designer ? 'designer' : activeRemoteProject.value?.id ?? 'local',
         templateId: activeTemplate.value.id, componentId: mode.value === 'library' ? activeDefinition.value?.id : null, canvasDark: canvasDark.value
       });
     } catch (exception) { error.value = exception?.name === 'QuotaExceededError' ? 'zx_builder_preview_quota_error' : 'zx_builder_preview_open_error'; }
@@ -291,6 +296,7 @@ export function createBuilder({ projectId = null } = {}) {
   const redoStack = ref([]);
   let timer;
   let pendingSave = false;
+  const globalDesigner = designer ? createGlobalDesigner({ document, saveStatus, error, userId: () => auth.user.value?.id, onError: setRemoteError }) : null;
   const activeTemplate = computed(() => document.value.templates.find(item => item.id === templateId.value) ?? document.value.templates[0]);
   const activeInstance = computed(() => activeTemplate.value?.instances.find(item => item.id === instanceId.value));
   const activeDefinition = computed(() => mode.value === 'library' ? document.value.library.find(item => item.id === libraryId.value) : activeInstance.value?.definition);
@@ -437,6 +443,7 @@ export function createBuilder({ projectId = null } = {}) {
   }
 
   function flushSave() {
+    if (designer) return;
     clearTimeout(timer);
     if (!pendingSave || recovery.value !== null || incoming.value) return;
     try { saveWorkspace(document.value, storageKey); pendingSave = false; saveStatus.value = 'saved'; }
@@ -473,6 +480,21 @@ export function createBuilder({ projectId = null } = {}) {
       catch { saveStatus.value = 'storage_error'; }
     }
   }
+  // Opening a project last edited with another Zaux release (or never signed) asks for explicit
+  // approval; declining returns to the hub. The next edit signs it with the running release.
+  const acceptedZauxVersions = new Set();
+  function checkProjectZauxVersion() {
+    if (designer) return;
+    const { zauxCreatedVersion: created = '', zauxEditedVersion: edited = '' } = document.value;
+    const key = document.value.id + '|' + edited;
+    if (zauxCompatibility(edited, zauxProjectVersion).match || acceptedZauxVersions.has(key)) return;
+    modal.value = { type: 'zaux-version', scope: 'project', key, created, edited };
+  }
+  function acceptProjectZauxVersion() {
+    if (modal.value?.type !== 'zaux-version' || modal.value.scope !== 'project') return;
+    acceptedZauxVersions.add(modal.value.key);
+    modal.value = null;
+  }
   async function openRemoteProject(id) {
     if (remoteProjectBusy.value) return false;
     remoteProjectBusy.value = true;
@@ -486,6 +508,7 @@ export function createBuilder({ projectId = null } = {}) {
       applyRemoteProject({ ...project, role: listed.role });
       remoteProjects.value = remoteProjects.value.map(item => item.id === id ? { ...item, ...activeRemoteProject.value } : item);
       error.value = '';
+      checkProjectZauxVersion();
       return true;
     } catch (exception) {
       setRemoteError(exception);
@@ -496,6 +519,7 @@ export function createBuilder({ projectId = null } = {}) {
   }
   async function prepareToLeave() {
     if (!workspaceReady.value) return true;
+    if (designer) return globalDesigner.leave();
     if (remoteProjectBusy.value) return false;
     flushSave();
     await flushRemoteSave();
@@ -585,6 +609,7 @@ export function createBuilder({ projectId = null } = {}) {
     remoteSaveStatus.value = 'saving'; clearTimeout(remoteTimer); remoteTimer = setTimeout(flushRemoteSave, 800);
   }
   function scheduleSave() {
+    if (designer) { globalDesigner.schedule(); return; }
     pendingSave = true;
     saveStatus.value = 'saving';
     clearTimeout(timer);
@@ -600,6 +625,7 @@ export function createBuilder({ projectId = null } = {}) {
       refreshSourceSnapshots(document.value);
       validateWorkspace(document.value);
       document.value.updatedAt = new Date().toISOString();
+      signZauxVersion(document.value, zauxProjectVersion);
       undoStack.value.push(before);
       if (undoStack.value.length > 50) undoStack.value.shift();
       redoStack.value = [];
@@ -611,18 +637,24 @@ export function createBuilder({ projectId = null } = {}) {
     if (!canEditRemote.value) { error.value = 'zx_builder_project_readonly'; return; }
     if (!undoStack.value.length) return;
     redoStack.value.push(clone(document.value));
-    document.value = undoStack.value.pop();
+    document.value = signZauxVersion(undoStack.value.pop(), zauxProjectVersion);
     scheduleSave();
   }
   function redo() {
     if (!canEditRemote.value) { error.value = 'zx_builder_project_readonly'; return; }
     if (!redoStack.value.length) return;
     undoStack.value.push(clone(document.value));
-    document.value = redoStack.value.pop();
+    document.value = signZauxVersion(redoStack.value.pop(), zauxProjectVersion);
     scheduleSave();
   }
-  function selectTemplate(id) { outlineSelection.value = []; outlineAnchor = null; templatesOpen.value = false; mode.value = 'template'; templateId.value = id; instanceId.value = activeTemplate.value.instances[0]?.id; nodeId.value = null; }
+  function selectTemplate(id) {
+    // The Component designer only edits library definitions; its single template is a placeholder.
+    if (designer) { templateId.value = id; templatesOpen.value = false; return; }
+    outlineSelection.value = []; outlineAnchor = null; templatesOpen.value = false; mode.value = 'template'; templateId.value = id; instanceId.value = activeTemplate.value.instances[0]?.id; nodeId.value = null; }
   function selectLibrary(id) {
+    // Global components are edited only in the isolated Component designer, never in place.
+    const linked = !designer && document.value.library.find(item => item.id === id && item.global);
+    if (linked) { openGlobalDesigner(linked.global.id); return; }
     templatesOpen.value = false;
     mode.value = 'library'; libraryId.value = id; nodeId.value = null;
     libraryKind.value = activeDefinition.value?.kind === 'zvp' ? 'zvp' : 'zvc';
@@ -665,7 +697,7 @@ export function createBuilder({ projectId = null } = {}) {
     instanceId.value = instance.id; nodeId.value = null;
   }
   function insertInstance(definitionId, beforeId = null, position = 'before') {
-    if (!canEditRemote.value) return;
+    if (!canEditRemote.value || designer) return;
     const definition = document.value.library.find(item => item.id === definitionId);
     if (!definition) return;
     const instance = createInstance(definition);
@@ -781,7 +813,7 @@ export function createBuilder({ projectId = null } = {}) {
     addTemplateElement(partial.exportName);
   }
   function addTemplateElement(name, beforeId = null, position = 'after') {
-    if (!canEditRemote.value) return;
+    if (!canEditRemote.value || designer) return;
     let instance;
     commit(() => {
       instance = createFreeInstance(name);
@@ -858,7 +890,12 @@ export function createBuilder({ projectId = null } = {}) {
     if (payload.kind === 'selection') return payload.scope === outlineScope.value && Array.isArray(payload.rows) && payload.rows.length <= 2500
       && payload.rows.every(row => row && typeof row.instanceId === 'string' && (row.nodeId === null || typeof row.nodeId === 'string'))
       && canMoveOutline(outlineInstances.value, payload.rows, targetId, position, targetInstanceId, mode.value === 'library', containers);
-    if (payload.kind === 'library') return document.value.library.some(item => item.id === payload.id);
+    if (payload.kind === 'library') return !designer && document.value.library.some(item => item.id === payload.id);
+    // Not yet imported global component: a ZVC drops like a library ZVC, a ZVP like a palette element.
+    if (payload.kind === 'global') {
+      if (designer || !globalLinks.globalCatalog.value.some(item => item.id === payload.id)) return false;
+      return payload.zvp ? canDropElement({ kind: 'catalog', name: 'ZVPGlobal' }, targetId, position, targetInstanceId) : true;
+    }
     if (payload.kind === 'instance') return mode.value === 'template' && payload.id !== targetInstanceId && activeTemplate.value.instances.some(item => item.id === payload.id);
     if (!['node', 'catalog', 'clipboard'].includes(payload.kind)) return false;
     if (payload.kind === 'clipboard' && !nodeClipboard.value) return false;
@@ -883,6 +920,7 @@ export function createBuilder({ projectId = null } = {}) {
   }
   function dropElement(payload, targetId, position, targetInstanceId) {
     if (!canDropElement(payload, targetId, position, targetInstanceId)) return;
+    if (payload.kind === 'global') { globalLinks.dropGlobal(payload.id, { nodeId: targetId, position, instanceId: targetInstanceId }); return; }
     if (payload.kind === 'selection') {
       let selection;
       commit(() => { selection = moveOutline(outlineInstances.value, payload.rows, targetId, position, targetInstanceId, mode.value === 'library', document.value.library); });
@@ -1014,6 +1052,7 @@ export function createBuilder({ projectId = null } = {}) {
     commit(workspace => appendLibraryDefinition(workspace, copy));
   }
   function importDocument(payload) {
+    if (designer && payload.kind !== 'component') { error.value = 'zx_builder_global_import_component_only'; return; }
     commit(workspace => {
       if (payload.kind === 'workspace') { document.value = clone(payload.data); mergeSourceLibrary(document.value); }
       if (payload.kind === 'component') { const definition = copyDefinition(payload.data); appendLibraryDefinition(workspace, definition); selectLibrary(definition.id); }
@@ -1057,10 +1096,36 @@ export function createBuilder({ projectId = null } = {}) {
     if (layoutAction) { event.preventDefault(); if (!event.repeat) runLayoutShortcut(layoutAction); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || modal.value) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); flushSave(); }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (designer) globalDesigner.flush(); else flushSave(); }
     if (event.key === 'Escape') { nodeId.value = null; previewOnly.value = false; }
   }
+  async function loadGlobalLibrary() {
+    workspaceReady.value = false;
+    try {
+      document.value = await globalDesigner.load(i18n.translate);
+    } catch (exception) {
+      if (!disposed) { setRemoteError(exception); error.value = 'zx_builder_global_load_error'; }
+      return;
+    }
+    if (disposed) return;
+    undoStack.value = []; redoStack.value = []; nodeId.value = null; error.value = '';
+    templateId.value = document.value.templates[0].id;
+    const globals = document.value.library.filter(item => !item.id.startsWith('source:'));
+    const target = globals.find(item => item.id === libraryId.value) ?? globals.find(item => item.id === designerComponentId) ?? globals[0] ?? document.value.library[0];
+    if (target) selectLibrary(target.id);
+    workspaceReady.value = true;
+  }
+  // Discards unsaved designer edits and reloads the shared library (after a conflict).
+  function reloadGlobalLibrary() { if (designer) return loadGlobalLibrary(); }
   onMounted(async () => {
+    if (designer) {
+      try { i18n.setLanguage(localStorage.getItem('zx_builder_language') ?? 'it'); } catch { /* No preference when storage is unavailable. */ }
+      ensureStyles();
+      watch(() => document.value.styles, value => styleBridge.apply(value), { immediate: true, deep: true });
+      window.addEventListener('beforeunload', globalDesigner.beforeUnload); window.addEventListener('keydown', hotkey);
+      await loadGlobalLibrary();
+      return;
+    }
     const loaded = loadWorkspace(storageKey);
     if (loaded.data) { document.value = loaded.data; selectTemplate(document.value.templates[0].id); libraryId.value = document.value.library[0]?.id; }
     ensureStyles();
@@ -1073,10 +1138,11 @@ export function createBuilder({ projectId = null } = {}) {
       if (await refreshRemoteProjects() && !disposed) workspaceReady.value = await openRemoteProject(projectId);
     } else {
       workspaceReady.value = true;
+      checkProjectZauxVersion();
       refreshRemoteProjects();
     }
   });
-  onBeforeUnmount(() => { disposed = true; thumbnailRenderer.dispose(); styleBridge.dispose(); flushSave(); flushRemoteSave(); window.removeEventListener('beforeunload', flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
+  onBeforeUnmount(() => { disposed = true; thumbnailRenderer.dispose(); styleBridge.dispose(); flushSave(); flushRemoteSave(); globalDesigner?.dispose(); window.removeEventListener('beforeunload', globalDesigner?.beforeUnload ?? flushSave); window.removeEventListener('storage', storageChanged); window.removeEventListener('keydown', hotkey); });
   function collapseAllOutline() {
     const next = new Set(collapsedOutline.value);
     const walk = (nodes, prefix) => {
@@ -1100,7 +1166,10 @@ export function createBuilder({ projectId = null } = {}) {
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });
-  Object.assign(api, { cutSelectedNode, resetInstance, openExport });
+  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion });
+  const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement });
+  function openGlobalDesigner(id) { globalLinks.openGlobalDesigner(id); }
+  Object.assign(api, globalLinks, { designer, reloadGlobalLibrary, globalThumbnails: globalDesigner?.thumbnails ?? ref(Object.create(null)) });
   provide(key, api);
   return api;
 }

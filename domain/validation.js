@@ -24,6 +24,12 @@ export function validateDefinition(definition, depth = 0) {
   if (definition.sourceKey) definition.fields = normalizeSourceFields(definition.fields);
   if (definition.defaults !== undefined) requireValue(object(definition.defaults));
   if (definition.previewImage !== undefined) requireValue(typeof definition.previewImage === 'string');
+  // Linked copy of a global component (see domain/global-components.js); the id matches the global id.
+  if (definition.global !== undefined) {
+    const meta = definition.global;
+    requireValue(object(meta) && meta.id === definition.id && Number.isInteger(meta.revision) && meta.revision > 0
+      && typeof meta.zauxVersion === 'string' && (meta.updatedAt === undefined || typeof meta.updatedAt === 'string'));
+  }
   if (definition.variants !== undefined) {
     requireValue(Array.isArray(definition.variants) && definition.variants.length >= 1 && definition.variants.length <= 50);
     const ids = new Set();
@@ -83,6 +89,9 @@ export function validateWorkspace(workspace) {
   if (workspace.styles !== undefined) validateStylePreset(workspace.styles);
   if (workspace.componentThemes !== undefined) validateComponentThemes(workspace.componentThemes);
   if (workspace.coverImage !== undefined) requireValue(typeof workspace.coverImage === 'string');
+  for (const key of ['zauxCreatedVersion', 'zauxEditedVersion']) {
+    if (workspace[key] !== undefined) requireValue(typeof workspace[key] === 'string' && workspace[key].length <= 80);
+  }
   const ids = new Set();
   const unique = id => { requireValue(typeof id === 'string' && !ids.has(id)); ids.add(id); };
   for (const definition of workspace.library) { unique(definition.id); validateDefinition(definition); }

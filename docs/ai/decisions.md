@@ -60,7 +60,24 @@
 - The same dialog offers an opt-out checkbox, selected by default, that transposes the imported content into builder-editable elements: `ComponentsRenderer` wrappers and `Zsection` component content become Structure nodes instead of content properties, reusing the native-source projection in `domain/source-zvc.js`.
 - The imported library name follows `label`, then a declared `ZVCName`/`ZVPName` (runtime descriptors), then the first node of the resulting tree, so rendered snapshots do not all become the same entry named after their first section.
 
+## 2026-10-08 - Global components and Component designer (user)
+
+- A third component source besides Zaux imports and project components: a shared global ZVC/ZVP library, edited only in the isolated **Component designer** (hub entry), never in place inside a project (Edit opens the designer in a new tab).
+- The designer reuses the project editor (canvas, outline, inspector, JSON imports). Design tokens/themes there only try out looks and are never saved.
+- Global components are signed with the Zaux version they were saved with. Importing (or pulling an update) into a project shows the version check and requires explicit acceptance of the risk when versions differ.
+- Thumbnails of global components are generated only from the hub management panel.
+- Projects keep linked copies (definition id = global id, `global` metadata); resync works per instance or for all instances.
+- Terminology: **Soft reset** (keep data/properties) and **Hard reset** (discard data/edits) replace Sync with original/Sync instances and Reset instance/Reset instances.
+- Implementation choice (not user-specified): Supabase table with one row per component, shared editing by every active user, soft archive instead of delete; sample ZVP+ZVC seeded on first designer open.
+
 ## 2026-10-07 - Figma-like workspace layout (user)
 
 - Overhaul the editor arrangement to maximize canvas space and practicality, as close to Figma as possible, while keeping the existing components and abstractions (BuilderButton, BuilderDropdown, BuilderInput, panels, Zaux components).
 - One slim top bar, tabbed left panel (Structure with templates as pages, Library, Elements), canvas toolbar with zoom, compact Inspector. Panel sizes are per-browser preferences; zoom and collapsed panels are session UI state, never project data.
+
+## 2026-10-08 - Project Zaux version signatures (user)
+
+- Projects store `zauxCreatedVersion` (release used to create the project) and `zauxEditedVersion` (release of the most recent edit).
+- Opening a project whose last-edit release differs from the builder's asks whether to continue accepting the risks; declining returns to the hub.
+- The same check applies when inserting global ZVC/ZVPs.
+- Implementation choices (not user-specified): projects without a signature count as a mismatch; a duplicated project gets the running release as its creation version and keeps the original last-edit version; the global check also compares the project's last-edit release; an approval is remembered for the rest of the editor session.

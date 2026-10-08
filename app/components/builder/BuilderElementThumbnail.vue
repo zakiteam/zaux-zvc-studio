@@ -1,6 +1,6 @@
 <template>
 	<span ref="root" class="grid h-[72px] w-full place-items-center overflow-hidden rounded-xxs bg-zaux-light" aria-hidden="true">
-		<img v-if="image" :src="image" alt="" loading="lazy" class="h-full w-full" :class="definition?.previewImage ? 'object-cover' : 'object-contain object-top'" />
+		<img v-if="image" draggable="false" :src="image" alt="" loading="lazy" class="h-full w-full" :class="definition?.previewImage ? 'object-cover' : 'object-contain object-top'" />
 		<span v-else :title="entry?.error" class="px-1 text-center text-[9px] leading-tight text-zaux-dark-grey">
 			{{ translate(entry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}
 		</span>

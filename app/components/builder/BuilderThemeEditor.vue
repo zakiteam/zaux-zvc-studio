@@ -3,6 +3,7 @@
     <aside class="flex w-[264px] shrink-0 flex-col border-r-slim border-zaux-light-grey bg-zaux-white max-[900px]:max-h-[240px] max-[900px]:w-full">
       <div class="p-2 space-y-2 border-b-slim border-zaux-light-grey">
         <h1 class="font-semibold">{{ translate('zx_builder_theme_editor') }}</h1>
+        <p v-if="designer" class="rounded-xxs bg-utility-warning/20 p-1 text-[11px] leading-[1.6]" role="note">{{ translate('zx_builder_global_tokens_hint') }}</p>
         <BuilderInput v-model="search" :label="translate('zx_builder_theme_search')" :placeholder="translate('zx_builder_theme_search')" class="w-full" />
       </div>
       <nav class="flex-1 min-h-0 p-1 overflow-auto" :aria-label="translate('zx_builder_theme_components')">

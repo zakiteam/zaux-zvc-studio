@@ -5,9 +5,16 @@
         <img :src="studioLogo" alt="" class="h-[24px] w-[24px]" />
       </NuxtLink>
       <nav :aria-label="translate('zx_builder_hub_navigation')" class="flex flex-col gap-[2px] px-1 max-[700px]:flex-row max-[700px]:flex-wrap max-[700px]:pb-1">
-        <NuxtLink to="/" aria-current="page" class="flex items-center gap-1 rounded-xxs bg-zaux-light px-1 py-0.75 text-[12px] font-semibold text-zaux-dark">
-          <Icon iconName="apps" size="text-icon-xxs" class="text-zaux-accent" aria-hidden="true" />
+        <NuxtLink to="/" :aria-current="$route.path === '/' ? 'page' : undefined" class="flex items-center gap-1 rounded-xxs px-1 py-0.75 text-[12px]"
+          :class="$route.path === '/' ? 'bg-zaux-light font-semibold text-zaux-dark' : 'text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark'">
+          <Icon iconName="apps" size="text-icon-xxs" :class="{ 'text-zaux-accent': $route.path === '/' }" aria-hidden="true" />
           {{ translate('zx_builder_projects') }}
+        </NuxtLink>
+        <!-- Shared global ZVC/ZVP library: management panel and entry to the Component designer. -->
+        <NuxtLink to="/components" :aria-current="$route.path === '/components' ? 'page' : undefined" class="flex items-center gap-1 rounded-xxs px-1 py-0.75 text-[12px]"
+          :class="$route.path === '/components' ? 'bg-zaux-light font-semibold text-zaux-dark' : 'text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark'">
+          <Icon iconName="visualization-grid" size="text-icon-xxs" :class="{ 'text-zaux-accent': $route.path === '/components' }" aria-hidden="true" />
+          {{ translate('zx_builder_global_designer') }}
         </NuxtLink>
         <NuxtLink to="/editor/local" class="flex items-center gap-1 rounded-xxs px-1 py-0.75 text-[12px] text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark">
           <Icon iconName="tech" size="text-icon-xxs" aria-hidden="true" />

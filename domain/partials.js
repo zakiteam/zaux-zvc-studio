@@ -24,7 +24,7 @@ export function capturePartials(definition, library, data = {}, ancestors = []) 
       if (source) {
         const partials = definition.partials ??= [];
         let partial = partials.find(item => item.exportName === source.exportName);
-        if (!partial) { partial = clone(source); partials.push(partial); }
+        if (!partial) { partial = clone(source); delete partial.global; partials.push(partial); }
         capturePartials(partial, library, value.props, path);
       }
     }

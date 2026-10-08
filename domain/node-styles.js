@@ -144,7 +144,7 @@ export function positionValueClass(control, value) {
     if (values.some(value => value === null)) return null;
     return `object-[${values.map(value => readPositionValue(value, { prefix: 'object' })).join('_')}]`;
   }
-  if (control.integer) return /^[+-]?\d+$/.test(input) ? `${control.prefix}-[${input}]` : null;
+  if (control.integer) return (control.positive ? /^\+?[1-9]\d*$/ : /^[+-]?\d+$/).test(input) ? `${control.prefix}-[${input.replace(/^\+/, '')}]` : null;
   const match = input.match(/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(px|rem|em|vh|vw|vmin|vmax|svh|lvh|dvh|ch|ex|cm|mm|in|pt|pc|%)?$/);
   if (!match || (control.depth && match[1] === '%') || (control.nonNegative && Number.parseFloat(input) < 0)) return null;
   const length = match[1] ? input : `${input}px`;

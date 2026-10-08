@@ -7,7 +7,7 @@
         <span aria-hidden="true" class="h-[8px] w-[8px] shrink-0 rounded-full bg-utility-notice" />
         <span class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-zaux-dark-grey">{{ activeDefinition?.kind === 'zvp' ? 'ZVP' : 'ZVC' }}</span>
         <span class="min-w-0 truncate font-semibold">{{ activeDefinition?.name }}</span>
-        <BuilderButton size="xs" variant="alt1" icon="back" :extraProps="{ actionIcon: false }"
+        <BuilderButton v-if="backToTemplate" size="xs" variant="alt1" icon="back" :extraProps="{ actionIcon: false }"
           :label="translate('zx_builder_back_template')" @click="selectTemplate(activeTemplate.id)" />
       </div>
     </div>
@@ -74,6 +74,10 @@ import { computed, defineComponent } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
 import { tokenGroups } from '../../data/styles/tokens.js';
 export default defineComponent({
+  props: {
+    // The Component designer has no template to return to.
+    backToTemplate: { type: Boolean, default: true }
+  },
   setup() {
     const builder = useBuilder();
     const bodyColors = computed(() => {

@@ -6,7 +6,7 @@
 			:style="{ left: `${left}px`, top: `${top}px` }"
 		>
 			<div class="grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-light/40">
-				<img v-if="image" :src="image" alt="" class="h-full w-full" :class="definition?.previewImage ? 'object-cover' : 'object-contain object-top'" />
+				<img v-if="image" draggable="false" :src="image" alt="" class="h-full w-full" :class="definition?.previewImage ? 'object-cover' : 'object-contain object-top'" />
 				<span v-else class="px-2 text-center text-[11px] text-zaux-dark-grey" :title="entry?.error">
 					{{ translate(entry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}
 				</span>

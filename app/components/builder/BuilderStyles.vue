@@ -10,6 +10,7 @@
     <ZOverflowContainer class="flex-1 h-full min-h-0" autoOverflow>
       <div class="px-1.5 py-1.5">
         <BuilderButton size="xs" icon="book-open" class="mb-2" :label="translate('zx_builder_fonts_project')" @click="fontsOpen = true" />
+        <p v-if="designer" class="!mb-2 rounded-xxs bg-utility-warning/20 p-1 text-[11px] leading-[1.6] text-zaux-dark" role="note">{{ translate('zx_builder_global_tokens_hint') }}</p>
         <p class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey">{{ translate('zx_builder_styles_hint') }}</p>
         <BuilderFontLibrary v-if="fontsOpen" :modelValue="preset.fonts ?? []" :readonly="!canEditRemote" @close="fontsOpen = false" @apply="applyFonts" />
         <div class="flex flex-wrap gap-0.5">

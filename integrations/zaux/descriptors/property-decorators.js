@@ -72,6 +72,22 @@ export const propertyDecorators = {
   ZModalTrigger: {
     modalId: ({ trees }) => panelOptions(trees, 'ZModal', 'modalId')
   },
+  // Each item is a Snippetlabel entry; `type: 'option'` renders a button that emits `selected` with the item.
+  Dropdown: {
+    items: {
+      items: {
+        default: { type: 'link', title: '', excerpt: '', icon: 'media', href: '#' },
+        properties: {
+          type: { default: 'link', type: String, ...selectOptions(['link', 'option']) },
+          title: { default: '', type: String },
+          excerpt: { default: '', type: String },
+          icon: { default: '', type: String, ...selectOptions(['', ...(iconSets.zaux ?? [])]) },
+          href: { default: '', type: String },
+          value: { default: '', type: String }
+        }
+      }
+    }
+  },
   Accordion : { content : { control : 'textarea' } },
   // control: 'classes' edits a class string with BuilderStyleInput (Tailwind suggestions and CSS preview).
   ScrollTopSentinel: { scrolledClasses: { control: 'classes' }, unScrolledClasses: { control: 'classes' } },

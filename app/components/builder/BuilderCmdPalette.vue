@@ -51,7 +51,7 @@
 				>{{ kindLabel(item) }}</span>
 				<!-- Inline thumbnail: the cached Library capture (Zaux components included), requested lazily while the row is in view. -->
 				<span class="grid h-[36px] w-[48px] shrink-0 place-items-center overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white" aria-hidden="true">
-					<img v-if="thumbnailOf(item)" :src="thumbnailOf(item)" alt="" loading="lazy" class="h-full w-full" :class="item.previewImage ? 'object-cover' : 'object-contain object-top'" />
+					<img v-if="thumbnailOf(item)" draggable="false" :src="thumbnailOf(item)" alt="" loading="lazy" class="h-full w-full" :class="item.previewImage ? 'object-cover' : 'object-contain object-top'" />
 					<span v-else-if="item.kind === 'element'" class="text-[16px] text-zaux-accent">{{ containers.includes(item.name) ? "▤" : "◇" }}</span>
 				</span>
 				<span class="min-w-0 flex-1">
@@ -101,7 +101,7 @@
 		>
 			<div class="relative grid aspect-[4/3] w-full shrink-0 place-items-center overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white">
 				<span v-if="!hasPreview(activeItem)" class="text-[48px] text-zaux-accent" aria-hidden="true">{{ containers.includes(activeItem.name) ? "▤" : "◇" }}</span>
-				<img v-else-if="previewImage" :src="previewImage" alt="" class="h-full w-full" :class="activeItem.previewImage ? 'object-cover' : 'object-contain object-top'" />
+				<img v-else-if="previewImage" draggable="false" :src="previewImage" alt="" class="h-full w-full" :class="activeItem.previewImage ? 'object-cover' : 'object-contain object-top'" />
 				<span v-else class="px-2 text-center text-[11px] text-zaux-dark-grey" :title="previewEntry?.error">
 					{{ translate(previewEntry?.status === 'error' ? 'zx_builder_thumbnail_error' : 'zx_builder_thumbnail_loading') }}
 				</span>

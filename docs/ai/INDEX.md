@@ -13,6 +13,7 @@ The project skill lives at `.agents/skills/zaux-builder-work/SKILL.md`. It is in
 Project session notes belong in `docs/ai/memory/`. Record concrete changes, checks and unresolved issues; do not treat plans or assumptions as verified behavior.
 
 6. [Property decorators](../property-decorators.md): component/prop registry, dynamic options and Inspector wiring.
+7. [Global components](../global-components.md): Component designer, shared library, version check, linked copies and Soft/Hard reset.
 
 ## Repository skills
 

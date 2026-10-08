@@ -33,7 +33,7 @@
 		>
 			<BuilderTemplates v-if="templatesOpen" />
 			<BuilderCanvas v-else>
-				<template #toolbar><BuilderPreviewControls /></template>
+				<template #toolbar><BuilderPreviewControls :backToTemplate="!designer" /></template>
 			</BuilderCanvas>
 		</main>
 		<div

@@ -59,11 +59,12 @@
 			</p>
 			<div class="zb-row mb-2 mt-1.5 flex gap-1 [&>*]:flex-1">
 				<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
-					<option value="starter">{{ translate("zx_builder_starter_package") }}</option>
-					<option value="workspace">
+					<!-- The Component designer exports single components only. -->
+					<option v-if="!designer" value="starter">{{ translate("zx_builder_starter_package") }}</option>
+					<option v-if="!designer" value="workspace">
 						{{ translate("zx_builder_workspace") }}
 					</option>
-					<option value="template">
+					<option v-if="!designer" value="template">
 						{{ translate("zx_builder_current_template") }}
 					</option>
 					<option v-if="activeDefinition" value="component">
@@ -369,7 +370,7 @@ export default defineComponent({
 		const name = ref(builder.modal.value.name ?? "");
 		const groupEnd = ref(builder.modal.value.endId ?? builder.modal.value.instanceId);
 		const groupCandidates = computed(() => freeGroupCandidates(builder.activeTemplate.value, builder.modal.value.instanceId));
-		const scope = ref(builder.modal.value.scope ?? "workspace");
+		const scope = ref(builder.modal.value.scope ?? (builder.designer ? "component" : "workspace"));
 		const format = ref(builder.modal.value.format ?? "json");
 		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
 		const includeImported = ref(true);

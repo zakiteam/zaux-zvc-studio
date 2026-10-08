@@ -104,7 +104,7 @@
                   :modelValue="readPositionValue(current(control), control)"
                   highlightWhenSet
                   :label="controlLabel(control) + ': ' + translate('zx_builder_style_custom')"
-                  :placeholder="translate(control.nonNegative ? 'zx_builder_style_dimension_placeholder' : control.integer ? 'zx_builder_style_integer_placeholder' : control.depth ? 'zx_builder_style_depth_placeholder' : 'zx_builder_style_length_placeholder')"
+                  :placeholder="translate(control.placeholder ?? (control.nonNegative ? 'zx_builder_style_dimension_placeholder' : control.integer ? 'zx_builder_style_integer_placeholder' : control.depth ? 'zx_builder_style_depth_placeholder' : 'zx_builder_style_length_placeholder'))"
                   :disabled="controlDisabled(control)"
                   class="mt-1 w-full min-w-0 text-[11px]"
                   @input="$event.target.setCustomValidity('')"
@@ -280,7 +280,7 @@ export default defineComponent({
     }
     function changePositionValue(control, event) {
       const value = positionValueClass(control, event.target.value);
-      event.target.setCustomValidity(value === null ? translate(control.nonNegative ? 'zx_builder_style_dimension_invalid' : control.integer ? 'zx_builder_style_integer_invalid' : 'zx_builder_style_length_invalid') : '');
+      event.target.setCustomValidity(value === null ? translate(control.invalid ?? (control.nonNegative ? 'zx_builder_style_dimension_invalid' : control.integer ? 'zx_builder_style_integer_invalid' : 'zx_builder_style_length_invalid')) : '');
       if (value === null) {
         event.target.reportValidity();
         return;

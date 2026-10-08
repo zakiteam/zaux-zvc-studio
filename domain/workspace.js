@@ -12,6 +12,8 @@ export function createDefinition(name = 'Component', kind = 'zvc') {
 }
 export function copyDefinition(definition, name = definition.name) {
   const copy = { ...clone(definition), id: uid(), name, exportName: definition.sourceKey && (definition.kind !== 'zvp' || name === definition.name) ? definition.exportName : exportName(name, definition.kind), tree: definition.tree.map(copyNode) };
+  // Global provenance belongs to the linked library copy only, never to instances or duplicates.
+  delete copy.global;
   for (const variant of copy.variants ?? []) {
     if (variant.content) variant.content.tree = variant.content.tree.map(copyNode);
   }
@@ -23,9 +25,18 @@ export function createInstance(definition) {
 export function createTemplate(name) { return { id: uid(), name, instances: [] }; }
 
 // Internal IDs stay scoped to the new document, preserving source/partial references.
-export function copyWorkspace(workspace, name) {
+// A copy is a new project: zauxVersion becomes its creation release; the last-edit release is kept.
+export function copyWorkspace(workspace, name, zauxVersion) {
   const now = new Date().toISOString();
-  return { ...clone(workspace), id: uid(), name, createdAt: now, updatedAt: now };
+  return { ...clone(workspace), id: uid(), name, createdAt: now, updatedAt: now, ...(zauxVersion ? { zauxCreatedVersion: zauxVersion } : {}) };
+}
+
+// Zaux release signatures: zauxCreatedVersion is set once when the project is created,
+// zauxEditedVersion on every edit. Projects saved before signatures have neither.
+export function signZauxVersion(workspace, version, { created = false } = {}) {
+  if (created) workspace.zauxCreatedVersion = version;
+  workspace.zauxEditedVersion = version;
+  return workspace;
 }
 
 export function createWorkspace() {

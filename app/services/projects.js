@@ -1,5 +1,6 @@
 import { useSupabaseClient } from './supabase.js';
 import { copyWorkspace } from '../../domain/workspace.js';
+import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 
 export async function listRemoteProjects(userId) {
   const supabase = useSupabaseClient();
@@ -29,7 +30,7 @@ export async function duplicateRemoteProject(id, suffix, userId) {
   const copySuffix = ' (' + suffix + ')';
   // Match the database's 100-character project name limit.
   const name = Array.from(original.name).slice(0, 100 - Array.from(copySuffix).length).join('').trimEnd() + copySuffix;
-  const document = copyWorkspace(original.document, name);
+  const document = copyWorkspace(original.document, name, zauxProjectVersion);
   const project = await createRemoteProject(document.name, document, userId);
   return { ...project, cover_image: document.coverImage ?? null };
 }

@@ -60,6 +60,10 @@ export default defineNuxtConfig({
     publicAssets: [{ dir: path('./vendor/zaux/public'), baseURL: '/' }]
   },
   app: { head: { title: 'Zaux Studio — Virtual Component Builder', htmlAttrs: { lang: 'it' }, link: [
+    // Generated from app-logo.png.
+    { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+    { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+    { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
     { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
     { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
     { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap' }

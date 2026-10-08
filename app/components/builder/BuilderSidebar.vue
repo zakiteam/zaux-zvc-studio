@@ -38,7 +38,7 @@
 			aria-labelledby="zb-left-tab-layers"
 			class="flex flex-col flex-1 min-h-0 zb-outline-panel"
 		>
-			<BuilderPages />
+			<BuilderPages v-if="!designer" />
 			<div
 				id="zb-outline-section-content"
 				class="flex-1 min-h-0 px-1 pb-2 overflow-auto zb-scroll"
@@ -53,11 +53,11 @@
 						<div class="flex shrink-0 items-center [&>.zb-button]:!w-[26px] [&>.zb-button]:!min-w-[26px] [&>.zb-button]:!p-0.5">
 							<BuilderButton variant="alt1" size="xs" icon="copy" iconOnly :label="translate('zx_builder_copy_node') + ' (Ctrl C)'" :disabled="!canCopyNode" @click="copySelectedNode()" />
 							<BuilderButton variant="alt1" size="xs" icon="document-add" iconOnly :label="translate('zx_builder_paste_node') + ' (Ctrl V)'" :disabled="!canPasteNode" @click="pasteNode()" />
-							<BuilderButton v-if="mode === 'library'" variant="alt1" size="xs" icon="loop" iconOnly
+							<BuilderButton v-if="mode === 'library' && !designer" variant="alt1" size="xs" icon="loop" iconOnly
 								:label="translate('zx_builder_sync_instances') + ': ' + translate('zx_builder_sync_instances_hint')"
 								:disabled="!canEditRemote || !activeDefinition"
 								@click="syncActiveLibraryInstances" />
-							<BuilderButton v-if="mode === 'library'" variant="alt1" size="xs" icon="refresh" iconOnly
+							<BuilderButton v-if="mode === 'library' && !designer" variant="alt1" size="xs" icon="refresh" iconOnly
 								:label="translate('zx_builder_reset_instances') + ': ' + translate('zx_builder_reset_instances_hint')"
 								:disabled="!canEditRemote || !activeDefinition"
 								@click="modal = { type: 'reset-instances', name: activeDefinition.name }" />
@@ -70,8 +70,8 @@
 					<div v-if="hintsOpen" id="zb-outline-hints" class="mb-1 space-y-0.5 rounded-xxs bg-zaux-light p-1 text-[10px] leading-relaxed text-zaux-dark-grey">
 						<p>{{ translate('zx_builder_outline_shift_hint') }}</p>
 						<p>{{ translate("zx_builder_outline_drag_hint") }}</p>
-						<p v-if="mode === 'library'">{{ translate('zx_builder_sync_instances_hint') }}</p>
-						<p v-if="mode === 'library'">{{ translate('zx_builder_reset_instances_hint') }}</p>
+						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_sync_instances_hint') }}</p>
+						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_reset_instances_hint') }}</p>
 					</div>
 					<button v-if="clipboardNodeName" type="button" class="mb-1 flex w-full min-w-0 items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-accent/50 px-1 py-0.5 text-left text-[10px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
 						<span aria-hidden="true">⠿</span><span class="truncate">{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}</span>
@@ -330,14 +330,14 @@
 						v-model="libraryCategory"
 						type="select"
 						:label="translate('zx_builder_library_category')"
-						:options="[
-							{ value: 'imported', label: translate('zx_builder_library_imported') },
-							{ value: 'project', label: translate('zx_builder_library_project') },
-						]"
+						:options="categoryOptions"
 					/>
 				</div>
 			</div>
 			<div class="flex-1 min-h-0 px-1.5 py-1.5 overflow-auto zb-scroll">
+				<!-- Shared global components: linked copies, import with version check and resets. -->
+				<BuilderGlobalLibrary v-if="libraryCategory === 'global' && !designer" @start-drag="drag" />
+				<template v-else>
 				<p class="mb-1 text-[10px] text-zaux-dark-grey" role="status">
 					{{ filteredLibrary.length }} {{ translate("zx_builder_" + libraryKind) }}
 				</p>
@@ -367,7 +367,7 @@
 						:class="{
 							active: mode === 'library' && libraryId === definition.id,
 						}"
-						:draggable="canEditRemote"
+						:draggable="canEditRemote && (!designer || definition.kind === 'zvp')"
 						@dragstart="
 							drag(
 								$event,
@@ -378,14 +378,15 @@
 						"
 					>
 						<BuilderButton
+							v-if="!designer"
 							:label="translate('zx_builder_add_to_template')"
-							@click.stop="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
+							@click.stop="insertDefinition(definition)"
 							variant="light" size="xs" class="absolute z-30 !hidden -translate-x-1/2 group-hover:!block left-1/2 top-6"
 						>
 						</BuilderButton>
 						<BuilderLibraryThumbnail
 							:definition="definition"
-							@insert="definition.kind === 'zvp' ? insertPartial(definition.id) : insertInstance(definition.id)"
+							@insert="insertDefinition(definition)"
 							@choose-image="previewId = definition.id"
 						/>
 						<div class="zb-card-body relative px-1 pb-0.5 pt-0.5">
@@ -446,8 +447,9 @@
 				<p
 					class="zb-help !mb-2 !mt-1.5 text-[10px] leading-[1.65] text-zaux-dark-grey"
 				>
-					{{ translate("zx_builder_library_drag") }}
+					{{ translate(designer ? "zx_builder_global_designer_hint" : "zx_builder_library_drag") }}
 				</p>
+				</template>
 			</div>
 		</section>
 
@@ -637,6 +639,18 @@ export default defineComponent({
 				.querySelector("#library-kind-" + builder.libraryKind.value)
 				?.focus();
 		}
+		// In the Component designer the "project" category holds the global components being edited.
+		const categoryOptions = computed(() => [
+			{ value: "imported", label: builder.translate("zx_builder_library_imported") },
+			{ value: "project", label: builder.translate(builder.designer ? "zx_builder_global_category" : "zx_builder_library_project") },
+			...(builder.designer ? [] : [{ value: "global", label: builder.translate("zx_builder_global_category") }]),
+		]);
+		// Designer cards open the component (there is no template); project cards insert it.
+		function insertDefinition(definition) {
+			if (builder.designer) builder.selectLibrary(definition.id);
+			else if (definition.kind === "zvp") builder.insertPartial(definition.id);
+			else builder.insertInstance(definition.id);
+		}
 		const filteredLibrary = computed(() => {
 			const query = builder.librarySearch.value.trim().toLowerCase();
 			return builder.document.value.library.filter((definition) => {
@@ -644,6 +658,8 @@ export default defineComponent({
 				return (
 					(definition.kind ?? "zvc") === builder.libraryKind.value &&
 					imported === (builder.libraryCategory.value === "imported") &&
+					// Linked global copies are listed in the Global category.
+					!definition.global &&
 					[
 						definition.name,
 						definition.exportName,
@@ -693,9 +709,10 @@ export default defineComponent({
 		// Right-click menu on a ZVC instance name in the outline.
 		function instanceContextItems(instance) {
 			const original = builder.document.value.library.some((item) => item.id === instance.sourceId);
+			const linked = builder.document.value.library.some((item) => item.id === instance.sourceId && item.global);
 			const editable = builder.canEditRemote.value;
 			return [
-				{ id: "edit-library", icon: "enter", label: builder.translate("zx_builder_edit_library"), disabled: !original },
+				{ id: "edit-library", icon: "enter", label: builder.translate(linked ? "zx_builder_global_edit" : "zx_builder_edit_library"), disabled: !original },
 				{ id: "rename", icon: "edit", label: builder.translate("zx_builder_rename"), disabled: !editable },
 				{ id: "export", icon: "download", label: builder.translate("zx_builder_export_instance") },
 				{ id: "sync", icon: "refresh", label: builder.translate("zx_builder_restore_library"), disabled: !editable || !original },
@@ -704,6 +721,9 @@ export default defineComponent({
 		}
 		function instanceContextAction(item, instance) {
 			if (item.id === "rename") builder.modal.value = { type: "rename", kind: "instance", id: instance.id, name: instance.name };
+			// Instances of a global component reset through the global dialog, which can first pull its latest revision.
+			else if ((item.id === "sync" || item.id === "reset") && builder.document.value.library.some((entry) => entry.id === instance.sourceId && entry.global))
+				builder.requestGlobalSync(instance.sourceId, { instance: instance.id, reset: item.id === "sync" ? "soft" : "hard" });
 			else if (item.id === "sync") builder.restoreActiveInstance();
 			else if (item.id === "reset") builder.resetInstance(instance.id);
 			else if (item.id === "edit-library") builder.selectLibrary(instance.sourceId);
@@ -721,6 +741,8 @@ export default defineComponent({
 			springTab,
 			cancelSpring,
 			createItems,
+			categoryOptions,
+			insertDefinition,
 			libraryKindKeydown,
 			elementDestination,
 			search,

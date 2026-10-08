@@ -26,8 +26,13 @@
 			<BuilderModeSwitcher class="shrink-0" />
 			<span class="h-[20px] w-px shrink-0 bg-zaux-light-grey" aria-hidden="true" />
 
+			<!-- Component designer: no project or template, only the shared global library. -->
+			<div v-if="designer" class="flex min-w-0 shrink items-center gap-1 px-1">
+				<span class="truncate text-[12px] font-semibold">{{ translate("zx_builder_global_designer") }}</span>
+				<span class="shrink-0 rounded-xxs bg-zaux-accent/15 px-0.5 py-0.25 font-mono text-[9px] text-zaux-accent" :title="translate('zx_builder_global_signature_hint')">{{ translate("zx_builder_global_signed", { version: zauxProjectVersion }) }}</span>
+			</div>
 			<!-- Breadcrumb: project / template. -->
-			<div class="flex min-w-0 max-w-[360px] shrink items-center gap-0.25">
+			<div v-else class="flex min-w-0 max-w-[360px] shrink items-center gap-0.25">
 				<BuilderDropdown
 					class="min-w-0"
 					:label="activeRemoteProject?.name || translate('zx_builder_local')"
@@ -94,7 +99,7 @@
 			<div class="flex shrink-0 items-center gap-0.5">
 				<span
 					class="mr-1 max-w-[140px] truncate text-[11px] text-zaux-dark-grey max-[1300px]:hidden"
-					:class="{ '!text-utility-error': saveStatus === 'storage_error' }"
+					:class="{ '!text-utility-error': ['storage_error', 'global_error', 'global_conflict'].includes(saveStatus) }"
 					role="status"
 					>{{ translate("zx_builder_" + saveStatus) }}</span
 				>
@@ -180,6 +185,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { useAuth } from "../../composables/useAuth.js";
 import { useStudioTheme } from "../../composables/useStudioTheme.js";
+import { zauxProjectVersion } from "../../../integrations/zaux/version.js";
 
 export default defineComponent({
 	setup() {
@@ -191,6 +197,7 @@ export default defineComponent({
 		watch(
 			() => builder.activeRemoteProject.value?.id,
 			(id) => {
+				if (builder.designer) return;
 				const path = "/editor/" + (id ?? "local");
 				if (route.path !== path) router.replace(path);
 			},
@@ -213,6 +220,15 @@ export default defineComponent({
 		const mainMenuItems = computed(() => {
 			const t = builder.translate;
 			const busy = builder.thumbnailBatch.value.running || !builder.workspaceReady.value;
+			// Component designer: no project bridge, and global thumbnails are generated from the hub only.
+			if (builder.designer) return [
+				{ id: "hub", label: t("zx_builder_hub_back"), icon: "arrow-up-right" },
+				{ id: "global-library", label: t("zx_builder_global_library") },
+				{ id: "import", label: t("zx_builder_import"), icon: "upload", separator: true },
+				{ id: "export", label: t("zx_builder_export"), icon: "download" },
+				{ id: "media", label: t("zx_builder_media_library"), separator: true },
+				{ id: "fonts", label: t("zx_builder_fonts_project") },
+			];
 			return [
 				{ id: "hub", label: t("zx_builder_hub_back"), icon: "arrow-up-right" },
 				{ id: "import", label: t("zx_builder_import"), icon: "upload", separator: true },
@@ -286,8 +302,8 @@ export default defineComponent({
 				mediaMode.value = item.id === "cover" ? "cover" : "library";
 				return;
 			}
-			if (item.id === "hub") {
-				await router.push("/");
+			if (item.id === "hub" || item.id === "global-library") {
+				await router.push(item.id === "hub" ? "/" : "/components");
 				return;
 			}
 			if (item.projectId) {
@@ -355,6 +371,7 @@ export default defineComponent({
 		}
 		return {
 			studioLogo,
+			zauxProjectVersion,
 			...builder,
 			user: auth.user,
 			projectOpening,

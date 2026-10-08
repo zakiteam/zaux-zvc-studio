@@ -9,7 +9,7 @@
         </div>
         <BuilderInput v-model="search" type="search" :label="translate('zx_builder_hub_search')" :placeholder="translate('zx_builder_hub_search')"
           class="w-[280px] [&_*]:!py-1 max-w-full !bg-zaux-white max-[700px]:w-full max-[700px]:order-last" />
-        <BuilderButton variant="alt1" icon="refresh" iconOnly :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
+        <BuilderButton variant="light1" icon="refresh" iconOnly :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
       </div>
       <div class="flex flex-wrap items-center gap-1 px-3 pb-1 max-[700px]:px-1.5">
         <div class="flex gap-[2px] rounded-xxs bg-zaux-white p-[2px]" role="group" :aria-label="translate('zx_builder_hub_filter')">
@@ -104,7 +104,7 @@
       <!-- List view. -->
       <div v-else role="table" :aria-label="translate('zx_builder_projects')" class="overflow-hidden rounded-xs border-slim border-zaux-light-grey bg-zaux-white">
         <div role="row" class="grid grid-cols-[64px_minmax(0,1fr)_140px_180px_40px] items-center gap-1.5 border-b-slim border-zaux-light-grey px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zaux-dark-grey max-[800px]:grid-cols-[64px_minmax(0,1fr)_40px]">
-          <span role="columnheader" class="sr-only">{{ translat('zx_builder_hub_col_cover') }}</span>
+          <span role="columnheader" class="sr-only">{{ translate('zx_builder_hub_col_cover') }}</span>
           <span role="columnheader" class="col-start-2">{{ translate('zx_builder_hub_col_name') }}</span>
           <span role="columnheader" class="max-[800px]:hidden">{{ translate('zx_builder_hub_col_access') }}</span>
           <span role="columnheader" class="max-[800px]:hidden">{{ translate('zx_builder_hub_col_updated') }}</span>

@@ -8,6 +8,7 @@ The workspace is plain JSON:
 {
   schemaVersion: 1,
   id, name, createdAt, updatedAt,
+  zauxCreatedVersion, zauxEditedVersion, // optional Zaux release signatures
   library: [definition],
   templates: [{ id, name, instances: [instance] }]
 }
@@ -89,6 +90,16 @@ Zaux implementations or `buildNode()` data.
 
 Runtime verification is left to the user; no automated tests, browser checks,
 validators or production builds were run.
+
+## Global component links
+
+Optional `definition.global` marks a project library definition as the linked copy of a global component: `{ id, revision, zauxVersion, updatedAt }`, where `id` equals `definition.id` (the global uuid), `revision` is the imported global revision and `zauxVersion` its signature. It is plain JSON, validated on load, and never copied into instances, duplicates or captured partials. Documents without it are unchanged. See [global components](global-components.md).
+
+## Zaux version signatures
+
+Optional `workspace.zauxCreatedVersion` and `workspace.zauxEditedVersion` strings (at most 80 characters) record the running Zaux release (`integrations/zaux/version.js#zauxProjectVersion`, the installed `vendor/zaux/package.json#version`). `signZauxVersion` in `domain/workspace.js` sets both when a workspace is created and `zauxEditedVersion` on every commit, undo and redo. `copyWorkspace` (project duplicate) sets the creation version to the running release and keeps the last-edit version. Documents saved before these fields stay valid and are not back-filled.
+
+When a project opens (local editor or remote project), `checkProjectZauxVersion` in `useBuilder.js` compares `zauxEditedVersion` with the running release using `zauxCompatibility` (a leading `v` is ignored). A mismatch, or a missing signature, opens `BuilderZauxVersionDialog` (`{ type: 'zaux-version', scope: 'project' }`), which cannot be dismissed: "Back to projects" leaves to the hub, "Continue" requires the risk checkbox and is remembered for that project and signature until the editor unmounts. The next edit re-signs the project. The Component designer is not checked.
 
 ## Image references
 
@@ -185,7 +196,7 @@ CodeMirror provides the shared JSON, CSS and JavaScript editor, including read-o
 
 Textarea fields (including native HTML fields) offer **Text / HTML** and **Rich text** modes through `BuilderValue`. The raw textarea remains the default. Changing mode does not emit a new value; visual edits store an HTML string in the same field, without changing the document schema or field metadata. The source mode exposes that HTML without stripping formatting. Rendering formatted content requires a component property that supports HTML; plain-text properties still display text literally.
 
-`BuilderRichTextEditor` loads Tiptap lazily and provides grouped icon controls for bold, italic, underline, strike, headings, quotes, lists, clearing marks and local undo/redo. Icons use the Zaux button/icon components with a project-owned SVG sprite. TableKit adds 3-by-3 tables with a header row and contextual row/column insertion and deletion, header toggling, cell merging/splitting and table deletion. Table commands are enabled according to the current selection. Table elements and structural attributes survive HTML sanitization; styling remains owned by the rendering component in the preview. Plain-text line breaks are preserved on entry. DOMPurify filters initial HTML, pasted HTML and emitted HTML using a small formatting allowlist. Editing visually normalizes unsupported markup; retain source mode for arbitrary HTML. Empty rich text stores an empty string. Disabled fields stay non-editable, external value changes reset local editor history, and native field controls remount when selecting another definition. Editor instances and mode preferences are not persisted in workspace JSON.
+`BuilderRichTextEditor` loads Tiptap lazily and provides grouped icon controls for local undo/redo, a block-type menu (paragraph, H1–H6), quotes, bold, italic, underline, strike, clearing marks, links/anchors, lists, tables and a lorem ipsum menu (one sentence, 1, 3 or 5 paragraphs; text from `domain/lorem-ipsum.js`). Icons are masked SVGs in `public/assets/builder/richtext-*.svg`, styled like the Style tab quickpad. The link bar accepts http(s), mailto, tel, `#id` anchors and relative paths (`richTextHref` in `app/services/richtext.js`; bare hosts get `https://`, bare emails `mailto:`); target `_blank` and `rel="noopener noreferrer"` are set only when "open in a new tab" is checked. An expand button moves the same editor into a full-screen `BuilderModal`, as the code editor does. TableKit adds 3-by-3 tables with a header row and contextual row/column insertion and deletion, header toggling, cell merging/splitting and table deletion. Table commands are enabled according to the current selection. Table elements, `h1`–`h6`, `a[href|target|rel]` and structural attributes survive HTML sanitization; styling remains owned by the rendering component in the preview. Plain-text line breaks are preserved on entry. DOMPurify filters initial HTML, pasted HTML and emitted HTML using a small formatting allowlist. Editing visually normalizes unsupported markup; retain source mode for arbitrary HTML. Empty rich text stores an empty string. Disabled fields stay non-editable, external value changes reset local editor history, and native field controls remount when selecting another definition. Editor instances and mode preferences are not persisted in workspace JSON.
 
 Dependencies follow the [official Tiptap Vue integration](https://tiptap.dev/docs/editor/getting-started/install/vue3). Runtime behavior is pending manual browser verification; no automated tests or production builds were run for this change.
 
@@ -193,7 +204,7 @@ The additional **HTML** mode uses CodeMirror syntax highlighting and indentation
 
 ## Restore an instance from the library
 
-The instance name in Structure has a right-click menu: **Rename**, **Sync with original** (restore structure and styles from the library definition `sourceId`, keeping data and properties), **Reset instance** (replace the instance in place with a fresh `createInstance` copy of the original, discarding data and edits; `useBuilder.resetInstance`) and **Edit in library**. A missing source disables the library actions. Every change goes through normal undo, validation and persistence; unmapped properties after a sync stay visible below the selected instance.
+The instance name in Structure has a right-click menu: **Rename**, **Soft reset** (formerly Sync with original: restore structure and styles from the library definition `sourceId`, keeping data and properties), **Hard reset** (formerly Reset instance: replace the instance in place with a fresh `createInstance` copy of the original, discarding data and edits; `useBuilder.resetInstance`) and **Edit in library**. A missing source disables the library actions. Every change goes through normal undo, validation and persistence; unmapped properties after a sync stay visible below the selected instance.
 
 Restoration retains effective data values and visual node properties, including false, zero, empty strings, null and obsolete data keys. Library structure and CSS replace the instance structure and CSS. Class/style properties (including nested class/style settings and CSS-editor fields) use library values. Arrays retain authored content and use library styling at corresponding positions. New fields use library defaults. Native instances regenerate from their preserved data; generated nodes are not patched.
 

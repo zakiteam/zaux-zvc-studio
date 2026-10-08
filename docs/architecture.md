@@ -19,6 +19,9 @@
 | app/services/zaux-bridge.js | File System Access API IO: picker, listing, detection and writes |
 | app/components/builder/BuilderProjectBridge.vue | Filesystem picker modal and project-link export |
 | integrations/zaux/version.js | Builder's pinned Zaux core version |
+| domain/global-components.js, app/services/global-components.js | Global ZVC/ZVP library: records, diff, version check, linked copies; Supabase IO |
+| app/composables/globalDesigner.js, globalLinks.js | Component designer persistence; project-side import and Soft/Hard reset of global components |
+| app/pages/designer.vue, app/pages/components.vue | Component designer editor; hub management panel and global thumbnails |
 | integrations/zaux | Read-only dependency adapter and generated files |
 | scripts/zaux | Install the pinned Zaux release; generate registries and stylesheet imports outside Zaux |
 | server/api/preview-css.post.js | Compile Tailwind classes authored at runtime |
@@ -339,3 +342,6 @@ Runtime verification remains manual.
 ## Export dialog entry point and canvas context menu
 `useBuilder.openExport({ scope, format })` is the single way to open the export dialog: it sets `modal` to `{ type: 'export', scope, format }`, which `BuilderDialog.vue` already reads as the initial select values (`component` scope falls back to the dialog default when there is no active definition). The header Export button, the Code tab buttons, Ctrl/Cmd+E (`export-component` in `layoutShortcut`, forwarded from the iframe) and the canvas menu use it.
 Right-clicking the canvas in edit mode selects the target like a click (`app/pages/preview.vue`) and posts `context-menu` with iframe coordinates; `BuilderCanvas.vue` scales them by the frame rectangle and opens a `BuilderDropdown` context menu through its exposed `openAt(x, y)` (a click in the iframe closes it via the `select` message). Items: Edit in library (template mode, needs the instance's original), Export Zaux JSON (`runtime`) and Export ZVC JavaScript (`js`), both on the `component` scope.
+
+## Global components and Component designer
+`/designer` mounts `BuilderWorkspace designer`: the same editor in library mode on a synthetic workspace whose library is the shared Supabase table `global_components` plus source bases. `createBuilder({ designer })` swaps local/remote project persistence for `globalDesigner.js` (per-component diff, revision-matched writes, Zaux signature) and keeps tokens/themes as session-only trials. Projects list the catalog in the Library category Global (`BuilderGlobalLibrary.vue`) and link copies through `BuilderGlobalDialog.vue` after the version check; editing always opens the designer in a new tab. `/components` (hub) manages the library and generates thumbnails. See [global components](global-components.md).

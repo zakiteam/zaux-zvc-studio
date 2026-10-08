@@ -72,8 +72,9 @@ export default defineComponent({
       error.value = '';
       try {
         const id = String(route.params.id);
-        // Remote links retain the same project access checks as the editor.
-        const document = id === 'local' ? null : (await getRemoteProject(id)).document;
+        // Remote links retain the same project access checks as the editor. The Component designer
+        // has no project document: its preview always comes from the opening snapshot.
+        const document = id === 'local' || id === 'designer' ? null : (await getRemoteProject(id)).document;
         if (token !== loadGeneration) return;
         remoteDocument = document;
         authorized = true;
