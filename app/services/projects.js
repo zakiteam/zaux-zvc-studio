@@ -1,5 +1,5 @@
 import { useSupabaseClient } from './supabase.js';
-import { copyWorkspace } from '../../domain/workspace.js';
+import { copyWorkspace, createBlankWorkspace, signZauxVersion } from '../../domain/workspace.js';
 import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 
 export async function listRemoteProjects(userId) {
@@ -23,6 +23,11 @@ export async function createRemoteProject(name, document, userId) {
   const { data, error } = await useSupabaseClient().from('projects').insert({ name, owner_id: userId, document, schema_version: document.schemaVersion ?? 1 }).select('id, name, owner_id, revision, updated_at').single();
   if (error) throw error;
   return { ...data, role: 'owner' };
+}
+
+export async function createBlankRemoteProject(name, templateName, userId) {
+  const document = signZauxVersion(createBlankWorkspace(name, templateName), zauxProjectVersion, { created: true });
+  return { ...await createRemoteProject(name, document, userId), cover_image: null };
 }
 
 export async function duplicateRemoteProject(id, suffix, userId) {

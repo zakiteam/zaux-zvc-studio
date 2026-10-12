@@ -51,68 +51,7 @@
             </button>
         </summary>
         <div class="grid grid-cols-2 py-2 gap-x-2 gap-y-3">
-          <div v-for="control in visibleControls(section)" :key="control.id" class="min-w-0" :class="{ 'col-span-2': control.illustrated }">
-            <BuilderStyleField
-              v-if="control.illustrated"
-              :value="current(control)"
-              :important="important(control)"
-              :label="controlLabel(control)"
-              :disabled="controlDisabled(control)"
-              @update:important="changeImportant(control, $event)"
-              class="[&_.zb-builder-important-btn]:-top-0.5"
-            >
-              <BuilderStyleChoices
-                :modelValue="current(control)"
-                :label="controlLabel(control)"
-                :options="illustratedOptions(control)"
-                :disabled="controlDisabled(control)"
-                :showLabels="control.id === 'display'"
-                :iconClass="alignmentIconClass(control.id)"
-                @update:modelValue="change(control, $event)"
-              />
-            </BuilderStyleField>
-            <template v-else>
-              <span class="mb-0.5 block text-[10px]">{{ controlLabel(control) }}</span>
-              <BuilderStyleField
-                :value="current(control)"
-                :important="important(control)"
-                :label="controlLabel(control)"
-                :disabled="controlDisabled(control)"
-                @update:important="changeImportant(control, $event)"
-              >
-                <BuilderStyleSelect
-                  :key="scope"
-                  :color="control.color"
-                  :modelValue="current(control)"
-                  :options="controlOptions(control)"
-                  :label="controlLabel(control)"
-                  :disabled="controlDisabled(control)"
-                  class="w-full min-w-0 text-[11px]"
-                  @update:modelValue="change(control, $event)"
-                />
-              </BuilderStyleField>
-              <BuilderStyleField
-                v-if="control.length || control.integer"
-                :value="readPositionValue(current(control), control)"
-                :important="important(control)"
-                :label="controlLabel(control)"
-                :disabled="controlDisabled(control)"
-                @update:important="changeImportant(control, $event)"
-              >
-                <BuilderInput
-                  :key="scope + current(control)"
-                  :modelValue="readPositionValue(current(control), control)"
-                  highlightWhenSet
-                  :label="controlLabel(control) + ': ' + translate('zx_builder_style_custom')"
-                  :placeholder="translate(control.placeholder ?? (control.nonNegative ? 'zx_builder_style_dimension_placeholder' : control.integer ? 'zx_builder_style_integer_placeholder' : control.depth ? 'zx_builder_style_depth_placeholder' : 'zx_builder_style_length_placeholder'))"
-                  :disabled="controlDisabled(control)"
-                  class="mt-1 w-full min-w-0 text-[11px]"
-                  @input="$event.target.setCustomValidity('')"
-                  @change="changePositionValue(control, $event)"
-                />
-              </BuilderStyleField>
-            </template>
-          </div>
+          <BuilderStyleControl v-for="control in visibleControls(section)" :key="control.id" :control="control" :editor="editor" />
         </div>
       </details>
     </fieldset>
@@ -122,9 +61,10 @@
 <script>
 import { computed, defineComponent, ref, watch } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
-import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses, readStyleClass, positionValueClass, readPositionValue } from '../../../../../domain/node-styles.js';
+import { useNodeStyleEditor } from '../../../../composables/useNodeStyleEditor.js';
+import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses } from '../../../../../domain/node-styles.js';
 import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
-import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, setResponsiveImportant, needsResponsiveBase, hasResponsiveStyle, resetResponsiveStyles } from '../../../../../domain/responsive-node-styles.js';
+import { hasResponsiveStyle, resetResponsiveStyles } from '../../../../../domain/responsive-node-styles.js';
 import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
 import { nodeStyleSections, styleBreakpoints } from '../../../../../integrations/zaux/controls/node-style-controls.js';
 import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
@@ -135,8 +75,15 @@ export default defineComponent({
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const scope = ref('');
-    const editError = ref('');
-    watch([scope, () => props.nodeId], () => { editError.value = ''; });
+    // Control reading/writing is shared with Quick style; this component adds scopes and image styles.
+    const editor = useNodeStyleEditor({
+      classes: () => props.modelValue,
+      scope,
+      disabled: () => props.disabled,
+      target: () => props.nodeId,
+      onChange: value => emit('update:modelValue', value)
+    });
+    const { editError, editable, granular, visibleControls } = editor;
     const visibility = computed(() => styleVisibility(scope.value));
     const filteredSections = computed(() => visibleStyleSections(nodeStyleSections, visibility.value));
     watch(scope, value => emit('update:scope', value), { immediate: true });
@@ -145,9 +92,7 @@ export default defineComponent({
       if (preferredScope !== null) scope.value = preferredScope;
       else if (nodeId !== previousNodeId) scope.value = '';
     }, { immediate: true });
-    const granular = ref({ border: false, rounding: false, padding: false, margin: false });
     const imageTarget = computed(() => imageStyleTarget(props.nodeName));
-    const editable = computed(() => literalClasses(props.modelValue) !== null);
     const scopeOptions = computed(() => [{ value: '', label: translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }, ...(descendingStyles ? [...styleBreakpoints].reverse() : styleBreakpoints)]);
     const styleControls = computed(() => [
       ...nodeStyleSections.flatMap(section => section.controls),
@@ -186,112 +131,7 @@ export default defineComponent({
       emit('update:viewportStyles', patch);
       if (scope.value === value) scope.value = '';
     }
-    const current = control => readResponsiveStyle(props.modelValue, control, scope.value).replace(/^!/, '');
-    const important = control => readResponsiveImportant(props.modelValue, control, scope.value);
-    const controlDisabled = control => props.disabled || !editable.value || needsResponsiveBase(props.modelValue, control, scope.value);
-    function applyEdit(result) {
-      editError.value = result.error || '';
-      if (!result.error && result.value !== props.modelValue) emit('update:modelValue', result.value);
-    }
-    function changeImportant(control, enabled) {
-      if (props.disabled || !editable.value) return;
-      applyEdit(setResponsiveImportant(props.modelValue, control, enabled, scope.value));
-    }
-    function inheritedLayoutClass(id) {
-      const layout = nodeStyleSections.find(section => section.id === 'layout');
-      const control = layout.controls.find(item => item.id === id);
-      if (descendingStyles) return readResponsiveStyle(props.modelValue, control, scope.value).replace(/^!/, '');
-      const breakpointIndex = styleBreakpoints.findIndex(item => item.value === scope.value);
-      const scopes = ['', ...styleBreakpoints.slice(0, breakpointIndex + 1).map(item => item.value)];
-      let value = '';
-      for (const prefix of scopes) {
-        const candidate = readStyleClass(props.modelValue, control, prefix);
-        if (candidate && (!value.startsWith('!') || candidate.startsWith('!'))) value = candidate;
-      }
-      return value.replace(/^!/, '');
-    }
-    function visibleControls(section) {
-      if (section.globalControls) return granular.value[section.id] ? section.controls : section.globalControls;
-      if (section.id !== 'layout') return section.controls;
-      // Seed flex/grid baselines even when only smaller viewports use that layout.
-      if (descendingStyles && !scope.value) return section.controls;
-      const display = inheritedLayoutClass('display');
-      // Show layout-specific controls only for an authored flex/grid layout.
-
-      const flex = ['flex', 'inline-flex'].includes(display);
-      const grid = ['grid', 'inline-grid'].includes(display);
-      return section.controls.filter(control => {
-        if (['direction', 'wrap'].includes(control.id)) return flex;
-        if (control.id === 'columns') return grid;
-        if (['align', 'justify', 'gap_x', 'gap_y'].includes(control.id)) return flex || grid;
-        return true;
-      });
-    }
-    function alignmentAxis(id) {
-      if (!['align', 'justify'].includes(id)) return '';
-      const display = inheritedLayoutClass('display');
-      const flex = !display || ['flex', 'inline-flex'].includes(display);
-      const column = flex && inheritedLayoutClass('direction').startsWith('flex-col');
-      return (id === 'align' ? !column : column) ? 'vertical' : 'horizontal';
-    }
-    function controlLabel(control) {
-      if (control.sideLabel) return translate(control.label) + ' · ' + translate(control.sideLabel);
-      const axis = alignmentAxis(control.id);
-      return translate(axis ? `zx_builder_style_${control.id}_${axis}` : control.label);
-    }
-    function illustratedOptions(control) {
-      const axis = alignmentAxis(control.id);
-      const direction = inheritedLayoutClass('direction');
-      const reversed = control.id === 'justify' && direction.endsWith('-reverse')
-        && ['', 'flex', 'inline-flex'].includes(inheritedLayoutClass('display'));
-      return control.options.map(option => {
-        let label = translate(option.label);
-        if (axis && /-(start|end)$/.test(option.value)) {
-          const end = option.value.endsWith('-end') !== reversed;
-          const side = axis === 'vertical' ? (end ? 'bottom' : 'top') : (end ? 'right' : 'left');
-          label = translate(`zx_builder_style_alignment_${side}`);
-        }
-        return { ...option, label };
-      });
-    }
-    function alignmentIconClass(id) {
-      const display = inheritedLayoutClass('display');
-      if (display && !['flex', 'inline-flex'].includes(display)) return '';
-      const direction = inheritedLayoutClass('direction');
-      if (id === 'align') return direction.startsWith('flex-col') ? '-rotate-90' : '';
-      if (id !== 'justify') return '';
-      return {
-        'flex-row-reverse': '-scale-x-100',
-        'flex-col': 'rotate-90',
-        'flex-col-reverse': '-rotate-90'
-      }[direction] ?? '';
-    }
-    function controlOptions(control) {
-      const value = current(control);
-      return [
-        { value: '', label: translate(descendingStyles && scope.value ? 'zx_builder_style_responsive_reset' : 'zx_builder_style_unset') },
-        ...(value && !control.options.some(option => option.value === value)
-          ? [{ value, label: value === '__mixed__' ? translate('zx_builder_style_mixed') : `${translate('zx_builder_style_custom')}: ${value}` }] : []),
-        ...control.options.map(option => ({
-          ...option,
-          label: translate(option.label) + (option.modeLabel ? ' · ' + translate(option.modeLabel) : '')
-        }))
-      ];
-    }
-    function changePositionValue(control, event) {
-      const value = positionValueClass(control, event.target.value);
-      event.target.setCustomValidity(value === null ? translate(control.invalid ?? (control.nonNegative ? 'zx_builder_style_dimension_invalid' : control.integer ? 'zx_builder_style_integer_invalid' : 'zx_builder_style_length_invalid')) : '');
-      if (value === null) {
-        event.target.reportValidity();
-        return;
-      }
-      change(control, value);
-    }
-    function change(control, value) {
-      if (!editable.value || props.disabled) return;
-      applyEdit(replaceResponsiveStyle(props.modelValue, control, value, scope.value));
-    }
-    return { descendingStyles, editError, controlDisabled, visibility, filteredSections, configuredScopes, selectScope, resetScope, important, changeImportant, granular, imageTarget, translate, scope, scopeOptions, visibleControls, controlLabel, illustratedOptions, alignmentIconClass, editable, nodeStyleSections, current, controlOptions, change, changePositionValue, readPositionValue };
+    return { descendingStyles, editor, editError, visibility, filteredSections, configuredScopes, selectScope, resetScope, granular, imageTarget, translate, scope, scopeOptions, visibleControls, editable };
   }
 });
 </script>

@@ -24,7 +24,8 @@
               class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
               :aria-expanded="!collapsedOutline.has('node:' + instance + ':' + node.id)"
               :aria-label="translate(collapsedOutline.has('node:' + instance + ':' + node.id) ? 'zx_builder_expand' : 'zx_builder_collapse') + ': ' + node.name"
-              @click.stop="toggleOutline('node:' + instance + ':' + node.id)"
+              :title="translate('zx_builder_outline_branch_toggle')"
+              @click.stop="toggleRow(node.id, $event)"
               @dragstart.stop.prevent
             ><span aria-hidden="true">{{ collapsedOutline.has('node:' + instance + ':' + node.id) ? '▸' : '▾' }}</span></button>
             <span v-else aria-hidden="true" class="w-[24px] shrink-0 text-center text-[10px] text-zaux-dark-grey">&#9671;</span>
@@ -108,7 +109,12 @@
         builder.selectInstance(props.instance, id); builder.deleteNode();
       }
       function revealNode(id, event) { builder.selectOutlineRow(props.instance, id, event.shiftKey); if (!event.shiftKey) builder.reveal(props.instance, id); }
-      return { ...builder, outlineDrag, contextItems, contextAction, duplicateHere, deleteHere, revealNode };
+      // Alt+click toggles the whole branch below the row.
+      function toggleRow(id, event) {
+        if (event.altKey) builder.toggleOutlineBranch(props.instance, id);
+        else builder.toggleOutline('node:' + props.instance + ':' + id);
+      }
+      return { ...builder, outlineDrag, contextItems, contextAction, duplicateHere, deleteHere, revealNode, toggleRow };
     }
   });
   

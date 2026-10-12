@@ -78,8 +78,8 @@ export function nodeDeselectShortcut(event, options) {
 // Node context-menu actions (item ids of useNodeContextMenu), Figma-like where Figma has an equivalent:
 // Shift+Enter selects the parent, Ctrl+Alt+G wraps (frame selection), Ctrl+Alt+K creates a ZVC (create
 // component), Ctrl+Alt+B detaches the instance. Letters are matched on event.code, so macOS Option and
-// AltGr layouts still work. Copy, paste and duplicate stay on nodeClipboardShortcut, delete on
-// nodeDeleteShortcut; they are listed here (clipboard: true) only for the menu labels.
+// AltGr layouts still work. Copy, paste and duplicate stay on nodeClipboardShortcut, delete (node or
+// selected ZVC root) on nodeDeleteShortcut; they are listed here (clipboard: true) only for the menu labels.
 export const NODE_MENU_SHORTCUTS = {
   'select-zvc': { key: 'Enter', command: true, shift: true },
   'select-parent': { key: 'Enter', shift: true },
@@ -92,6 +92,7 @@ export const NODE_MENU_SHORTCUTS = {
   'paste-node': { code: 'KeyV', command: true, clipboard: true },
   'duplicate-node': { code: 'KeyD', command: true, clipboard: true },
   'delete-node': { key: 'Delete', clipboard: true },
+  'delete-zvc': { key: 'Delete', clipboard: true },
   'new-zvc': { code: 'KeyK', command: true, alt: true },
   'new-zvp': { code: 'KeyP', command: true, alt: true },
   wrap: { code: 'KeyG', command: true, alt: true },

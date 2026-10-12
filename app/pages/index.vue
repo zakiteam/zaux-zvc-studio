@@ -10,6 +10,7 @@
         <BuilderInput v-model="search" type="search" :label="translate('zx_builder_hub_search')" :placeholder="translate('zx_builder_hub_search')"
           class="w-[280px] [&_*]:!py-1 max-w-full !bg-zaux-white max-[700px]:w-full max-[700px]:order-last" />
         <BuilderButton variant="light1" icon="refresh" iconOnly :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
+        <BuilderButton size="xs" variant="primary" icon="add" :label="translate('zx_builder_new_project')" :disabled="busy" @click="openCreate" />
       </div>
       <div class="flex flex-wrap items-center gap-1 px-3 pb-1 max-[700px]:px-1.5">
         <div class="flex gap-[2px] rounded-xxs bg-zaux-white p-[2px]" role="group" :aria-label="translate('zx_builder_hub_filter')">
@@ -57,9 +58,12 @@
         <img :src="studioLogo" alt="" class="mx-auto mb-2 h-[40px] w-[40px] opacity-60" />
         <h2 class="mb-1 text-[16px] font-semibold">{{ translate('zx_builder_hub_empty') }}</h2>
         <p class="mb-3 text-zaux-dark-grey">{{ translate('zx_builder_hub_empty_hint') }}</p>
-        <NuxtLink to="/editor/local" class="inline-flex items-center gap-1 rounded-xxs bg-zaux-accent px-2 py-1 text-[12px] font-semibold text-zaux-white hover:bg-zaux-dark-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zaux-accent">
-          {{ translate('zx_builder_hub_local') }}
-        </NuxtLink>
+        <div class="flex flex-wrap items-center justify-center gap-1">
+          <BuilderButton size="xs" variant="primary" icon="add" :label="translate('zx_builder_new_project')" :disabled="busy" @click="openCreate" />
+          <NuxtLink to="/editor/local" class="inline-flex items-center gap-1 rounded-xxs px-2 py-1 text-[12px] font-semibold text-zaux-dark-grey hover:text-zaux-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zaux-accent">
+            {{ translate('zx_builder_hub_local') }}
+          </NuxtLink>
+        </div>
       </div>
 
       <p v-else-if="projects.length && !visibleProjects.length" role="status" class="py-6 text-center text-zaux-dark-grey">{{ translate('zx_builder_hub_empty_search') }}</p>
@@ -67,12 +71,22 @@
       <!-- Grid view. -->
       <ul v-else-if="view === 'grid'" role="list" class="m-0 grid list-none grid-cols-6 gap-2 p-0">
         <li v-if="showLocalTile" class="min-w-0">
+          <button type="button" :disabled="busy" class="flex flex-col items-center justify-center w-full gap-1 p-2 text-center border-dashed aspect-16-9 rounded-xs border-slim border-zaux-accent/60 bg-zaux-accent/5 text-zaux-accent hover:border-zaux-accent hover:bg-zaux-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent disabled:opacity-50"
+            @click="openCreate">
+            <Icon iconName="plus" size="text-icon-s" aria-hidden="true" />
+            <span class="text-[12px] font-semibold">{{ translate('zx_builder_new_project') }}</span>
+            <span class="text-[10px]">{{ translate('zx_builder_hub_new_tile_hint') }}</span>
+          </button>
+        </li>
+        <!--
+        <li v-if="showLocalTile" class="min-w-0">
           <NuxtLink to="/editor/local" class="flex flex-col items-center justify-center w-full gap-1 p-2 text-center border-dashed group aspect-16-9 rounded-xs border-slim border-zaux-light-grey text-zaux-dark-grey hover:border-zaux-accent hover:text-zaux-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-zaux-accent">
             <Icon iconName="tech" size="text-icon-s" aria-hidden="true" />
             <span class="text-[12px] font-semibold">{{ translate('zx_builder_hub_local') }}</span>
             <span class="text-[10px]">{{ translate('zx_builder_hub_local_hint') }}</span>
           </NuxtLink>
         </li>
+        -->
         <li v-for="project in visibleProjects" :key="project.id" class="min-w-0">
           <article class="flex flex-col min-w-0 group">
             <NuxtLink :to="'/editor/' + project.id" tabindex="-1" aria-hidden="true"
@@ -139,7 +153,7 @@ import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } fro
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
-import { listRemoteProjects, renameRemoteProject, deleteRemoteProject, duplicateRemoteProject } from '../services/projects.js';
+import { listRemoteProjects, createBlankRemoteProject, renameRemoteProject, deleteRemoteProject, duplicateRemoteProject } from '../services/projects.js';
 import { readHubPreferences, saveHubPreferences } from '../services/layout-preferences.js';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 
@@ -168,7 +182,7 @@ export default defineComponent({
         ? [...list].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', language.value, { sensitivity: 'base' }))
         : [...list].sort((a, b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0));
     });
-    // The local workspace is a starting point, so it only leads the unfiltered grid.
+    // New project and local workspace are starting points, so they only lead the unfiltered grid.
     const showLocalTile = computed(() => filter.value === 'all' && !search.value.trim());
     const loading = ref(true);
     const error = ref('');
@@ -202,6 +216,23 @@ export default defineComponent({
       actionError.value = '';
       action.value = { type, project: { ...project } };
     }
+    function openCreate() {
+      if (busy.value) return;
+      actionError.value = '';
+      action.value = { type: 'create', project: { name: '' } };
+    }
+    async function createProject(name) {
+      busy.value = true;
+      actionError.value = '';
+      try {
+        const project = await createBlankRemoteProject(name, translate('zx_builder_hub_new_template'), user.value.id);
+        if (disposed) return;
+        projects.value = [project, ...projects.value];
+        action.value = null;
+        router.push('/editor/' + project.id);
+      } catch { if (!disposed) actionError.value = 'zx_builder_hub_action_error'; }
+      finally { if (!disposed) busy.value = false; }
+    }
     function projectItems(project) {
       return [
         { id: 'open', label: translate('zx_builder_hub_open'), icon: 'arrow-up-right' },
@@ -218,6 +249,7 @@ export default defineComponent({
     async function submitAction(name) {
       if (busy.value || !action.value) return;
       const { type, project } = action.value;
+      if (type === 'create') return createProject(name);
       if (!canEdit(project) || (type === 'delete' && project.role !== 'owner')) return;
       busy.value = true;
       actionError.value = '';
@@ -255,7 +287,7 @@ export default defineComponent({
     }
     onMounted(loadProjects);
     onBeforeUnmount(() => { disposed = true; });
-    return { studioLogo, translate, projects, search, filter, filterOptions: FILTERS, sort, view, visibleProjects, showLocalTile, loading, error, action, actionError, busy, loadProjects, projectItems, projectAction, submitAction, formatDate, relativeDate };
+    return { studioLogo, translate, projects, search, filter, filterOptions: FILTERS, sort, view, visibleProjects, showLocalTile, loading, error, action, actionError, busy, loadProjects, openCreate, projectItems, projectAction, submitAction, formatDate, relativeDate };
   }
 });
 </script>

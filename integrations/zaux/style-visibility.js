@@ -32,3 +32,11 @@ export function visibleStyleSections(sections, policy) {
     return [{ ...section, controls, globalControls: globalControls?.length ? globalControls : undefined }];
   });
 }
+
+// Resolves curated style views (e.g. quickStyleTabs) against the sections already allowed
+// by the viewport policy. Each view picks with the same `sections` shape as the policy above.
+export function styleViews(views, sections) {
+  return views
+    .map(view => ({ ...view, groups: visibleStyleSections(sections, { sections: view.sections }) }))
+    .filter(view => view.groups.length);
+}

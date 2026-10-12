@@ -1237,6 +1237,12 @@ export function createBuilder({ projectId = null, designer = false, designerComp
         if (!event.repeat) clipboardAction === 'delete-node' ? deleteOutlineSelection() : duplicateOutlineSelection();
         return;
       }
+      // Selected ZVC root (no node): Delete removes the instance, when its context menu offers it.
+      if (clipboardAction === 'delete-node' && !selectedNode.value && nodeMenu.items.value.some(item => item.id === 'delete-zvc' && !item.disabled)) {
+        event.preventDefault();
+        if (!event.repeat) nodeMenu.runShortcut('delete-zvc');
+        return;
+      }
       const allowed = clipboardAction === 'paste-node' ? canPasteNode.value : canCopyNode.value && (clipboardAction === 'copy-node' || canEditRemote.value);
       if (allowed && clipboardAction === 'delete-node') {
         event.preventDefault();
@@ -1326,10 +1332,47 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     }
     collapsedOutline.value = next;
   }
+  function expandAllOutline() {
+    collapsedOutline.value = new Set();
+  }
+  // Collapse keys of an outline branch: the row itself and every node below it.
+  // outlineId is 'library' or a template instance id; nodeId null targets the whole ZVC (definition or instance heading).
+  function outlineBranch(outlineId, nodeId = null) {
+    const library = outlineId === 'library';
+    const definition = library ? activeDefinition.value : activeTemplate.value?.instances.find(item => item.id === outlineId)?.definition;
+    if (!definition) return null;
+    const root = nodeId ? findNode(definition.tree, nodeId) : null;
+    if (nodeId && !root) return null;
+    const inner = [];
+    const walk = (nodes) => {
+      for (const node of nodes) {
+        if (!node.children?.length) continue;
+        inner.push('node:' + outlineId + ':' + node.id);
+        walk(node.children);
+      }
+    };
+    walk(root ? root.children ?? [] : definition.tree);
+    return { self: root ? 'node:' + outlineId + ':' + root.id : library ? 'definition:' + definition.id : 'instance:' + outlineId, inner };
+  }
+  // collapsed true: row and descendants collapsed. 'inner': row open, every descendant collapsed (one level visible).
+  // false: the whole branch expanded.
+  function setOutlineBranch(outlineId, nodeId, collapsed) {
+    const branch = outlineBranch(outlineId, nodeId);
+    if (!branch) return;
+    const next = new Set(collapsedOutline.value);
+    if (collapsed === true) next.add(branch.self); else next.delete(branch.self);
+    for (const key of branch.inner) if (collapsed) next.add(key); else next.delete(key);
+    collapsedOutline.value = next;
+  }
+  // Alt+click on an outline arrow: toggles the row together with its whole branch.
+  function toggleOutlineBranch(outlineId, nodeId = null) {
+    const branch = outlineBranch(outlineId, nodeId);
+    if (branch) setOutlineBranch(outlineId, nodeId, !collapsedOutline.value.has(branch.self));
+  }
   const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
-  Object.assign(api, { hiddenOutlineNodes });
+  Object.assign(api, { hiddenOutlineNodes, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });
   Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle });
   Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, saveNodeToLibrary });
   const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId: () => auth.user.value?.id });

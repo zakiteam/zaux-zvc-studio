@@ -61,6 +61,7 @@
 								:label="translate('zx_builder_reset_instances') + ': ' + translate('zx_builder_reset_instances_hint')"
 								:disabled="!canEditRemote || !activeDefinition"
 								@click="modal = { type: 'reset-instances', name: activeDefinition.name }" />
+							<BuilderButton variant="alt1" size="xs" icon="dropdown-open" iconOnly :label="translate('zx_builder_expand_all')" :disabled="!collapsedOutline.size" @click="expandAllOutline()" />
 							<BuilderButton variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
 							<BuilderButton variant="alt1" size="xs" icon="help" iconOnly :label="translate('zx_builder_outline_help')"
 								:aria-pressed="hintsOpen" :aria-expanded="hintsOpen" aria-controls="zb-outline-hints"
@@ -69,6 +70,7 @@
 					</div>
 					<div v-if="hintsOpen" id="zb-outline-hints" class="mb-1 space-y-0.5 rounded-xxs bg-zaux-light p-1 text-[10px] leading-relaxed text-zaux-dark-grey">
 						<p>{{ translate('zx_builder_outline_shift_hint') }}</p>
+						<p>{{ translate('zx_builder_outline_branch_hint') }}</p>
 						<p>{{ translate("zx_builder_outline_drag_hint") }}</p>
 						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_sync_instances_hint') }}</p>
 						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_reset_instances_hint') }}</p>
@@ -99,7 +101,8 @@
 								': ' +
 								activeDefinition?.name
 							"
-							@click.stop="toggleOutline('definition:' + activeDefinition?.id)"
+							:title="translate('zx_builder_outline_branch_toggle')"
+							@click.stop="$event.altKey ? toggleOutlineBranch('library') : toggleOutline('definition:' + activeDefinition?.id)"
 							@dragstart.stop.prevent
 						>
 							<span aria-hidden="true">{{
@@ -181,7 +184,8 @@
 									': ' +
 									instance.name
 								"
-								@click.stop="toggleOutline('instance:' + instance.id)"
+								:title="translate('zx_builder_outline_branch_toggle')"
+								@click.stop="$event.altKey ? toggleOutlineBranch(instance.id) : toggleOutline('instance:' + instance.id)"
 								@dragstart.stop.prevent
 							>
 								<span aria-hidden="true">{{

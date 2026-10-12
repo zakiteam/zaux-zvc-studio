@@ -39,6 +39,12 @@ export function signZauxVersion(workspace, version, { created = false } = {}) {
   return workspace;
 }
 
+// Clean starting point for a new project: no library, one empty template, default styles.
+export function createBlankWorkspace(name, templateName) {
+  const now = new Date().toISOString();
+  return { schemaVersion: SCHEMA_VERSION, id: uid(), name, createdAt: now, updatedAt: now, library: [], templates: [createTemplate(templateName)], styles: clone(stylePreset) };
+}
+
 export function createWorkspace() {
   const hero = createDefinition('Welcome Section');
   hero.fields = [

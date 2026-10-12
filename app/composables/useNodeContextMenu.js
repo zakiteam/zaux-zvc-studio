@@ -21,10 +21,14 @@ export function useNodeContextMenu(builder) {
     const partialSource = partial ? builder.partialLibraryDefinition(partial) ?? null : null;
     // Library entry shown by "Show in library": the instance's ZVC, or the definition edited in library mode.
     const owner = zvc ? source : library ? builder.document.value.library.find(item => item.id === definition?.id) ?? null : null;
-    return { library, instance, definition, node, zvc, source, owner, partial, partialSource, parentId, outlineId: library ? 'library' : instance?.id };
+    const outlineId = library ? 'library' : instance?.id;
+    // Outline branch below the row: the node, or the whole ZVC (instance heading, edited definition) without a node.
+    const hasBranch = node ? !!node.children?.length : !!definition?.tree.length && (library || !!zvc);
+    const branch = hasBranch && outlineId ? builder.outlineBranch(outlineId, node?.id ?? null) : null;
+    return { library, instance, definition, node, zvc, source, owner, partial, partialSource, parentId, outlineId, branch };
   });
   const items = computed(() => {
-    const { library, definition, node, zvc, source, owner, partial, partialSource, parentId } = target.value;
+    const { library, definition, node, zvc, source, owner, partial, partialSource, parentId, branch } = target.value;
     const editable = builder.canEditRemote.value;
     const copyable = builder.canCopyNode.value;
     const hasZvcParent = library ? !!definition : !!zvc;
@@ -38,6 +42,11 @@ export function useNodeContextMenu(builder) {
       node && single ? [
         { id: 'select-zvc', icon: 'target', label: t('zx_builder_select_zvc_parent'), hidden: !hasZvcParent },
         { id: 'select-parent', icon: 'arrow-up', label: t('zx_builder_select_parent'), disabled: !parentId && !hasZvcParent },
+      ] : [],
+      // Granular outline folding: the whole branch open, or the row open with every inner level collapsed.
+      branch && single ? [
+        { id: 'expand-branch', icon: 'dropdown-open', label: t('zx_builder_expand_branch'), disabled: ![branch.self, ...branch.inner].some(key => builder.collapsedOutline.value.has(key)) },
+        { id: 'collapse-inner', icon: 'dropdown-close', label: t('zx_builder_collapse_inner'), hidden: !branch.inner.length, disabled: !builder.collapsedOutline.value.has(branch.self) && branch.inner.every(key => builder.collapsedOutline.value.has(key)) },
       ] : [],
       node && single ? [
         { id: 'quick-style', icon: 'customize', label: t('zx_builder_quick_style'), disabled: !builder.canStyleNode.value || builder.nodeClasses.value === null },
@@ -55,6 +64,11 @@ export function useNodeContextMenu(builder) {
         { id: 'reset-hard', icon: 'loop', label: t('zx_builder_reset_zvc_hard'), disabled: !editable || !source, danger: true },
         { id: 'reset-soft', icon: 'refresh', label: t('zx_builder_reset_zvc_soft'), disabled: !editable || !source },
         { id: 'detach', icon: 'hyperlink-remove', label: t('zx_builder_detach_instance'), disabled: !editable || !!zvc.definition.sourceKey || !zvc.definition.tree.length },
+      ] : [],
+      // The ZVC root row itself: the same duplicate/delete as its outline row buttons.
+      zvc && single && !node ? [
+        { id: 'duplicate-zvc', icon: 'duplicate', label: t('zx_builder_duplicate_zvc'), disabled: !editable },
+        { id: 'delete-zvc', icon: 'delete', label: t('zx_builder_delete_zvc'), disabled: !editable, danger: true },
       ] : [],
       // Library mode: the edited ZVC/ZVP itself.
       library && owner ? [
@@ -111,6 +125,8 @@ export function useNodeContextMenu(builder) {
     if (item.id === 'quick-style') builder.openQuickStyle(anchor);
     if (item.id === 'select-zvc') select(null);
     if (item.id === 'select-parent') select(parentId);
+    if (item.id === 'expand-branch') builder.setOutlineBranch(target.value.outlineId, node?.id ?? null, false);
+    if (item.id === 'collapse-inner') builder.setOutlineBranch(target.value.outlineId, node?.id ?? null, 'inner');
     if (item.id === 'edit-library') builder.selectLibrary(zvc.sourceId);
     if (item.id === 'reveal-zvp') builder.revealInLibrary(target.value.partialSource.id);
     if (item.id === 'reveal-owner') builder.revealInLibrary(target.value.owner.id);
@@ -121,6 +137,8 @@ export function useNodeContextMenu(builder) {
     if (item.id === 'reset-hard') reset('hard');
     if (item.id === 'reset-soft') reset('soft');
     if (item.id === 'detach') builder.detachInstance(zvc.id);
+    if (item.id === 'duplicate-zvc') builder.duplicate('instance', zvc.id);
+    if (item.id === 'delete-zvc') builder.remove('instance', zvc.id);
     if (item.id === 'copy-node') builder.copySelectedNode();
     if (item.id === 'paste-node') builder.pasteNode();
     if (item.id === 'duplicate-node') builder.outlineBulk.value ? builder.duplicateOutlineSelection() : builder.duplicateNode();

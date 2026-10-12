@@ -1,8 +1,9 @@
 <template>
   <!-- Not in the top layer: BuilderStyleInput's suggestion popup must stay above it. -->
   <Teleport to="body">
-    <div ref="panel" role="dialog" :aria-label="translate('zx_builder_quick_style') + ': ' + nodeName" :style="position"
-      class="fixed z-[999] flex flex-col gap-1 rounded-xs border-slim border-zaux-light-grey bg-zaux-white p-1.5 font-builder text-[12px] text-zaux-dark shadow-deeper"
+    <!-- tabindex: a click on a non-focusable spot keeps focus inside the panel. -->
+    <div ref="panel" role="dialog" tabindex="-1" :aria-label="translate('zx_builder_quick_style') + ': ' + nodeName" :style="position"
+      class="fixed z-[999] outline-none flex flex-col gap-1 rounded-xs border-slim border-zaux-light-grey bg-zaux-white p-1.5 font-builder text-[12px] text-zaux-dark shadow-deeper"
       @keydown="onKeydown" @focusout="onFocusOut">
       <div class="flex items-center min-w-0 gap-1">
         <p class="m-0 min-w-0 flex-1 truncate text-[11px] font-semibold" @mousedown.prevent>
@@ -11,7 +12,11 @@
         <!-- Focusing the button blurs the field first, which applies the draft like leaving it. -->
         <BuilderButton variant="alt1" icon="close" iconOnly :label="translate('zx_builder_close')" @click="closeQuickStyle()" />
       </div>
-      <BuilderStyleInput :modelValue="nodeClasses ?? ''" :label="translate('zx_builder_classes')" @update:modelValue="apply" />
+      <div data-quick-style-classes>
+        <BuilderStyleInput :modelValue="nodeClasses ?? ''" :label="translate('zx_builder_classes')" @update:modelValue="apply" />
+      </div>
+      <!-- Tabs and controls come from quickStyleTabs (integrations/zaux/controls/quick-style-controls.js). -->
+      <BuilderStyleQuickpad :modelValue="nodeClasses ?? ''" :scope="scope" :target="target.nodeId" @update:modelValue="change" />
       <p class="m-0 text-[10px] text-zaux-dark-grey" @mousedown.prevent>{{ translate('zx_builder_quick_style_keys') }}</p>
     </div>
   </Teleport>
@@ -22,6 +27,7 @@ import { useBuilder } from '../../composables/useBuilder.js';
 const EDGE = 8;
 // Inline class editor for the node that was selected when Quick style opened (builder.quickStyle).
 // Enter, the close button or leaving the panel apply the classes; Escape discards the draft.
+// The quickpad below edits the same classes through the shared style controls and applies at once.
 export default defineComponent({
   setup() {
     const builder = useBuilder();
@@ -40,6 +46,11 @@ export default defineComponent({
       // The field also commits on blur while the panel unmounts: ignore it after Escape or a selection change.
       if (!cancelled && selected()) builder.setNodeClasses(value);
     }
+    // Same scope the Inspector follows: the previewed viewport, or the base when not following it.
+    const scope = computed(() => builder.followViewportStyles.value ? builder.viewportStyleScope.value : '');
+    function change(value) {
+      if (selected()) builder.setNodeClasses(value);
+    }
     function onKeydown(event) {
       if (event.isComposing) return;
       // The field handles Escape and Enter first while its suggestions are open, and stops them.
@@ -48,16 +59,29 @@ export default defineComponent({
         cancelled = true;
         builder.closeQuickStyle();
       }
-      if (event.key === 'Enter' && event.target.tagName === 'INPUT') builder.closeQuickStyle();
+      // Enter in a control's custom value only applies that value.
+      if (event.key === 'Enter' && event.target.tagName === 'INPUT' && event.target.closest('[data-quick-style-classes]')) builder.closeQuickStyle();
     }
+    // Whether the last pointer press landed in the panel.
+    let pressedInside = true;
+    function onPointerDown(event) { pressedInside = !!panel.value?.contains(event.target); }
     function onFocusOut(event) {
-      if (!panel.value?.contains(event.relatedTarget)) builder.closeQuickStyle();
+      if (panel.value?.contains(event.relatedTarget)) return;
+      if (event.relatedTarget) { builder.closeQuickStyle(); return; }
+      // No new target: the window or the canvas took focus, a press outside hit a non-focusable spot,
+      // or an edit removed or disabled the focused control. Only the last case keeps the panel.
+      setTimeout(() => {
+        const element = panel.value;
+        if (!element || element.contains(document.activeElement)) return;
+        if (pressedInside && document.hasFocus() && document.activeElement === document.body) element.focus({ preventScroll: true });
+        else builder.closeQuickStyle();
+      });
     }
     // Opens where the context menu was, kept inside the viewport.
     function place() {
       const element = panel.value;
       if (!element) return;
-      const width = Math.min(380, window.innerWidth - EDGE * 2);
+      const width = Math.min(400, window.innerWidth - EDGE * 2);
       element.style.width = `${width}px`;
       const height = element.getBoundingClientRect().height;
       const anchor = target.anchor ?? { left: (window.innerWidth - width) / 2, top: window.innerHeight * 0.3 };
@@ -67,9 +91,13 @@ export default defineComponent({
         top: `${Math.max(EDGE, Math.min(anchor.top, window.innerHeight - height - EDGE))}px`,
       };
     }
+    // Opening a tab changes the height: keep the panel inside the viewport.
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => place());
     onMounted(async () => {
       window.addEventListener('resize', place);
+      document.addEventListener('pointerdown', onPointerDown, true);
       place();
+      if (panel.value) resizeObserver?.observe(panel.value);
       // The panel is hidden until placed and hidden elements cannot take focus: render the position first.
       await nextTick();
       const input = panel.value?.querySelector('input');
@@ -79,8 +107,12 @@ export default defineComponent({
       input.focus({ preventScroll: true });
       input.setSelectionRange(input.value.length, input.value.length);
     });
-    onBeforeUnmount(() => window.removeEventListener('resize', place));
-    return { ...builder, panel, position, nodeName, apply, onKeydown, onFocusOut };
+    onBeforeUnmount(() => {
+      window.removeEventListener('resize', place);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      resizeObserver?.disconnect();
+    });
+    return { ...builder, panel, position, nodeName, target, scope, apply, change, onKeydown, onFocusOut };
   },
 });
 </script>
