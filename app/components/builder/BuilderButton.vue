@@ -28,6 +28,7 @@
 				<span class="absolute inset-0 zb-project-swatch" :style="{ backgroundColor: swatch }" />
 			</span>
 		</template>
+		<template v-if="$slots.afterLabel" #afterLabel><slot name="afterLabel" /></template>
 	</ZButton>
 </template>
 <script>

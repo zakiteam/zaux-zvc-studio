@@ -26,6 +26,7 @@
 					autocomplete="off"
 				/>
 			</div>
+			<p v-if="['new-zvc-from-node', 'new-zvp-from-node'].includes(modal.type)" class="mb-2.5 text-[11px] text-zaux-dark-grey">{{ translate(modal.type === 'new-zvc-from-node' ? (canReplaceNodeWithZvc ? 'zx_builder_new_zvc_from_node_replace_hint' : 'zx_builder_new_zvc_from_node_nested_hint') : 'zx_builder_new_from_node_hint') }}</p>
 			<div v-if="modal.type === 'group-zvc'" class="mb-2.5">
 				<p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_group_zvc_hint') }}</p>
 				<label for="group-last" class="block text-[11px]">{{ translate('zx_builder_group_zvc_last') }}</label>
@@ -364,7 +365,7 @@ export default defineComponent({
 	setup() {
 		const builder = useBuilder();
 		const formId = useId();
-		const NAME_FORMS = ['new-component', 'new-partial', 'group-zvc', 'new-template', 'new-project', 'rename-project', 'rename', 'save-library'];
+		const NAME_FORMS = ['new-component', 'new-partial', 'group-zvc', 'new-zvc-from-node', 'new-zvp-from-node', 'new-template', 'new-project', 'rename-project', 'rename', 'save-library'];
 		const nameForm = computed(() => NAME_FORMS.includes(builder.modal.value.type));
 		const wide = computed(() => ['import', 'export', 'new-component-json', 'new-partial-json'].includes(builder.modal.value.type));
 		const name = ref(builder.modal.value.name ?? "");
@@ -464,6 +465,8 @@ export default defineComponent({
             "new-partial-json": "new_partial_json",
 			"new-component": "new_component",
 			"group-zvc": "group_zvc",
+			"new-zvc-from-node": "new_zvc_from_node",
+			"new-zvp-from-node": "new_zvp_from_node",
             "new-partial": "new_partial",
 			"new-template": "new_template",
 			"save-library": "save_library",
@@ -556,6 +559,10 @@ export default defineComponent({
 			if (!name.value.trim() || saving.value) return;
 			const modal = builder.modal.value;
 			if (modal.type === 'group-zvc' && !builder.groupInZvc(name.value.trim(), modal.instanceId, groupEnd.value)) {
+				localError.value = builder.error.value;
+				return;
+			}
+			if (["new-zvc-from-node", "new-zvp-from-node"].includes(modal.type) && !builder.saveNodeToLibrary(name.value.trim(), modal.type === "new-zvp-from-node" ? "zvp" : "zvc")) {
 				localError.value = builder.error.value;
 				return;
 			}

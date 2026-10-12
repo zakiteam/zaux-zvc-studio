@@ -1,4 +1,5 @@
 import { normalizeSourceFields } from './source-zvc.js';
+import { FIELD_TYPES } from './fields.js';
 import { validateStylePreset } from './styles.js';
 import { validateComponentThemes } from './component-themes.js';
 import { SCHEMA_VERSION } from './workspace.js';
@@ -63,7 +64,7 @@ export function validateDefinition(definition, depth = 0) {
   for (const field of definition.fields) {
     requireValue(object(field) && /^[A-Za-z_][\w.]*$/.test(field.key) && !keys.has(field.key));
     requireValue(!field.key.split('.').some(key => ['__proto__', 'prototype', 'constructor'].includes(key)));
-    requireValue(['text', 'textarea', 'number', 'switch', 'select', 'json', 'html', 'css-editor', 'button', 'buttongroup', 'component'].includes(field.type) && typeof field.label === 'string');
+    requireValue(FIELD_TYPES.includes(field.type) && typeof field.label === 'string');
     if (field.type === 'select') requireValue(Array.isArray(field.options));
     keys.add(field.key);
   }

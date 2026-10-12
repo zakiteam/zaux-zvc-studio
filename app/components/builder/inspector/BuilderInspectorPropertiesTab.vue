@@ -10,7 +10,7 @@
 				>
 				<div class="min-w-0 flex-1">
 					<strong>{{ selectedNode.name }}</strong
-					><small>{{ translate("zx_builder_properties") }}</small>
+					><small>{{ outlineBulk ? translate("zx_builder_selection_count", { count: outlineSelection.length }) : translate("zx_builder_properties") }}</small>
 				</div>
 				<div class="zb-node-actions ml-auto flex [&>.zb-button]:!p-0.5 gap-1">
 					<BuilderButton
@@ -24,13 +24,13 @@
 						icon="copy"
 						iconOnly
 						:label="translate('zx_builder_duplicate')"
-						@click="duplicateNode"
+						@click="outlineBulk ? duplicateOutlineSelection() : duplicateNode()"
 					/><BuilderButton
 						variant="light"
 						icon="delete"
 						iconOnly
 						:label="translate('zx_builder_delete')"
-						@click="deleteNode"
+						@click="outlineBulk ? deleteOutlineSelection() : deleteNode()"
 					/>
 				</div>
 			</div>

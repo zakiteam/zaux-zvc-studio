@@ -22,6 +22,8 @@
 				v-for="entry in entries"
 				:key="entry.id"
 				class="zb-library-card group relative overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent"
+				:class="libraryHighlight?.id === entry.id ? 'outline outline-2 outline-offset-[-2px] outline-zaux-accent bg-zaux-accent/10' : ''"
+				:data-zb-library-card="entry.id"
 				:draggable="canEditRemote && (entry.available || !!entry.definition)"
 				@dragstart="startDrag($event, entry)"
 				@contextmenu.prevent="openMenu($event, entry)"

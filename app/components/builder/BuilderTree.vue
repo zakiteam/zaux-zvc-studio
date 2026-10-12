@@ -6,9 +6,8 @@
         content-class="!w-max !max-w-max !pb-1"
         :label="translate('zx_builder_layer_actions') + ': ' + node.name"
         :items="contextItems"
-        :disabled="!canWrap"
         @contextmenu="selectOutlineRow(instance, node.id, false, true)"
-        @select="contextAction($event, node.id)"
+        @select="contextAction"
       >
         <template #trigger="{ open, menuId }">
           <div
@@ -33,9 +32,9 @@
               class="zb-tree-row select-none flex min-w-0 flex-1 items-center gap-1 rounded-xxs px-0.5 py-0.5 text-left !text-[11px] [&>span]:truncate [&>small]:ml-auto [&>small]:text-[9px] [&>small]:text-zaux-dark-grey [&.active]:text-zaux-accent"
               :class="{ active: outlineSelected(instance, node.id) }"
               :draggable="canEditRemote"
-              :aria-haspopup="canWrap ? 'menu' : undefined"
-              :aria-expanded="canWrap ? open : undefined"
-              :aria-controls="canWrap ? menuId : undefined"
+              aria-haspopup="menu"
+              :aria-expanded="open"
+              :aria-controls="menuId"
               :aria-pressed="outlineSelected(instance, node.id)"
               @mousedown.shift.prevent
               @click="revealNode(node.id, $event)"
@@ -88,24 +87,28 @@
     setup(props) {
       const builder = useBuilder();
       const outlineDrag = useBuilderOutlineDrag();
-      const canWrap = computed(() => {
-        const definition = builder.mode.value === 'library'
-          ? builder.activeDefinition.value
-          : builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.definition;
-        return builder.canEditRemote.value && !!definition && !definition.sourceKey;
-      });
-      const contextItems = computed(() => [
-        { id: 'wrap', label: builder.translate('zx_builder_wrap_div') },
-        { id: 'group-zvc', label: builder.translate('zx_builder_group_zvc'), disabled: builder.outlineSelection.value.length > 1 && !builder.outlineGroupRange.value, hidden: builder.mode.value !== 'template' || props.depth !== 0 || builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.kind !== 'free' }
-      ]);
-      function contextAction(action, id) {
-        if (action.id === 'wrap') { builder.selectInstance(props.instance, id); builder.wrapNode(); }
-        if (action.id === 'group-zvc') builder.openOutlineGroup(props.instance, id);
+      const nodeMenu = builder.nodeMenu;
+      // Free top-level blocks can also be grouped into a new ZVC.
+      const groupable = computed(() => builder.mode.value === 'template' && props.depth === 0 && builder.activeTemplate.value?.instances.find(item => item.id === props.instance)?.kind === 'free');
+      const contextItems = computed(() => groupable.value && !nodeMenu.items.value.some(item => item.id === 'group-zvc') ? [...nodeMenu.items.value, {
+        id: 'group-zvc', icon: 'element-add', separator: true, label: builder.translate('zx_builder_group_zvc'),
+        disabled: !builder.canEditRemote.value || builder.outlineSelection.value.length > 1 && !builder.outlineGroupRange.value
+      }] : nodeMenu.items.value);
+      function contextAction(action, anchor) {
+        if (action.id === 'group-zvc') builder.openOutlineGroup(builder.instanceId.value, builder.nodeId.value);
+        else nodeMenu.run(action, anchor);
       }
-      function duplicateHere(id) { builder.selectInstance(props.instance, id); builder.duplicateNode(); }
-      function deleteHere(id) { builder.selectInstance(props.instance, id); builder.deleteNode(); }
+      // On a row of the multi-selection the buttons act on the whole selection.
+      function duplicateHere(id) {
+        if (builder.inOutlineBulk(props.instance, id)) { builder.duplicateOutlineSelection(); return; }
+        builder.selectInstance(props.instance, id); builder.duplicateNode();
+      }
+      function deleteHere(id) {
+        if (builder.inOutlineBulk(props.instance, id)) { builder.deleteOutlineSelection(); return; }
+        builder.selectInstance(props.instance, id); builder.deleteNode();
+      }
       function revealNode(id, event) { builder.selectOutlineRow(props.instance, id, event.shiftKey); if (!event.shiftKey) builder.reveal(props.instance, id); }
-      return { ...builder, outlineDrag, canWrap, contextItems, contextAction, duplicateHere, deleteHere, revealNode };
+      return { ...builder, outlineDrag, contextItems, contextAction, duplicateHere, deleteHere, revealNode };
     }
   });
   

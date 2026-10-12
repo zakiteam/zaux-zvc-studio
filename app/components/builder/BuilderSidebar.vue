@@ -160,9 +160,9 @@
 							:context-menu="true"
 							content-class="!w-max !max-w-max !pb-1"
 							:label="translate('zx_builder_instance_actions') + ': ' + instance.name"
-							:items="instanceContextItems(instance)"
+							:items="instanceContextItems"
 							@contextmenu="selectOutlineRow(instance.id, null, false, true)"
-							@select="instanceContextAction($event, instance)"
+							@select="instanceContextAction"
 						>
 						<template #trigger="{ open, menuId }">
 						<div class="zb-instance-heading group/instance flex min-w-0 items-center gap-0.25 rounded-xxs hover:bg-zaux-light" :class="{ 'bg-zaux-accent/5': outlineSelected(instance.id) }">
@@ -210,14 +210,14 @@
 									iconOnly
 									variant="alt1"
 									:label="`${translate('zx_builder_duplicate')}: ${instance.name}`"
-									@click="duplicate('instance', instance.id)"
+									@click="inOutlineBulk(instance.id) ? duplicateOutlineSelection() : duplicate('instance', instance.id)"
 								/>
 								<BuilderButton
 									icon="delete"
 									variant="alt1"
 									iconOnly
 									:label="`${translate('zx_builder_delete')}: ${instance.name}`"
-									@click="remove('instance', instance.id)"
+									@click="inOutlineBulk(instance.id) ? deleteOutlineSelection() : remove('instance', instance.id)"
 								/>
 							</div>
 						</div>
@@ -364,10 +364,12 @@
 						v-for="definition in filteredLibrary"
 						:key="definition.id"
 						class="zb-library-card group relative overflow-hidden rounded-xs border-slim border-zaux-light-grey transition-colors hover:border-zaux-accent [&.active]:border-zaux-accent"
-						:class="{
+						:class="[{
 							active: mode === 'library' && libraryId === definition.id,
-						}"
+						}, libraryHighlight?.id === definition.id ? 'outline outline-2 outline-offset-[-2px] outline-zaux-accent bg-zaux-accent/10' : '']"
+						:data-zb-library-card="definition.id"
 						:draggable="canEditRemote && (!designer || definition.kind === 'zvp')"
+						@contextmenu.prevent="libraryMenu?.open($event, definition)"
 						@dragstart="
 							drag(
 								$event,
@@ -398,49 +400,6 @@
 								{{ definition.name }}
 							</button>
 							<small class="block truncate font-mono text-[9px] text-zaux-dark-grey">{{ definition.exportName }}</small>
-							<div class="zb-card-actions -mx-0.5 flex items-center justify-between [&_.zb-button]:!w-[24px] [&_.zb-button]:!min-w-[24px] [&_.zb-button]:!p-0.5">
-								<BuilderButton
-									size="xs"
-									variant="alt1"
-									icon="enter"
-									iconOnly
-									:label="translate('zx_builder_edit_library') + ': ' + definition.name"
-									@click="selectLibrary(definition.id)"
-								/>
-								<div class="flex items-center">
-									<BuilderButton
-										icon="duplicate"
-										iconOnly
-										size="xs"
-										variant="alt1"
-										:label="
-											translate('zx_builder_duplicate') + ': ' + definition.name
-										"
-										:disabled="!canEditRemote"
-										@click.stop="duplicate('library', definition.id)"
-									/>
-									<BuilderButton
-										v-if="!definition.id.startsWith('source:')"
-										icon="edit"
-										iconOnly
-										size="xs"
-										variant="alt1"
-										:label="`${translate('zx_builder_rename')}: ${definition.name}`"
-										:disabled="!canEditRemote"
-										@click="modal = { type: 'rename', kind: 'library', id: definition.id, name: definition.name }"
-									/>
-									<BuilderButton
-										v-if="!definition.id.startsWith('source:')"
-										icon="delete"
-										iconOnly
-										size="xs"
-										variant="alt1"
-										:label="`${translate('zx_builder_delete')}: ${definition.name}`"
-										:disabled="!canEditRemote"
-										@click="modal = { type: 'delete', kind: 'library', id: definition.id }"
-									/>
-								</div>
-							</div>
 						</div>
 					</article>
 				</div>
@@ -449,6 +408,7 @@
 				>
 					{{ translate(designer ? "zx_builder_global_designer_hint" : "zx_builder_library_drag") }}
 				</p>
+				<BuilderLibraryMenu ref="libraryMenu" />
 				</template>
 			</div>
 		</section>
@@ -707,32 +667,17 @@ export default defineComponent({
 		}
 
 		// Right-click menu on a ZVC instance name in the outline.
-		function instanceContextItems(instance) {
-			const original = builder.document.value.library.some((item) => item.id === instance.sourceId);
-			const linked = builder.document.value.library.some((item) => item.id === instance.sourceId && item.global);
-			const editable = builder.canEditRemote.value;
-			return [
-				{ id: "edit-library", icon: "enter", label: builder.translate(linked ? "zx_builder_global_edit" : "zx_builder_edit_library"), disabled: !original },
-				{ id: "rename", icon: "edit", label: builder.translate("zx_builder_rename"), disabled: !editable },
-				{ id: "export", icon: "download", label: builder.translate("zx_builder_export_instance") },
-				{ id: "sync", icon: "refresh", label: builder.translate("zx_builder_restore_library"), disabled: !editable || !original },
-				{ id: "reset", icon: "loop", label: builder.translate("zx_builder_reset_instance"), disabled: !editable || !original, danger: true },
-			];
-		}
-		function instanceContextAction(item, instance) {
-			if (item.id === "rename") builder.modal.value = { type: "rename", kind: "instance", id: instance.id, name: instance.name };
-			// Instances of a global component reset through the global dialog, which can first pull its latest revision.
-			else if ((item.id === "sync" || item.id === "reset") && builder.document.value.library.some((entry) => entry.id === instance.sourceId && entry.global))
-				builder.requestGlobalSync(instance.sourceId, { instance: instance.id, reset: item.id === "sync" ? "soft" : "hard" });
-			else if (item.id === "sync") builder.restoreActiveInstance();
-			else if (item.id === "reset") builder.resetInstance(instance.id);
-			else if (item.id === "edit-library") builder.selectLibrary(instance.sourceId);
-			else if (item.id === "export") {
-				// The export dialog reads the component scope from the selected instance.
-				if (builder.instanceId.value !== instance.id) builder.selectOutlineRow(instance.id, null, false, true);
-				builder.openExport({ scope: "component" });
-			}
-		}
+		// Same menu as canvas and layers; right-click selects the instance, so it shows the ZVC actions.
+		const { items: instanceContextItems, run: instanceContextAction } = builder.nodeMenu;
+		// "Show in library" (node menu): scroll the highlighted card into view once the
+		// Library tab, category and kind have rendered (Global cards included).
+		watch(() => builder.libraryHighlight.value, async (target) => {
+			if (!target) return;
+			await nextTick();
+			document.querySelector(`[data-zb-library-card="${CSS.escape(target.id)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+		});
+		// Right-click menu of the project Library cards (BuilderLibraryMenu, one shared instance).
+		const libraryMenu = ref(null);
 
 		return {
 			...builder,
@@ -756,6 +701,7 @@ export default defineComponent({
 			revealInstance,
 			instanceContextItems,
 			instanceContextAction,
+			libraryMenu,
 			hintsOpen,
 			elementPreview,
 			elementPreviewId,

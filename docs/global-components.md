@@ -71,6 +71,19 @@ when duplicated or copied into instances (`copyDefinition`, `capturePartials`).
   `syncLibraryInstances`/`resetLibraryInstances` or the single-instance equivalents in one
   undoable commit. A ZVP refresh keeps the project export name so references stay valid.
 - A linked copy whose global row was archived stays usable and resettable from the local copy.
+- **Send to global library**: right-click a project Library card (`BuilderLibraryMenu.vue`, also
+  Edit, Insert, Duplicate, Rename, Delete) → `requestGlobalPublish` opens `BuilderGlobalPublishDialog`
+  (`{ type: 'global-publish', id }`). Only `isGlobalCandidate` definitions qualify (UUID id, not a
+  source base, not already linked). The dialog lists the active rows to preview the global export
+  name (`globalExportName`: a ZVP gets a suffix when another global ZVP uses its name; the project
+  keeps its own), warns about same-name components and captured ZVP dependencies (published inside
+  the definition, not as separate global ZVPs), and states that the library is shared.
+  `publishGlobalComponent` inserts `publishRecord(...)` signed with the running release. With
+  **Link the project copy** (default) the row id is the definition id and the definition receives
+  `global` metadata, becoming the linked copy in place (instances, `sourceId` and ZVP references
+  unchanged; an in-place library editor of it is closed); otherwise a fresh id is used and the
+  project component stays independent. The Library switches to the Global category afterwards.
+  The new row has no hub thumbnail until one is generated.
 
 Terminology (user, 2026-10-08): **Soft reset** restores structure and styles keeping data and
 properties (formerly "Sync with original"/"Sync instances"); **Hard reset** replaces copies,

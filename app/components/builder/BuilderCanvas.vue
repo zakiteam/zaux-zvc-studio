@@ -33,16 +33,7 @@ export default defineComponent({
     const frame = ref(null);
     const stage = ref(null);
     const contextMenu = ref(null);
-    const contextItems = computed(() => [
-      { id: 'edit-library', icon: 'enter', label: builder.translate('zx_builder_edit_library'), hidden: builder.mode.value !== 'template', disabled: !builder.instanceLibraryDefinition.value },
-      { id: 'export-runtime', icon: 'download', label: builder.translate('zx_builder_export_zaux_json'), disabled: !builder.activeDefinition.value },
-      { id: 'export-js', icon: 'download', label: builder.translate('zx_builder_export_component_js'), disabled: !builder.activeDefinition.value },
-    ]);
-    function contextAction(item) {
-      if (item.id === 'edit-library') builder.selectLibrary(builder.instanceLibraryDefinition.value.id);
-      if (item.id === 'export-runtime') builder.openExport({ scope: 'component', format: 'runtime' });
-      if (item.id === 'export-js') builder.openExport({ scope: 'component', format: 'js' });
-    }
+    const { items: contextItems, run: contextAction } = builder.nodeMenu;
     // Iframe coordinates are scaled by the canvas zoom; the frame rectangle already includes it.
     function openContextMenu({ x, y }) {
       const rect = frame.value?.getBoundingClientRect();
@@ -69,7 +60,7 @@ export default defineComponent({
     let generation = 0;
     let visibilityRequest = 0;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: builder.canCopyNode.value && builder.canEditRemote.value, canDeleteNode: builder.canCopyNode.value && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     // Lightweight message: hover-driven highlightNodeCSS calls must not resend the whole state.
     function sendInspect() {
@@ -92,8 +83,11 @@ export default defineComponent({
         if (message.type === 'copy-node') builder.copySelectedNode();
         if (message.type === 'cut-node') builder.cutSelectedNode();
         if (message.type === 'paste-node') builder.pasteNode();
-        if (message.type === 'duplicate-node') builder.duplicateNode();
-        if (message.type === 'delete-node') builder.deleteNode();
+        // With a multi-selection, duplicate and delete act on every selected row.
+        if (message.type === 'duplicate-node') builder.outlineBulk.value ? builder.duplicateOutlineSelection() : builder.duplicateNode();
+        if (message.type === 'delete-node') builder.outlineBulk.value ? builder.deleteOutlineSelection() : builder.deleteNode();
+        if (message.type === 'node-menu' && !builder.modal.value) builder.nodeMenu.runShortcut(message.action);
+        if (message.type === 'deselect-node' && !builder.modal.value) builder.deselectNode();
       }
       if (message.type === 'layout') { if (!builder.modal.value) builder.runLayoutShortcut(message.action); return; }
       if (message.type === 'ready') { sendState(); sendInspect(); }
@@ -101,10 +95,18 @@ export default defineComponent({
       if (message.type === 'select') {
         // A click inside the iframe never reaches this document's pointer listeners.
         contextMenu.value?.close();
-        builder.selectInstance(message.instanceId, message.nodeId);
+        // Shift+click toggles the row in the multi-selection; right-click keeps the selection it lands in.
+        if (message.toggle && !builder.previewOnly.value) { builder.toggleOutlineRow(message.instanceId, message.nodeId); return; }
+        if (message.preserve) builder.selectOutlineRow(message.instanceId, message.nodeId, false, true);
+        else builder.selectInstance(message.instanceId, message.nodeId);
         if (message.revealOutline) builder.revealOutline(message.instanceId, message.nodeId);
       }
-      if (message.type === 'drop' && !builder.previewOnly.value) builder.dropElement(message.payload, message.nodeId, message.position, message.instanceId);
+      if (message.type === 'drop' && !builder.previewOnly.value) {
+        // Dragging a node of the multi-selection moves the whole selection, as in the outline.
+        const payload = message.payload?.kind === 'node' && builder.inOutlineBulk(message.payload.instanceId, message.payload.id)
+          ? builder.outlineDragPayload(message.payload) : message.payload;
+        builder.dropElement(payload, message.nodeId, message.position, message.instanceId);
+      }
     }
     async function compileCss() {
       const token = ++generation;
@@ -113,7 +115,7 @@ export default defineComponent({
         if (token === generation) { dynamicCss.value = result.css; sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
-    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
+    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
     watch([builder.cssInspect, builder.cssInspectProperties, builder.cssHighlight], sendInspect, { deep: true });
     watch(() => builder.revealTarget.value, (target) => {

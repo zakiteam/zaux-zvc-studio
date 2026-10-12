@@ -1,7 +1,8 @@
 import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
-import { nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut } from '../services/node-shortcuts.js';
-import { createFreeInstance, groupFreeInstances } from '../../domain/template-elements.js';
-import { outlineKey, outlineRows, outlineRoots, canMoveOutline, moveOutline } from '../../domain/outline.js';
+import { nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut, nodeMenuShortcut } from '../services/node-shortcuts.js';
+import { useNodeContextMenu } from './useNodeContextMenu.js';
+import { createFreeInstance, groupFreeInstances, isFreeRoot, replaceFreeRoot, detachInstance as detachTemplateInstance } from '../../domain/template-elements.js';
+import { outlineKey, outlineRows, outlineRoots, canMoveOutline, moveOutline, removeOutline, duplicateOutline, snapshotOutline } from '../../domain/outline.js';
 import { activeDefinitionOnly, addVariant, selectVariant, renameVariant, removeVariant } from '../../domain/variants.js';
 import { selectPartialVariant } from '../../domain/partials.js';
 import { libraryThumbnailState } from '../../domain/library-thumbnail.js';
@@ -189,7 +190,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   const previewHeaderHidden = ref(false);
   const canvasDark = ref(false);
   // Session-only box-model inspector (toolbar toggle and Shift+M); see app/data/css-inspector.js.
-  const cssInspect = ref(false);
+  const cssInspect = ref(true);
   const cssInspectProperties = ref([...cssInspectorProperties]);
   // Programmatic highlight, independent of the toggle: { instanceId, nodeId, details, properties } or null.
   const cssHighlight = ref(null);
@@ -229,6 +230,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (action === 'zoom-fit') canvasZoom.value = 'fit';
     if (action === 'zoom-reset') canvasZoom.value = 1;
     if (action === 'toggle-css-inspect') cssInspect.value = !cssInspect.value;
+    if (action === 'toggle-preview') previewOnly.value = !previewOnly.value;
     if (action === 'focus-elements' || action === 'focus-library') {
       const tab = action === 'focus-elements' ? 'elements' : 'library';
       previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = tab;
@@ -344,6 +346,23 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (indices.some((index, offset) => index !== indices[0] + offset)) return null;
     return { instanceId: activeTemplate.value.instances[indices[0]].id, endId: activeTemplate.value.instances[indices.at(-1)].id };
   });
+  // Canvas Shift+click: adds the row to the selection or removes it, keeping outline order;
+  // the clicked row becomes the active node shown by the Inspector.
+  function toggleOutlineRow(id, selectedId = null) {
+    const row = { instanceId: id, nodeId: selectedId };
+    const order = outlineRows(outlineInstances.value, new Set(), mode.value === 'library').map(outlineKey);
+    const active = { instanceId: mode.value === 'library' ? 'library' : instanceId.value, nodeId: nodeId.value };
+    const current = outlineSelection.value.length ? outlineSelection.value : order.includes(outlineKey(active)) ? [active] : [];
+    const selected = current.some(item => outlineKey(item) === outlineKey(row));
+    const next = (selected ? current.filter(item => outlineKey(item) !== outlineKey(row)) : [...current, row])
+      .filter(item => order.includes(outlineKey(item)))
+      .sort((a, b) => order.indexOf(outlineKey(a)) - order.indexOf(outlineKey(b)));
+    if (!next.length) { deselectNode(); return; }
+    const focus = selected ? next.at(-1) : row;
+    selectInstance(focus.instanceId, focus.nodeId);
+    outlineSelection.value = next;
+    revealOutline(focus.instanceId, focus.nodeId);
+  }
   function openOutlineGroup(id, selectedId = null) {
     selectOutlineRow(id, selectedId, false, true);
     const range = outlineGroupRange.value;
@@ -356,14 +375,46 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     selectOutlineRow(id, selectedId, false, true);
     return outlineSelection.value.length > 1 ? { kind: 'selection', rows: clone(outlineSelection.value), scope: outlineScope.value } : payload;
   }
+  // Shift multi-selection in the outline: duplicate and delete act on every selected row
+  // (a selected parent carries its descendants); row buttons join in when their row is selected.
+  const outlineBulk = computed(() => outlineSelection.value.length > 1);
+  function inOutlineBulk(id, selectedId = null) {
+    return outlineBulk.value && selectedOutlineKeys.value.has(outlineKey({ instanceId: id, nodeId: selectedId }));
+  }
+  function duplicateOutlineSelection() {
+    if (!canEditRemote.value || !outlineBulk.value) return;
+    let selection = [];
+    commit(() => { selection = duplicateOutline(outlineInstances.value, outlineSelection.value, mode.value === 'library', document.value.library, ` (${i18n.translate('zx_builder_copy_suffix')})`); });
+    if (!error.value && selection.length) {
+      selectInstance(selection[0].instanceId, selection[0].nodeId);
+      outlineSelection.value = selection;
+      selection.forEach(row => revealOutline(row.instanceId, row.nodeId));
+    }
+  }
+  function deleteOutlineSelection() {
+    if (!canEditRemote.value || !outlineBulk.value) return;
+    commit(() => removeOutline(outlineInstances.value, outlineSelection.value, mode.value === 'library'));
+    if (!error.value) deselectNode();
+  }
+  // Clipboard: { items } in outline order, each a node snapshot or { instance } (a copied ZVC instance row).
   const nodeClipboard = ref(null);
-  const clipboardNodeName = computed(() => nodeClipboard.value?.node.name ?? '');
-  const canCopyNode = computed(() => Boolean(selectedNode.value && !isSource.value));
+  const clipboardNodeName = computed(() => {
+    const items = nodeClipboard.value?.items ?? [];
+    if (items.length > 1) return i18n.translate('zx_builder_clipboard_items', { count: items.length });
+    return items[0]?.instance?.name ?? items[0]?.node.name ?? '';
+  });
+  const clipboardHasInstances = computed(() => Boolean(nodeClipboard.value?.items.some(item => item.instance)));
+  // Copy and cut also take the multi-selection; the other single-node commands are hidden while it is active.
+  const canCopyNode = computed(() => outlineBulk.value || Boolean(selectedNode.value && !isSource.value));
   const canPasteNode = computed(() => canPasteNodeAt());
   function copySelectedNode() {
     if (!canCopyNode.value) return false;
     try {
-      nodeClipboard.value = snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, document.value.library);
+      const items = outlineBulk.value
+        ? snapshotOutline(outlineInstances.value, outlineSelection.value, document.value.library)
+        : [snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, document.value.library)];
+      if (!items.length) return false;
+      nodeClipboard.value = { items };
       return true;
     } catch (exception) { error.value = exception.message; return false; }
   }
@@ -372,40 +423,62 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (!canEditRemote.value || !canCopyNode.value) return false;
     const previousClipboard = nodeClipboard.value;
     if (!copySelectedNode()) return false;
-    deleteNode();
+    if (outlineBulk.value) deleteOutlineSelection(); else deleteNode();
     if (error.value) { nodeClipboard.value = previousClipboard; return false; }
     return true;
+  }
+  // Paste lands on the active node, or on the last row of a multi-selection.
+  function pasteAnchor() {
+    const row = outlineBulk.value ? outlineSelection.value.at(-1) : null;
+    return row ?? { instanceId: instanceId.value, nodeId: nodeId.value };
   }
   function pastePosition(targetId, position, targetInstanceId) {
     if (position !== 'auto') return position;
     return canDropElement({ kind: 'clipboard' }, targetId, 'inside', targetInstanceId) ? 'inside' : 'after';
   }
-  function canPasteNodeAt(targetId = nodeId.value, position = 'auto', targetInstanceId = instanceId.value) {
+  function canPasteNodeAt(targetId = pasteAnchor().nodeId, position = 'auto', targetInstanceId = pasteAnchor().instanceId) {
     position = pastePosition(targetId, position, targetInstanceId);
     return Boolean(nodeClipboard.value && canDropElement({ kind: 'clipboard' }, targetId, position, targetInstanceId));
   }
-  function pasteNode(targetId = nodeId.value, position = 'auto', targetInstanceId = instanceId.value) {
+  function pasteNode(targetId = pasteAnchor().nodeId, position = 'auto', targetInstanceId = pasteAnchor().instanceId) {
     position = pastePosition(targetId, position, targetInstanceId);
     if (!canPasteNodeAt(targetId, position, targetInstanceId)) return false;
     let definition = mode.value === 'library' ? activeDefinition.value : activeTemplate.value.instances.find(item => item.id === targetInstanceId)?.definition;
     const freeBoundary = mode.value === 'template' && position !== 'inside' && activeTemplate.value.instances.some(item => item.id === targetInstanceId && item.kind === 'free' && item.definition.tree.some(node => node.id === targetId));
     if (mode.value === 'template' && (!targetId || freeBoundary)) { definition = null; targetId = null; }
-    let pasted;
-    let destinationId = targetInstanceId;
+    const library = document.value.library;
+    let rows = [];
     commit(() => {
+      const items = nodeClipboard.value.items;
       if (!definition) {
-        const instance = createFreeInstance(nodeClipboard.value.node.name);
+        // Between template rows: copied ZVC instances paste as independent copies, nodes as free blocks.
+        const created = items.map(item => {
+          if (item.instance) return { ...clone(item.instance), id: uid(), definition: copyDefinition(item.instance.definition) };
+          const instance = createFreeInstance(item.node.name);
+          instance.definition.tree.push(materializeNode(item, instance.definition, library));
+          return instance;
+        });
         const list = activeTemplate.value.instances;
         const index = list.findIndex(item => item.id === targetInstanceId);
-        list.splice(index < 0 ? list.length : index + (position === 'after' ? 1 : 0), 0, instance);
-        definition = instance.definition;
-        destinationId = instance.id;
+        list.splice(index < 0 ? list.length : index + (position === 'after' ? 1 : 0), 0, ...created);
+        rows = created.map(instance => ({ instanceId: instance.id, nodeId: instance.kind === 'free' ? instance.definition.tree[0].id : null }));
+        return;
       }
-      pasted = materializeNode(nodeClipboard.value, definition, document.value.library);
-      insertNode(definition.tree, pasted, targetId, position);
+      // Each node follows the previous one, so the copied order is kept.
+      let anchor = targetId;
+      rows = items.map(item => {
+        const node = materializeNode(item, definition, library);
+        insertNode(definition.tree, node, anchor, position);
+        if (position === 'after') anchor = node.id;
+        return { instanceId: mode.value === 'library' ? 'library' : targetInstanceId, nodeId: node.id };
+      });
     });
-    if (error.value) return false;
-    selectInstance(destinationId, pasted.id);
+    if (error.value || !rows.length) return false;
+    selectInstance(rows[0].instanceId, rows[0].nodeId);
+    if (rows.length > 1) {
+      outlineSelection.value = rows;
+      rows.forEach(row => revealOutline(row.instanceId, row.nodeId));
+    }
     return true;
   }
   const previewInstances = computed(() => (mode.value === 'library' ? (activeDefinition.value ? [{ id: 'library', name: activeDefinition.value.name, definition: activeDefinition.value, data: {} }] : []) : activeTemplate.value.instances)
@@ -663,7 +736,23 @@ export function createBuilder({ projectId = null, designer = false, designerComp
       .some(value => value?.toLowerCase().includes(librarySearch.value.trim().toLowerCase()))) librarySearch.value = '';
     if (isSource.value) inspectorTab.value = 'data';
   }
+  // Show in library: opens the Library tab on the card of a library ZVC/ZVP (Project, Imported or
+  // Global category) and asks the card lists to scroll to it and highlight it briefly.
+  const libraryHighlight = ref(null);
+  function revealInLibrary(id) {
+    const definition = document.value.library.find(item => item.id === id);
+    if (!definition) return;
+    previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = 'library';
+    libraryKind.value = definition.kind === 'zvp' ? 'zvp' : 'zvc';
+    libraryCategory.value = definition.id === 'source:' + definition.sourceKey ? 'imported' : definition.global && !designer ? 'global' : 'project';
+    librarySearch.value = '';
+    const highlight = { id, token: Date.now() };
+    libraryHighlight.value = highlight;
+    setTimeout(() => { if (libraryHighlight.value === highlight) libraryHighlight.value = null; }, 2400);
+  }
   function selectInstance(id, selectedId = null) { outlineSelection.value = []; outlineAnchor = { instanceId: id, nodeId: selectedId }; templatesOpen.value = false; if (mode.value !== 'library') instanceId.value = id; nodeId.value = isSource.value ? null : selectedId; if (isSource.value || selectedPartial.value) inspectorTab.value = 'data'; }
+  // Escape (editor and canvas): drops the node and outline multi-selection, keeping the active ZVC.
+  function deselectNode() { outlineSelection.value = []; outlineAnchor = null; nodeId.value = null; }
   function syncActiveLibraryInstances() {
     if (!canEditRemote.value || mode.value !== 'library' || !activeDefinition.value) return;
     commit(workspace => syncLibraryInstances(workspace, activeDefinition.value));
@@ -786,6 +875,27 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (!editableStructure() || !selectedNode.value) return;
     commit(() => { selectedNode.value.props = clone(props); });
   }
+  // Style API of the selected node, shared by the Inspector Style tab and Quick style.
+  // canStyleNode: the node accepts style edits; nodeClasses: its class list, or null when
+  // `class` is not a plain string (a JSON value only the Inspector edits).
+  const canStyleNode = computed(() => !!selectedNode.value && !isSource.value && canEditRemote.value);
+  const nodeClasses = computed(() => {
+    const value = selectedNode.value?.props.class;
+    return value == null ? '' : typeof value === 'string' ? value : null;
+  });
+  // Patches style props (class, imgClasses, viewport classes, style) and keeps every other prop.
+  function updateNodeStyle(patch) {
+    if (!selectedNode.value) return;
+    updateNode({ ...selectedNode.value.props, ...patch });
+  }
+  function setNodeClasses(value) { updateNodeStyle({ class: value }); }
+  // Inline class editor opened from the node context menu; anchor is a viewport rectangle.
+  const quickStyle = ref(null);
+  function openQuickStyle(anchor = null) {
+    if (!canStyleNode.value || nodeClasses.value === null) return;
+    quickStyle.value = { instanceId: mode.value === 'library' ? 'library' : instanceId.value, nodeId: nodeId.value, anchor };
+  }
+  function closeQuickStyle() { quickStyle.value = null; }
   function changeNodeType(name) {
     if (!editableStructure() || !selectedNode.value || selectedNode.value.name === name) return;
     let replacement;
@@ -803,9 +913,10 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   }, document.value.library));
   const selectedPartial = computed(() => availablePartials.value.find(item => item.exportName === selectedNode.value?.name));
   function partialLibraryDefinition(partial) { return findPartialLibraryDefinition(partial, document.value.library); }
-  function restorePartialReference(reference) {
+  // options.hard: fresh library copy with empty props (discards this occurrence's data); default keeps it.
+  function restorePartialReference(reference, options = {}) {
     if (!reference || !activeDefinition.value || isSource.value || !canEditRemote.value) return;
-    commit(() => restorePartial(activeDefinition.value, reference, document.value.library, mode.value === 'template' ? activeInstance.value?.data : {}));
+    commit(() => restorePartial(activeDefinition.value, reference, document.value.library, mode.value === 'template' ? activeInstance.value?.data : {}, options));
   }
   function insertPartial(id) {
     const partial = document.value.library.find(item => item.id === id && item.kind === 'zvp');
@@ -836,6 +947,46 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     selectInstance(instance.id);
     libraryKind.value = 'zvc'; libraryCategory.value = 'project'; librarySearch.value = '';
     revealOutline(instance.id); reveal(instance.id);
+    return true;
+  }
+  // Replaces a ZVC instance with in-place free copies of its nodes, keeping the selected node selected.
+  function detachInstance(id) {
+    if (!canEditRemote.value || mode.value !== 'template') return false;
+    let result;
+    commit(workspace => { result = detachTemplateInstance(activeTemplate.value, workspace.library, id); });
+    if (error.value || !result.instances.length) return false;
+    const selectedId = result.ids[nodeId.value];
+    const target = (selectedId && result.instances.find(item => findNode(item.definition.tree, selectedId))) ?? result.instances[0];
+    selectInstance(target.id, selectedId ?? target.definition.tree[0].id);
+    revealOutline(target.id, nodeId.value);
+    return true;
+  }
+  // New ZVC from node replaces the node in place when it is a root of a free block (ZVC instances are
+  // top-level blocks and cannot nest); everywhere else, and for ZVPs, the canvas keeps the original.
+  const canReplaceNodeWithZvc = computed(() => mode.value === 'template' && !designer && !!selectedNode.value
+    && isFreeRoot(activeInstance.value, selectedNode.value.id));
+  // New library ZVC/ZVP with an independent copy of the selected node.
+  function saveNodeToLibrary(name, kind = 'zvc') {
+    if (!canEditRemote.value || outlineBulk.value || !canCopyNode.value || !name.trim()) return false;
+    const definition = createDefinition(name.trim(), kind);
+    const replace = kind === 'zvc' && canReplaceNodeWithZvc.value;
+    let instance = null;
+    commit(workspace => {
+      const snapshot = snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, workspace.library);
+      definition.tree.push(materializeNode(snapshot, definition, workspace.library));
+      appendLibraryDefinition(workspace, definition);
+      if (!replace) return;
+      instance = createInstance(definition);
+      // copyDefinition derives the name again; keep the library export identity.
+      instance.definition.exportName = definition.exportName;
+      replaceFreeRoot(activeTemplate.value, activeInstance.value.id, selectedNode.value.id, instance);
+    });
+    if (error.value) return false;
+    libraryKind.value = kind; libraryCategory.value = 'project'; librarySearch.value = '';
+    if (instance) {
+      selectInstance(instance.id, instance.definition.tree[0]?.id ?? null);
+      revealOutline(instance.id, nodeId.value); reveal(instance.id, nodeId.value);
+    }
     return true;
   }
   function elementNode(name) {
@@ -899,6 +1050,12 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (payload.kind === 'instance') return mode.value === 'template' && payload.id !== targetInstanceId && activeTemplate.value.instances.some(item => item.id === payload.id);
     if (!['node', 'catalog', 'clipboard'].includes(payload.kind)) return false;
     if (payload.kind === 'clipboard' && !nodeClipboard.value) return false;
+    // Copied ZVC instances paste only between template rows (before/after a ZVC or a free top-level block).
+    if (payload.kind === 'clipboard' && clipboardHasInstances.value) {
+      const target = mode.value === 'template' && activeTemplate.value.instances.find(item => item.id === targetInstanceId);
+      const rootTarget = !targetId || target?.kind === 'free' && target.definition.tree.some(node => node.id === targetId);
+      if (mode.value !== 'template' || position === 'inside' || !rootTarget) return false;
+    }
     if (mode.value === 'template' && !targetId && position !== 'inside') {
       if (['catalog', 'clipboard'].includes(payload.kind)) return true;
       const origin = activeTemplate.value.instances.find(item => item.id === payload.instanceId);
@@ -1075,6 +1232,11 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   function hotkey(event) {
     const clipboardAction = nodeClipboardShortcut(event) ?? nodeDeleteShortcut(event);
     if (clipboardAction && !modal.value && !previewOnly.value && workspaceView.value === 'design') {
+      if (outlineBulk.value && ['duplicate-node', 'delete-node'].includes(clipboardAction) && canEditRemote.value) {
+        event.preventDefault();
+        if (!event.repeat) clipboardAction === 'delete-node' ? deleteOutlineSelection() : duplicateOutlineSelection();
+        return;
+      }
       const allowed = clipboardAction === 'paste-node' ? canPasteNode.value : canCopyNode.value && (clipboardAction === 'copy-node' || canEditRemote.value);
       if (allowed && clipboardAction === 'delete-node') {
         event.preventDefault();
@@ -1092,12 +1254,14 @@ export function createBuilder({ projectId = null, designer = false, designerComp
         return;
       }
     }
+    const menuAction = !modal.value && !previewOnly.value && workspaceView.value === 'design' ? nodeMenuShortcut(event) : null;
+    if (menuAction) { event.preventDefault(); if (!event.repeat) nodeMenu.runShortcut(menuAction); return; }
     const layoutAction = !modal.value && workspaceView.value === 'design' ? layoutShortcut(event) : null;
     if (layoutAction) { event.preventDefault(); if (!event.repeat) runLayoutShortcut(layoutAction); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || modal.value) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (designer) globalDesigner.flush(); else flushSave(); }
-    if (event.key === 'Escape') { nodeId.value = null; previewOnly.value = false; }
+    if (event.key === 'Escape') { deselectNode(); previewOnly.value = false; }
   }
   async function loadGlobalLibrary() {
     workspaceReady.value = false;
@@ -1162,14 +1326,18 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     }
     collapsedOutline.value = next;
   }
-  const api = { cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes });
-  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion });
-  const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement });
+  Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle });
+  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, saveNodeToLibrary });
+  const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId: () => auth.user.value?.id });
   function openGlobalDesigner(id) { globalLinks.openGlobalDesigner(id); }
   Object.assign(api, globalLinks, { designer, reloadGlobalLibrary, globalThumbnails: globalDesigner?.thumbnails ?? ref(Object.create(null)) });
+  // Canvas/outline context menu and its keyboard shortcuts (hotkey above, iframe via BuilderCanvas).
+  const nodeMenu = useNodeContextMenu(api);
+  api.nodeMenu = nodeMenu;
   provide(key, api);
   return api;
 }

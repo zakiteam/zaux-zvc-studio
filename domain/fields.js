@@ -1,8 +1,20 @@
 import { getValue } from './nodes.js';
+// `image` stores a URL string, `media` a Media.vue `{ type, props }` object (image or video).
+export const FIELD_TYPES = ['text', 'textarea', 'number', 'switch', 'select', 'image', 'media', 'json', 'html', 'css-editor', 'button', 'buttongroup', 'component'];
+// Component fields hold one descriptor, or an array with Zaux's `params.mode: 'array'`.
+export function fieldDefault(type, params) {
+  if (type === 'component' && params?.mode === 'array') return [];
+  if (type === 'switch') return false;
+  if (type === 'number') return 0;
+  if (type === 'buttongroup') return [];
+  if (type === 'media') return { type: 'img', props: {} };
+  if (['json', 'button', 'component'].includes(type)) return {};
+  return '';
+}
 export function fieldInputType(field) {
   if (field.type === 'html') return 'textarea';
   if (field.type === 'buttongroup') return 'buttongroup';
-  if (['button', 'component'].includes(field.type)) return 'json';
+  if (field.type === 'button') return 'json';
   return field.type;
 }
 export function isFieldVisible(field, data) {

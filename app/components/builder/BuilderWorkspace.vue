@@ -49,9 +49,11 @@
 		<BuilderDesignView v-show="workspaceView === 'design'" />
 		<BuilderThemeEditor v-if="themesOpened" v-show="workspaceView === 'themes'" />
 		<BuilderZauxVersionDialog v-if="modal?.type === 'zaux-version'" :key="modal.key ?? modal.id" />
+		<BuilderGlobalPublishDialog v-else-if="modal?.type === 'global-publish'" />
 		<BuilderGlobalDialog v-else-if="modal?.type?.startsWith('global-')" />
 		<BuilderDialog v-else-if="modal" />
 		<BuilderCmdPalette v-if="commandPaletteOpen" />
+		<BuilderQuickStyle v-if="quickStyle" :key="`${quickStyle.instanceId}:${quickStyle.nodeId}`" />
 	</div>
   <main v-else class="grid h-screen p-4 min-h-dvh place-items-center bg-zaux-light font-builder text-zaux-dark">
     <div class="text-center">

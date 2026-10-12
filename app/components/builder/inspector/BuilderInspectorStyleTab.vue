@@ -46,19 +46,19 @@
 			>
 				<label>{{ translate("zx_builder_classes") }}</label>
 				<BuilderStyleInput
-					v-if="selectedNode.props.class == null || typeof selectedNode.props.class === 'string'"
+					v-if="nodeClasses !== null"
 					:key="selectedNode.id"
-					:modelValue="selectedNode.props.class ?? ''"
+					:modelValue="nodeClasses"
 					:label="translate('zx_builder_classes')"
 					:disabled="!canEditRemote"
-					@update:modelValue="setProperty('class', $event)"
+					@update:modelValue="setNodeClasses"
 				/>
 				<BuilderValue v-else
 					:modelValue="selectedNode.props.class ?? ''"
 					label="CSS class"
 					type="json"
 					:disabled="!canEditRemote"
-					@update:modelValue="setProperty('class', $event)"
+					@update:modelValue="setNodeClasses"
 				/>
 			</div>
 			<BuilderNodeStyles
@@ -68,12 +68,12 @@
 				:nodeId="selectedNode.id"
 				:viewportChosen="chosenViewports.has(selectedNode.id)"
 				@viewport-chosen="chosenViewports.add(selectedNode.id)"
-				@update:viewportStyles="updateNode({ ...selectedNode.props, ...$event })"
+				@update:viewportStyles="updateNodeStyle"
 				:imgClasses="selectedNode.props.imgClasses"
-				@update:imgClasses="setProperty('imgClasses', $event)"
+				@update:imgClasses="updateNodeStyle({ imgClasses: $event })"
 				:modelValue="selectedNode.props.class"
 				:disabled="!canEditRemote"
-				@update:modelValue="setProperty('class', $event)"
+				@update:modelValue="setNodeClasses"
 			/>
 			<details v-if="visibility.advanced" data-style-section="inline">
 				<summary>{{ translate("zx_builder_styles") }}</summary>
@@ -81,7 +81,7 @@
 					:modelValue="selectedNode.props.style ?? {}"
 					label="CSS style"
 					type="json"
-					@update:modelValue="setProperty('style', $event)"
+					@update:modelValue="updateNodeStyle({ style: $event })"
 				/>
 			</details>
 		</div>
@@ -249,10 +249,7 @@ export default defineComponent({
 				behavior: reducedMotion ? "instant" : "smooth",
 			});
 		}
-		function setProperty(key, value) {
-			builder.updateNode({ ...builder.selectedNode.value.props, [key]: value });
-		}
-		return { ...builder, styleScope, visibility, chosenViewports, stylePanel, quickpad, activeShortcut, hoveredShortcut, shortcuts, shortcutGroups, captionShortcut, captionLabel, quickpadIcon, goToSection, setProperty };
+		return { ...builder, styleScope, visibility, chosenViewports, stylePanel, quickpad, activeShortcut, hoveredShortcut, shortcuts, shortcutGroups, captionShortcut, captionLabel, quickpadIcon, goToSection };
 	},
 });
 </script>

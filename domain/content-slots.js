@@ -1,4 +1,4 @@
-import { isBinding } from './nodes.js';
+import { isBinding, runtimeNodes } from './nodes.js';
 import { isPlainRecord } from './slider.js';
 
 // A Zaux contentSlots entry renders one { name, props } descriptor. Several
@@ -24,6 +24,14 @@ export function contentSlotDescriptor(node, root = true) {
   const descriptor = root ? { type: 'component', name: node.name, props: node.props ?? {} } : { name: node.name, props: node.props ?? {} };
   if (node.children?.length) descriptor.children = node.children.map(child => contentSlotDescriptor(child, false));
   return descriptor;
+}
+
+// Expands a ZVP reference into plain Zaux descriptors: the result no longer
+// depends on the partial, so later ZVP edits never reach it.
+export function bakePartial(partial, props = {}) {
+  const nodes = runtimeNodes(partial, props);
+  if (nodes.length === 1 && !nodes[0].children?.length) return { type: 'component', ...nodes[0] };
+  return { type: 'component', name: GROUP, props: { components: nodes } };
 }
 
 export function setContentSlot(contentSlots, key, items) {

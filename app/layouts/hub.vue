@@ -37,7 +37,7 @@
           iconOnly
           btnTheme="alt1"
           :extraTriggerProps="{ iconName: 'settings', hasIcon: true, actionIcon: false }"
-          :popOverProps="{ position: menuPosition }"
+          side="top"
           :items="accountMenuItems"
           @select="accountAction"
         />
@@ -48,7 +48,7 @@
   </div>
 </template>
 <script>
-import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import studioLogo from '../assets/images/logo-studio.svg?url';
 import { useAuth } from '../composables/useAuth.js';
 import { useTranslation } from '../composables/useTranslation.js';
@@ -61,14 +61,6 @@ export default defineComponent({
     const { translate, language, setLanguage } = useTranslation();
     const { theme, toggleTheme } = useStudioTheme();
     const initial = computed(() => (auth.user.value?.email ?? '?').charAt(0));
-    // The menu is wider than the sidebar: open it rightwards over the page, except on narrow
-    // screens where the sidebar becomes a full-width bar and the trigger sits on the right edge.
-    const narrow = ref(false);
-    let media;
-    const updateNarrow = () => { narrow.value = !!media?.matches; };
-    onMounted(() => { media = window.matchMedia('(max-width: 700px)'); updateNarrow(); media.addEventListener('change', updateNarrow); });
-    onBeforeUnmount(() => media?.removeEventListener('change', updateNarrow));
-    const menuPosition = computed(() => (narrow.value ? 'top-right' : 'top-left'));
     // Same account actions as the editor menu, so preferences are reachable from both.
     const accountMenuItems = computed(() => [
       { id: 'language-it', heading: translate('zx_builder_language'), label: translate('zx_builder_language_it'), active: language.value === 'it' },
@@ -81,7 +73,7 @@ export default defineComponent({
       else if (item.id === 'theme') toggleTheme();
       else if (item.id === 'logout') return auth.signOut();
     }
-    return { fontsOpen, studioLogo, zauxProjectVersion, initial, menuPosition, user: auth.user, translate, accountMenuItems, accountAction };
+    return { fontsOpen, studioLogo, zauxProjectVersion, initial, user: auth.user, translate, accountMenuItems, accountAction };
   }
 });
 </script>

@@ -1,6 +1,7 @@
 import { restoreInstance } from './restore-instance.js';
 import { clone, dataFor } from './nodes.js';
 import { selectVariant } from './variants.js';
+import { copyDefinition } from './workspace.js';
 
 export function partialDefinitions(definition, library) {
   const available = new Map((definition?.partials ?? []).map(partial => [partial.exportName, partial]));
@@ -66,11 +67,14 @@ export function selectPartialVariant(owner, reference, id, library, data = {}) {
 }
 
 // Give the restored occurrence its own dependency, leaving sibling references intact.
-export function restorePartialReference(owner, reference, library, data = {}) {
+// Soft (default) keeps this occurrence's data; hard takes a fresh library copy and empty props.
+export function restorePartialReference(owner, reference, library, data = {}, { hard = false } = {}) {
   const partial = owner.partials?.find(item => item.exportName === reference.name);
   const original = partialLibraryDefinition(partial, library);
   if (!original) throw new Error('zx_builder_partial_original_missing');
-  const restored = restoreInstance({ definition: partial, data: reference.props }, original);
+  const restored = hard
+    ? { definition: copyDefinition(original), data: {} }
+    : restoreInstance({ definition: partial, data: reference.props }, original);
   const definition = restored.definition;
   definition.libraryId = original.id;
   const references = new Map();

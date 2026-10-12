@@ -1,15 +1,17 @@
 import { computed, ref } from 'vue';
 import { createInstance } from '../../domain/workspace.js';
+import { uid } from '../../domain/nodes.js';
 import { restoreInstance } from '../../domain/restore-instance.js';
 import { syncLibraryInstances, resetLibraryInstances } from '../../domain/sync-instances.js';
-import { globalUpdateAvailable, globalVersionCheck, linkGlobalComponent } from '../../domain/global-components.js';
-import { listGlobalComponents } from '../services/global-components.js';
+import { globalMeta, globalUpdateAvailable, globalVersionCheck, isGlobalCandidate, linkGlobalComponent, publishRecord } from '../../domain/global-components.js';
+import { createGlobalComponent, listGlobalComponents } from '../services/global-components.js';
 import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 
 // Project side of the global library: catalog, import of linked copies after the Zaux version
-// check, and explicit Soft/Hard reset of their instances (optionally pulling the latest revision).
+// check, explicit Soft/Hard reset of their instances (optionally pulling the latest revision) and
+// publication of project components as new global ones.
 // Global components are never edited in place: editing opens the isolated Component designer.
-export function createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement }) {
+export function createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId }) {
   const globalCatalog = ref([]);
   const globalCatalogStatus = ref('idle');
   let loading = null;
@@ -116,6 +118,32 @@ export function createGlobalLinks({ document, commit, error, modal, canEditRemot
     return true;
   }
 
+  // Project ZVC/ZVP → new global row (dialog { type: 'global-publish', id }). With link the project
+  // definition becomes the linked copy of that row (same id), so its instances and ZVP references stay
+  // valid and later changes come from the Component designer; without link only a copy is published.
+  function requestGlobalPublish(id) {
+    const definition = document.value.library.find(item => item.id === id);
+    if (canEditRemote.value && isGlobalCandidate(definition)) modal.value = { type: 'global-publish', id };
+  }
+  async function publishGlobalComponent(id, { link = true, rows = null } = {}) {
+    const definition = document.value.library.find(item => item.id === id);
+    if (!canEditRemote.value) throw new Error('zx_builder_project_readonly');
+    if (!isGlobalCandidate(definition)) throw new Error('zx_builder_global_publish_invalid');
+    const record = publishRecord(definition, rows ?? await listGlobalComponents(), { id: link ? definition.id : uid(), zauxVersion: zauxProjectVersion });
+    const row = await createGlobalComponent(record, userId());
+    globalCatalog.value = [...globalCatalog.value.filter(item => item.id !== row.id), { ...row, thumbnail: null }];
+    if (!link) return { row, linked: false };
+    commit(workspace => {
+      const current = workspace.library.find(item => item.id === id);
+      if (!current || current.global) throw new Error('zx_builder_global_missing');
+      current.global = globalMeta(row);
+    });
+    // The row exists even when linking fails (the project changed meanwhile): report it, keep the row.
+    if (error.value) throw new Error('zx_builder_global_publish_link_error');
+    acceptedLinked.add(row.id + '|' + row.zaux_version);
+    return { row, linked: true };
+  }
+
   // reset: 'soft' | 'hard' | 'none'. With instanceId only that instance is reset; otherwise every copy.
   function requestGlobalSync(id, { instance = null, reset = 'soft' } = {}) {
     if (canEditRemote.value) modal.value = { type: 'global-sync', id, instanceId: instance, reset };
@@ -150,6 +178,7 @@ export function createGlobalLinks({ document, commit, error, modal, canEditRemot
 
   return {
     globalCatalog, globalCatalogStatus, globalEntries, loadGlobalCatalog, openGlobalDesigner, insertGlobal, dropGlobal,
-    insertApprovedGlobal, globalVersionCheck: versionCheck, requestGlobalImport, importGlobalComponent, requestGlobalSync, syncGlobalComponent
+    insertApprovedGlobal, globalVersionCheck: versionCheck, requestGlobalImport, importGlobalComponent, requestGlobalSync, syncGlobalComponent,
+    requestGlobalPublish, publishGlobalComponent
   };
 }

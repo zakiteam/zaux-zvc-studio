@@ -64,6 +64,8 @@
         <BuilderButton size="xs" :variant="previewOnly ? 'primary' : 'secondary'"
           :icon="previewOnly ? 'edit' : 'visibility'" :extraProps="{ actionIcon: false }"
           :label="translate(previewOnly ? 'zx_builder_design' : 'zx_builder_preview')"
+          :title="translate(previewOnly ? 'zx_builder_design' : 'zx_builder_preview') + ' (Shift Space)'"
+          aria-keyshortcuts="Shift+Space"
           :aria-pressed="previewOnly" @click="previewOnly = !previewOnly" />
       </div>
     </div>

@@ -42,6 +42,25 @@ export function globalRecord(definition, zauxVersion) {
   };
 }
 
+// Export name a project ZVP receives in the global library: references resolve by export
+// name there, so it must not collide with another active global ZVP. ZVCs keep their name.
+export function globalExportName(definition, rows) {
+  if (definition.kind !== 'zvp') return definition.exportName;
+  const names = new Set(rows.filter(row => row.kind === 'zvp').map(row => row.export_name));
+  let name = definition.exportName;
+  for (let suffix = 2; names.has(name); suffix++) name = definition.exportName + suffix;
+  return name;
+}
+
+// Row for publishing a project definition as a new global component under `id`.
+// Captured ZVP dependencies travel inside the definition, as for any global ZVC.
+export function publishRecord(definition, rows, { id, zauxVersion }) {
+  const copy = { ...clone(definition), id, exportName: globalExportName(definition, rows) };
+  delete copy.global;
+  validateDefinition(copy);
+  return globalRecord(copy, zauxVersion);
+}
+
 // The stored JSON is validated like any import; the row id is authoritative.
 export function globalDefinition(row) {
   const definition = { ...clone(row.definition), id: row.id };

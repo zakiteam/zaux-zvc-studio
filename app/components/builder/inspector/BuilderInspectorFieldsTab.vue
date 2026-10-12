@@ -59,6 +59,17 @@
 					@keydown.alt.down.prevent="moveWithKeyboard(field, 1)"
 				><span aria-hidden="true">⠿</span></button>
 				{{ field.label }} <code>{{ field.key }}</code>
+				<!-- prevent: a click inside <summary> would also toggle the card. -->
+				<span class="float-right" @click.prevent.stop>
+					<BuilderButton
+						variant="light"
+						size="xs"
+						icon="delete"
+						iconOnly
+						:label="translate('zx_builder_delete')"
+						@click="deleteField(field.key)"
+					/>
+				</span>
 			</summary>
 			<div
 				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
@@ -104,16 +115,23 @@
 				><BuilderValue type="json" :label="translate('zx_builder_options')" :modelValue="field.options"
                   @update:modelValue="updateField(field.key, 'options', $event)" />
 			</div>
+			<div
+				v-if="field.type === 'component'"
+				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark"
+			>
+				<label>{{ translate("zx_builder_component_mode") }}</label
+				><select
+					class="px-2 py-1 bg-zaux-light border-none"
+					:value="field.params?.mode === 'array' ? 'array' : 'obj'"
+					@change="changeComponentMode(field.key, $event.target.value)"
+				>
+					<option value="obj">{{ translate("zx_builder_component_mode_single") }}</option>
+					<option value="array">{{ translate("zx_builder_component_mode_list") }}</option>
+				</select>
+			</div>
             <label class="block mb-1 text-[11px]">{{ translate('zx_builder_field_show_if') }}</label>
             <BuilderValue type="json" :label="translate('zx_builder_field_show_if')" :modelValue="field.showIf ?? null"
               @update:modelValue="updateField(field.key, 'showIf', $event)" />
-			<div class="pt-1">
-				<BuilderButton
-					size="xs"
-					:label="translate('zx_builder_delete')"
-					@click="deleteField(field.key)"
-				/>
-			</div>
 		</details>
 		</div>
 		</div>
@@ -179,7 +197,7 @@
 <script>
 import { defineComponent, nextTick, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
-import { fieldInputType, moveField } from "../../../../domain/fields.js";
+import { FIELD_TYPES, fieldDefault, fieldInputType, moveField } from "../../../../domain/fields.js";
 export default defineComponent({
 	setup() {
 		const builder = useBuilder();
@@ -187,17 +205,8 @@ export default defineComponent({
 		const newLabel = ref("");
 		const newType = ref("text");
 		const fieldError = ref("");
-		const types = ["text", "textarea", "number", "switch", "select", "json", "html", "css-editor", "button", "buttongroup", "component"];
-		const defaultFor = (type) =>
-			type === "switch"
-				? false
-				: type === "number"
-					? 0
-					: type === "buttongroup"
-						? []
-						: ["json", "button", "component"].includes(type)
-							? {}
-							: "";
+		const types = FIELD_TYPES;
+		const defaultFor = fieldDefault;
 		function updateField(key, property, value) {
 			builder.updateDefinition((def) => {
 				def.fields.find((field) => field.key === key)[property] = value;
@@ -209,6 +218,19 @@ export default defineComponent({
 				field.type = type;
 				field.default = defaultFor(type);
 				if (type === "select") field.options = [];
+				if (type !== "component") delete field.params;
+			});
+		}
+		// Mirrors Zaux's component field `params.mode`: one descriptor or a list.
+		function changeComponentMode(key, mode) {
+			builder.updateDefinition((def) => {
+				const field = def.fields.find((field) => field.key === key);
+				const params = { ...(field.params ?? {}) };
+				if (mode === "array") params.mode = "array";
+				else delete params.mode;
+				if (Object.keys(params).length) field.params = params;
+				else delete field.params;
+				field.default = fieldDefault(field.type, field.params);
 			});
 		}
 		function addField() {

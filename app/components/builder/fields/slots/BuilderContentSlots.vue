@@ -13,49 +13,14 @@
 				<p class="text-cta-m font-builder">
 					{{ selected.key }} · {{ selected.index + 1 }} · {{ itemLabel(selectedItem) }}
 				</p>
-				<BuilderPartialFields
-					v-if="selectedPartial && isPlainRecord(selectedItem.props)"
+				<BuilderComponentItem
 					:key="selected.key + selected.index"
-					:definition="selectedPartial"
+					:item="selectedItem"
+					:label="itemLabel(selectedItem)"
 					:reference="selectedItem"
 					:bindings="bindings"
-					:modelValue="selectedItem.props"
-					@change="updateItem({ ...selectedItem, props: $event })"
+					@change="updateItem"
 				/>
-				<template v-else-if="isPlainRecord(selectedItem.props ?? {})">
-					<BuilderProperty
-						v-for="property in itemProperties"
-						:key="`${selected.key}-${selected.index}-${selectedItem.name}-${property}`"
-						:property="property"
-						:value="selectedItem.props[property]"
-						:fields="bindings"
-						:descriptor="descriptors[property]"
-						@change="setProperty(property, $event)"
-					/>
-					<div class="zb-field [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium">
-						<label>{{ translate("zx_builder_add") }} · {{ translate("zx_builder_properties") }}</label>
-						<BuilderInput
-							type="select"
-							modelValue=""
-							:options="[
-								{ value: '', label: '+' },
-								...extraProperties.map((property) => ({ value: property, label: property })),
-							]"
-							@change="addProperty"
-						/>
-					</div>
-				</template>
-				<p v-else class="text-[11px] text-zaux-dark-grey">{{ translate("zx_builder_slider_unknown") }}</p>
-				<details>
-					<summary>{{ translate("zx_builder_advanced") }}</summary>
-					<BuilderValue
-						:key="selected.key + selected.index"
-						type="json"
-						:modelValue="selectedItem"
-						:label="itemLabel(selectedItem)"
-						@update:modelValue="updateItem"
-					/>
-				</details>
 			</div>
 		</template>
 		<template v-else>
@@ -99,10 +64,10 @@
 	import { computed, defineComponent, nextTick, ref, watch } from "vue";
 	import { useBuilder } from "../../../../composables/useBuilder.js";
 	import { useTranslation } from "../../../../composables/useTranslation.js";
-	import { catalog, catalogNode, propertyInfo } from "../../../../services/catalog.js";
+	import { componentDescriptor, componentLabel, componentMenuItems } from "../../../../services/catalog.js";
 	import { clone } from "../../../../../domain/nodes.js";
 	import { isPlainRecord } from "../../../../../domain/slider.js";
-	import { contentSlotDescriptor, contentSlotItems, setContentSlot } from "../../../../../domain/content-slots.js";
+	import { contentSlotItems, setContentSlot } from "../../../../../domain/content-slots.js";
 	import { contentSlotControls } from "../../../../../integrations/zaux/controls/content-slot-controls.js";
 
 	// Edits a component's contentSlots prop: each slot holds catalog components
@@ -128,45 +93,18 @@
 				return slot?.items?.[selected.value.index] ?? null;
 			});
 			watch(selectedItem, (item) => { if (!item) selected.value = null; });
-			const selectedPartial = computed(() =>
-				builder.availablePartials.value.find((item) => item.exportName === selectedItem.value?.name),
-			);
-			const descriptors = computed(() => {
-				const trees = builder.mode.value === "library"
-					? [builder.activeDefinition.value?.tree ?? []]
-					: (builder.activeTemplate.value?.instances ?? []).map((instance) => instance.definition.tree);
-				return selectedItem.value ? propertyInfo(selectedItem.value.name, { props: selectedItem.value.props ?? {}, trees }) : {};
-			});
-			const itemProperties = computed(() => Object.keys(selectedItem.value?.props ?? {}));
-			const extraProperties = computed(() =>
-				Object.keys(descriptors.value).filter((key) => !Object.hasOwn(selectedItem.value?.props ?? {}, key)).sort(),
-			);
-			const contentItems = computed(() => {
-				const zaux = catalog.filter((entry) => !entry.html);
-				const html = catalog.filter((entry) => entry.html);
-				const partials = builder.selectablePartials.value.map((item) => ({ id: item.exportName, label: item.name + " (ZVP)" }));
-				return [
-					...(zaux.length ? [{ heading: translate("zx_builder_zaux") }] : []),
-					...zaux.map((entry) => ({ id: entry.name, label: entry.name })),
-					...(html.length ? [{ heading: translate("zx_builder_native") }] : []),
-					...html.map((entry) => ({ id: entry.name, label: entry.name })),
-					...(partials.length ? [{ separator: true }, { heading: translate("zx_builder_partials") }] : []),
-					...partials,
-				];
-			});
+			const contentItems = computed(() => componentMenuItems(translate, builder.selectablePartials.value));
 			function itemLabel(item) {
-				const partial = builder.availablePartials.value.find((entry) => entry.exportName === item?.name);
-				return partial ? partial.name + " (ZVP)" : item?.name || translate("zx_builder_content_slot_item");
+				return componentLabel(item, builder.availablePartials.value) || translate("zx_builder_content_slot_item");
 			}
 			function commit(key, items) {
 				builder.updateNode({ ...props.node.props, contentSlots: setContentSlot(contentSlots.value, key, items) });
 			}
 			function select(key, index) { selected.value = { key, index }; }
 			async function add(slot, item) {
-				const partial = builder.availablePartials.value.find((entry) => entry.exportName === item.id);
 				let descriptor;
 				try {
-					descriptor = partial ? { type: "component", name: partial.exportName, props: {} } : contentSlotDescriptor(catalogNode(item.id));
+					descriptor = componentDescriptor(item.id, builder.availablePartials.value);
 				} catch (exception) {
 					builder.error.value = exception.message;
 					return;
@@ -181,19 +119,6 @@
 				const slot = slots.value.find((entry) => entry.key === selected.value.key);
 				if (!slot?.items) return;
 				commit(slot.key, slot.items.map((entry, index) => index === selected.value.index ? item : entry));
-			}
-			function setProperty(key, value) {
-				updateItem({ ...selectedItem.value, props: { ...selectedItem.value.props, [key]: value } });
-			}
-			function addProperty(event) {
-				const key = event.target.value;
-				if (!key) return;
-				const descriptor = descriptors.value[key];
-				const value = descriptor?.default;
-				setProperty(key, typeof value === "function"
-					? descriptor.type === Array ? [] : descriptor.type === Object ? {} : null
-					: value === undefined ? "" : clone(value));
-				event.target.value = "";
 			}
 			function duplicate(slot, index) {
 				const items = [...slot.items];
@@ -211,9 +136,8 @@
 				commit(slot.key, items);
 			}
 			return {
-				translate, selected, bindings, slots, selectedItem, selectedPartial, descriptors, itemProperties,
-				extraProperties, contentItems, isPlainRecord, itemLabel, select, add, updateItem, setProperty,
-				addProperty, duplicate, remove, move,
+				translate, selected, bindings, slots, selectedItem, contentItems, itemLabel, select, add, updateItem,
+				duplicate, remove, move,
 			};
 		},
 	});
