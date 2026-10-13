@@ -16,10 +16,11 @@ async function mediaRequest(path = '', options = {}) {
 export function listMedia({ scope, projectId, search, page }) {
   return mediaRequest('', { query: { scope, projectId: scope === 'project' ? projectId : undefined, search, page } });
 }
-export function uploadMedia(file, { scope, projectId }) {
+export function uploadMedia(file, { scope, projectId, name = file.name }) {
   if (file.size > 10 * 1024 * 1024) throw new Error('zx_builder_media_too_large');
-  return mediaRequest('', { method: 'POST', body: file, query: { name: file.name.slice(0, 200), scope, projectId: scope === 'project' ? projectId : undefined } });
+  return mediaRequest('', { method: 'POST', body: file, query: { name: name.slice(0, 200), scope, projectId: scope === 'project' ? projectId : undefined } });
 }
+export function renameMedia(id, name) { return mediaRequest('/' + id, { method: 'PATCH', body: { name } }); }
 export function archiveMedia(id) { return mediaRequest('/' + id, { method: 'PATCH' }); }
 
 export async function downloadMedia(asset) {

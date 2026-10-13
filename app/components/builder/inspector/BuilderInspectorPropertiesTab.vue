@@ -60,25 +60,29 @@
 				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
 				<label>{{ translate("zx_builder_node_name") }}</label
-				><BuilderInput
-					type="select"
-					:modelValue="selectedNode.name"
-					:options="[
-						...(catalog.some((entry) => entry.name === selectedNode.name)
-							? []
-							: [
-									{
-										value: selectedNode.name,
-										label: selectedNode.name,
-									},
-								]),
-						...catalog.map((entry) => ({
-							value: entry.name,
-							label: entry.name,
-						})),
-					]"
-					@change="changeType"
-				/>
+				><BuilderDropdown
+					class="w-full min-w-0"
+					:label="translate('zx_builder_node_name')"
+					:items="typeItems"
+					filterItems
+					@select="changeType"
+				>
+					<template #trigger="{ open, menuId }">
+						<button
+							type="button"
+							class="flex w-full min-w-0 items-center gap-1 rounded-xxs bg-zaux-light px-1 py-0.75 text-left text-[11px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							:title="selectedNode.name"
+							:aria-label="`${translate('zx_builder_node_name')}: ${selectedNode.name}`"
+							:aria-expanded="open"
+							aria-haspopup="menu"
+							:aria-controls="menuId"
+						>
+							<span class="min-w-0 flex-1 truncate font-mono">{{ selectedNode.name }}</span>
+							<small v-if="selectedTypeGroup" class="shrink-0 text-[9px] uppercase tracking-wider text-zaux-dark-grey">{{ selectedTypeGroup }}</small>
+							<svg class="h-[12px] w-[12px] shrink-0 transition-transform" :class="{ 'rotate-180': open }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><use :href="iconHref(iconSet, 'dropdown-bottom')" /></svg>
+						</button>
+					</template>
+				</BuilderDropdown>
 			</div>
 			<p
 				v-if="['OffCanvasTrigger', 'ZModalTrigger'].includes(selectedNode.name)"
@@ -225,7 +229,8 @@
 <script>
 import { defineComponent, computed, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
-import { catalog, propertyInfo } from "../../../services/catalog.js";
+import { catalog, propertyInfo, componentMenuItems } from "../../../services/catalog.js";
+import { iconHref } from "@integration/options/icon-options.js";
 import { parseJson } from "../../../../domain/validation.js";
 import { clone, isBinding } from "../../../../domain/nodes.js";
 import { sliderControls } from "../../../../integrations/zaux/controls/slider-controls.js";
@@ -370,8 +375,22 @@ export default defineComponent({
 			);
 			event.target.value = "";
 		}
-		function changeType(event) {
-			builder.changeNodeType(event.target.value);
+		// Grouped catalog entries; a name outside the catalog (sourced or ZVP) stays listed as current.
+		const typeItems = computed(() => {
+			const name = builder.selectedNode.value?.name;
+			const items = componentMenuItems(builder.translate).map((item) =>
+				item.heading ? { ...item, id: "heading-" + item.heading } : { ...item, active: item.id === name },
+			);
+			return catalog.some((entry) => entry.name === name)
+				? items
+				: [{ id: name, label: name, active: true }, { id: "__separator", separator: true }, ...items];
+		});
+		const selectedTypeGroup = computed(() => {
+			const entry = catalog.find((item) => item.name === builder.selectedNode.value?.name);
+			return entry ? builder.translate(entry.group) : "";
+		});
+		function changeType(item) {
+			builder.changeNodeType(item.id);
 		}
 		function clearProps() {
 			propsDraft.value = "{}";
@@ -401,7 +420,9 @@ export default defineComponent({
 			mediaConfig,
 			contentSlotConfig,
 			contentSlotsEditable,
-			catalog,
+			typeItems,
+			selectedTypeGroup,
+			iconHref,
 			descriptors,
 			visibleProperties,
 			extraProperties,

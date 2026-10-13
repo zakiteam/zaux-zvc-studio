@@ -24,13 +24,14 @@ import { catalog, catalogNode, containers } from '../services/catalog.js';
 import { descendingStyles } from '../../integrations/zaux/responsive-styles.js';
 import { viewports, simpleViewports, previewWidth, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
 import { mergeSourceLibrary, refreshSourceSnapshots, visualSourceCopy, sourceAvailable } from '../services/source-zvc.js';
-import { setStyleVariable, setUIValue, validateStylePreset } from '../../domain/styles.js';
-import { createStyleBridge } from '../services/styles.js';
+import { setStyleVariable, setUIValue, validateStylePreset, mergeUISettings } from '../../domain/styles.js';
+import { createStyleBridge, defaultUISettings } from '../services/styles.js';
 import stylePreset from '../data/styles/preset.js';
 import { useTranslation } from './useTranslation.js';
 import { cssInspectorProperties, normalizeInspectorProperties } from '../data/css-inspector.js';
 import { listRemoteProjects, getRemoteProject, createRemoteProject as createRemoteProjectRecord, saveRemoteProject, renameRemoteProject as renameRemoteProjectRecord, deleteRemoteProject as deleteRemoteProjectRecord } from '../services/projects.js';
 import { useAuth } from './useAuth.js';
+import { resolveIconSet } from '../../integrations/zaux/options/icon-options.js';
 import { createGlobalDesigner } from './globalDesigner.js';
 import { createGlobalLinks } from './globalLinks.js';
 
@@ -265,6 +266,11 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     } catch (exception) { error.value = exception?.name === 'QuotaExceededError' ? 'zx_builder_preview_quota_error' : 'zx_builder_preview_open_error'; }
   }
   const stylesOpen = ref(false);
+  // Design tokens mode: graphical board or live page canvas, and the token selected on the board.
+  const tokensView = ref('board');
+  const selectedToken = ref('');
+  // Active Zaux icon set (global UI setting), used by icon pickers and the tokens board.
+  const iconSet = computed(() => resolveIconSet(mergeUISettings(defaultUISettings, document.value.styles?.uiSettings ?? {}).global?.iconSet));
   const workspaceView = ref('design');
   function updateComponentTheme(component, css) {
     parseThemeCss(css);
@@ -274,6 +280,13 @@ export function createBuilder({ projectId = null, designer = false, designerComp
       if (!css.trim()) { if (index >= 0) entries.splice(index, 1); }
       else if (index >= 0) entries[index] = { component, css };
       else entries.push({ component, css });
+    });
+  }
+  function updateProjectStyles(css) {
+    parseThemeCss(css);
+    commit(workspace => {
+      if (css.trim()) workspace.projectStyles = css;
+      else delete workspace.projectStyles;
     });
   }
   const styleBridge = createStyleBridge();
@@ -921,7 +934,8 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   function insertPartial(id) {
     const partial = document.value.library.find(item => item.id === id && item.kind === 'zvp');
     if (!partial) return;
-    addTemplateElement(partial.exportName);
+    if (insertionContainer.value) insertElement(partial.exportName);
+    else addTemplateElement(partial.exportName);
   }
   function addTemplateElement(name, beforeId = null, position = 'after') {
     if (!canEditRemote.value || designer) return;
@@ -962,20 +976,28 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     return true;
   }
   // New ZVC from node replaces the node in place when it is a root of a free block (ZVC instances are
-  // top-level blocks and cannot nest); everywhere else, and for ZVPs, the canvas keeps the original.
+  // top-level blocks and cannot nest); everywhere else the canvas keeps the original.
   const canReplaceNodeWithZvc = computed(() => mode.value === 'template' && !designer && !!selectedNode.value
     && isFreeRoot(activeInstance.value, selectedNode.value.id));
-  // New library ZVC/ZVP with an independent copy of the selected node.
+  // New library ZVC/ZVP with an independent copy of the selected node. A new ZVP always replaces the
+  // node with a reference to it (ZVPs nest anywhere); the commit captures it into the owner's partials.
   function saveNodeToLibrary(name, kind = 'zvc') {
     if (!canEditRemote.value || outlineBulk.value || !canCopyNode.value || !name.trim()) return false;
     const definition = createDefinition(name.trim(), kind);
-    const replace = kind === 'zvc' && canReplaceNodeWithZvc.value;
+    const replace = kind === 'zvp' || canReplaceNodeWithZvc.value;
     let instance = null;
+    let reference = null;
     commit(workspace => {
       const snapshot = snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, workspace.library);
       definition.tree.push(materializeNode(snapshot, definition, workspace.library));
       appendLibraryDefinition(workspace, definition);
       if (!replace) return;
+      if (kind === 'zvp') {
+        reference = createNode(definition.exportName, {});
+        const location = locateNode(activeDefinition.value.tree, selectedNode.value.id);
+        location.list.splice(location.index, 1, reference);
+        return;
+      }
       instance = createInstance(definition);
       // copyDefinition derives the name again; keep the library export identity.
       instance.definition.exportName = definition.exportName;
@@ -986,6 +1008,11 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (instance) {
       selectInstance(instance.id, instance.definition.tree[0]?.id ?? null);
       revealOutline(instance.id, nodeId.value); reveal(instance.id, nodeId.value);
+    }
+    if (reference) {
+      nodeId.value = reference.id;
+      revealOutline(instanceId.value, reference.id);
+      if (mode.value === 'template') reveal(instanceId.value, reference.id);
     }
     return true;
   }
@@ -1011,6 +1038,23 @@ export function createBuilder({ projectId = null, designer = false, designerComp
       insertNode(activeDefinition.value.tree, node, targetId, position);
     });
     nodeId.value = node.id;
+  }
+  // A single selected container wraps elements and ZVPs inserted by click (palette, command palette,
+  // library); otherwise they become a template block (toTemplate) or follow the selected node.
+  const insertionContainer = computed(() => !outlineBulk.value && !isSource.value && selectedNode.value
+    && containers.includes(selectedNode.value.name) ? selectedNode.value : null);
+  function insertElement(name, toTemplate = false) {
+    const container = insertionContainer.value;
+    if (!container) {
+      if (toTemplate && mode.value === 'template') addTemplateElement(name);
+      else addElement(name);
+      return;
+    }
+    const previous = nodeId.value;
+    addElement(name, container.id, 'inside', instanceId.value);
+    if (nodeId.value === previous) return;
+    revealOutline(instanceId.value, nodeId.value);
+    if (mode.value === 'template') reveal(instanceId.value, nodeId.value);
   }
   function insertOverlayContent(name) {
     if (!editableStructure() || !selectedNode.value || !['ZModal', 'OffCanvas'].includes(selectedNode.value.name)) return;
@@ -1369,7 +1413,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     const branch = outlineBranch(outlineId, nodeId);
     if (branch) setOutlineBranch(outlineId, nodeId, !collapsedOutline.value.has(branch.self));
   }
-  const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, updateComponentTheme, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, insertElement, insertionContainer, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, tokensView, selectedToken, iconSet, updateComponentTheme, updateProjectStyles, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });

@@ -24,9 +24,9 @@
         <button v-if="tabs.length > 1" type="button"
           :title="translate('zx_builder_workspace_tab_close', { name: tab.name })"
           :aria-label="translate('zx_builder_workspace_tab_close', { name: tab.name })" :disabled="remoteProjectBusy"
-          class="mr-0.25 grid h-[20px] w-[20px] place-items-center rounded-xxs text-[14px] leading-none hover:bg-zaux-light-grey/60 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
+          class="mr-0.1 grid p-1 place-items-center rounded-xxs text-[14px] leading-none focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent disabled:opacity-50"
           :class="tab.key === activeKey ? 'opacity-100' : 'opacity-0 group-hover/tab:opacity-100'"
-          @click="close(tab)"><span aria-hidden="true">×</span></button>
+          @click="close(tab)"><Icon iconName="close" class="text-icon-xxxs"/></button>
       </div>
     </div>
   </nav>

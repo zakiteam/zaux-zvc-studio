@@ -49,3 +49,31 @@ export function setObjectFit(classes, fit) {
   if (fit) list.push(fit);
   return list;
 }
+
+// Library asset names: the file name without its extension. Generic browser
+// clipboard names (image.png, blob…) return '' so the caller can pick a fallback.
+export function mediaAssetName(fileName) {
+  const name = String(fileName ?? '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/\s+/g, ' ').trim();
+  return /^(image|blob|clipboard(-\d+)?|untitled)?$/i.test(name) ? '' : name.slice(0, 200);
+}
+
+export function isImageFile(file) {
+  return !!file && (file.type.startsWith('image/') || /\.svg$/i.test(file.name ?? ''));
+}
+
+// SVG markup copied as text (design tools, code editors, inline HTML). Returns the
+// standalone document, adding the namespaces inline SVG often omits and the image
+// decoder requires, or null when the text is not a single SVG document.
+export function svgMarkup(text) {
+  const markup = String(text ?? '').replace(/^﻿/, '').trim();
+  if (!/^(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*(?:<!DOCTYPE[^>]*>\s*)?<svg[\s>][\s\S]*<\/svg>$/i.test(markup)) return null;
+  const root = markup.match(/<svg\b[^>]*>/i)[0];
+  let attributes = '';
+  if (!/\sxmlns\s*=/i.test(root)) attributes += ' xmlns="http://www.w3.org/2000/svg"';
+  if (/\bxlink:/i.test(markup) && !/\sxmlns:xlink\s*=/i.test(root)) attributes += ' xmlns:xlink="http://www.w3.org/1999/xlink"';
+  return attributes ? markup.replace(/<svg\b/i, '<svg' + attributes) : markup;
+}
+
+export function svgTitle(markup) {
+  return (markup.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+}

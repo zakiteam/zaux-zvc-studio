@@ -190,6 +190,21 @@ Choosing the other option on a full definition (or a workspace/template envelope
 
 No component implementation code is imported: `name` must identify a component available to the renderer or a supported HTML tag. Use strict JSON with quoted keys and no trailing commas. Invalid drafts remain in the dialog for correction. The workspace-level **Import** action keeps its own auto-detection and also accepts the compact format, including its optional `fields` and `label`.
 
+## Compact JSON in the Code tab
+
+The Inspector Code tab opens on **JSON**, a compact editable view of the active definition (`domain/compact-definition.js`):
+
+```json
+{
+  "fields": [{ "key": "title", "label": "Title", "type": "text", "default": "Hi" }],
+  "nodes": [{ "name": "Zsection", "props": { "size": "m" }, "children": [
+    { "name": "IntroText", "props": { "title": { "$bind": "title" } } }
+  ] }]
+}
+```
+
+Nodes accept only `name`, `props` and optional `children`; a bare node array replaces only the nodes. Node ids, variants, captured partials and CSS are not part of the text and are never edited here. **Apply** reconciles ids with the current tree, per sibling list: a node with the same name and identical props keeps its id first, then the first remaining same-name sibling in order; matched nodes also keep `sourceNodeId`, so Soft reset lineage survives. New nodes receive fresh ids. The result is validated like any definition and committed as one undoable change on the active variant; ZVP references are captured by the normal commit. The previous complete editor remains available as **Full JSON**. Native source definitions stay read-only.
+
 CodeMirror provides the shared JSON, CSS and JavaScript editor, including read-only export snippets. `BuilderCodeEditor` accepts `modelValue`, `language`, `label`, `rows`, `readonly` and `disabled`; it emits draft updates and commits on blur. JSON edits still use the existing parse/apply flow. Clear JSON writes `{}` for objects, `[]` for arrays and `null` for scalar JSON values; advanced node properties clear to `{}`. CSS fields use the CSS language mode.
 
 ## Textarea and rich text editing
@@ -213,6 +228,8 @@ Copied visual nodes carry optional `sourceNodeId` provenance. Matching requires 
 ## Component theme CSS
 
 The optional version-1 `workspace.componentThemes` array stores `{ component: 'ZButton', css: '.c-btn--theme-primary { --zx-c-btn-bg-color: 255 0 0; }' }` records. Existing documents without this field have no theme overrides. CSS strings are parsed for syntax, component IDs are unique, and only JSON data is stored. Records contain authored changes and custom CSS, never copies of all upstream defaults. Workspace saves, undo and editable workspace envelopes retain them independently of style presets. Single-component and combined CSS downloads are available in Theme editor; component JavaScript ZIPs include the project's `component-themes.css` when nonempty. Component/template-only JSON contracts are unchanged. See [Theme editor](theme-editor.md).
+
+The optional version-1 `workspace.projectStyles` string stores the project's Global CSS (`project-styles.css`), edited in Theme editor. Absence or blank CSS means none; saving blank CSS removes the field. It is syntax-checked like theme CSS, follows workspace saves/undo/imports, is appended after component themes in every preview and is exported as `style/project-styles.css` (starter/template ZIP) or `project-styles.css` (component ZIP) when nonempty.
 
 ## Complete project starter
 

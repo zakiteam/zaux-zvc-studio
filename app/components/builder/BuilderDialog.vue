@@ -26,7 +26,7 @@
 					autocomplete="off"
 				/>
 			</div>
-			<p v-if="['new-zvc-from-node', 'new-zvp-from-node'].includes(modal.type)" class="mb-2.5 text-[11px] text-zaux-dark-grey">{{ translate(modal.type === 'new-zvc-from-node' ? (canReplaceNodeWithZvc ? 'zx_builder_new_zvc_from_node_replace_hint' : 'zx_builder_new_zvc_from_node_nested_hint') : 'zx_builder_new_from_node_hint') }}</p>
+			<p v-if="['new-zvc-from-node', 'new-zvp-from-node'].includes(modal.type)" class="mb-2.5 text-[11px] text-zaux-dark-grey">{{ translate(modal.type === 'new-zvc-from-node' ? (canReplaceNodeWithZvc ? 'zx_builder_new_zvc_from_node_replace_hint' : 'zx_builder_new_zvc_from_node_nested_hint') : 'zx_builder_new_zvp_from_node_replace_hint') }}</p>
 			<div v-if="modal.type === 'group-zvc'" class="mb-2.5">
 				<p class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_group_zvc_hint') }}</p>
 				<label for="group-last" class="block text-[11px]">{{ translate('zx_builder_group_zvc_last') }}</label>
@@ -344,7 +344,7 @@ import {
 	useId,
 } from "vue";
 import { presetCss } from '../../../domain/styles.js';
-import { componentThemesCss } from '../../../domain/component-themes.js';
+import { componentThemesCss, projectStylesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from "../../composables/useBuilder.js";
 import {
 	documentEnvelope,
@@ -502,11 +502,13 @@ export default defineComponent({
 			if (scope.value === 'starter' || scope.value === 'template') return packageResult.value.files;
 			try {
 				const themeCss = componentThemesCss(builder.document.value.componentThemes);
+				const projectCss = projectStylesCss(builder.document.value.projectStyles);
 				const bodyCss = presetCss({ cssVars: [], bodyBackground: builder.document.value.styles?.bodyBackground });
 				return definition.value ? {
 					...filesForDefinition(definition.value),
 					...fontFiles(builder.document.value.styles?.fonts),
 					...(themeCss ? { 'component-themes.css': themeCss } : {}),
+					...(projectCss ? { 'project-styles.css': projectCss } : {}),
 					...(bodyCss ? { 'body-background.css': bodyCss } : {})
 				} : {};
 			} catch {

@@ -2,6 +2,14 @@
 
 Open **Theme editor** next to **Design tokens** in the project toolbar. **Design** returns to the builder. The project header, save status, undo/redo and dialogs remain shared. The builder workbench is now `BuilderDesignView`; `BuilderWorkspace` owns view placement and the project lifecycle. The future developer view is not implemented.
 
+## Layout
+
+The sidebar has a **Project** section (**Global CSS**, `project-styles.css`) above the component list, plus a footer with the bulk exports. Accent dots mark saved overrides; warning dots mark unsaved drafts. The header shows what is being edited (component, class and Zaux source, or Global CSS) with **Discard draft**, **Save** and the scoped export. The preview column has a toolbar card (theme, size, ZButton state, background, reload; in Global CSS also the preview component), the iframe and the collapsible **Preview properties** panel (Fields/JSON tabs). The editor column holds Variables / CSS source, or the Global CSS editor. The editor width, the properties height and their collapsed state are per-browser preferences (`zx_builder_layout.themeEditor`), never project data. Variables can be filtered by name and by **Overrides only**; the variable hint is behind the count/help disclosure.
+
+## Global CSS (project-styles.css)
+
+**Global CSS** edits the optional workspace string `projectStyles`: any complete CSS (custom classes, rules for several components, media queries). It uses the same postcss syntax check, a separate draft, **Save global CSS** (workspace validation, undo, autosave) and **Discard draft**. A valid draft affects only the Theme editor preview, where it is appended after the component themes; the preview component can be changed from the toolbar without leaving Global CSS. Saved project styles are loaded after the component themes in the builder canvas, the standalone preview/view page and library thumbnails. They do not style Studio itself. **Export project-styles.css** downloads the saved CSS.
+
 ## Editing
 
 The left sidebar lists the component theme files which declare CSS custom properties in the pinned Zaux dependency. The project preparation script compiles their Sass and records actual selectors, theme names, variable declarations and conditional contexts. Files without declarations do not create empty entries. Shared fragments such as Input and InputShared preview through InputText. Nothing is generated inside the submodule.
@@ -26,14 +34,15 @@ Theme, sample size and background are transient. ZButton additionally exposes th
 
 The optional version-1 workspace field `componentThemes` stores an array of `{ component, css }` entries. Absence means no overrides. The field is independent of design-token presets, survives full workspace JSON import/export and follows existing browser/remote project saves, revision handling, read-only permissions and undo/redo. Templates and library instances remain independent of each other; project theme CSS intentionally affects every matching component in that project's preview.
 
-**Export component CSS** downloads all applied edits for the selected component, across its themes and contexts. **Export all theme CSS** combines all modified components in the same order used by the preview. Exports omit untouched source defaults. Include the result after the destination project's Zaux styles and ensure the referenced project design tokens/fonts are installed there. The component JavaScript ZIP also includes `component-themes.css` when the project has theme overrides. Component/template-only editable JSON and runtime JSON keep their existing contracts; export CSS separately when using them.
+**Export component CSS** downloads all applied edits for the selected component, across its themes and contexts. **Export all theme CSS** combines all modified components in the same order used by the preview. **Export project-styles.css** downloads the saved Global CSS; the starter/template ZIP writes it to `style/project-styles.css` and the component JavaScript ZIP to `project-styles.css`, both only when nonempty. Load it after `component-themes.css`. Exports omit untouched source defaults. Include the result after the destination project's Zaux styles and ensure the referenced project design tokens/fonts are installed there. The component JavaScript ZIP also includes `component-themes.css` when the project has theme overrides. Component/template-only editable JSON and runtime JSON keep their existing contracts; export CSS separately when using them.
 
 ## Files and verification
 
 - `scripts/zaux/theme-catalog.mjs` reads upstream Sass and writes `integrations/zaux/generated/component-themes.json`; `prepare.mjs` invokes it during normal project preparation.
 - `integrations/zaux/theme/theme-preview.js` adapts theme fragments and sample props to actual component implementations.
 - `domain/component-themes.js` owns syntax parsing, variable mutations and CSS exports; workspace validation checks the optional data.
-- `BuilderThemeEditor.vue` owns the editing view and transient drafts; `BuilderThemePreview.vue` owns the iframe integration.
+- `BuilderThemeEditor.vue` owns the editing view, transient drafts (component and Global CSS) and layout preferences; `BuilderThemePreview.vue` owns the iframe integration (`reload()` is called from the editor toolbar); `BuilderThemeProps.vue` is the collapsible preview properties panel.
+- `domain/component-themes.js` also owns `projectStyles` validation, `projectStylesCss` and `workspaceThemeCss` (component themes followed by project styles, used by every preview consumer). `useBuilder.updateProjectStyles` commits it.
 
 The catalog was generated as an implementation artifact. Source and diffs were reviewed only. No tests, browser automation, validators or production builds were run. Runtime and visual verification remain with the user.
 

@@ -72,6 +72,7 @@ export default [
       size: 's'
     }
   },
+  { name: 'Zlink', createProps: t => ({ label: t('zx_builder_preset_link'), href: '#', tag: 'a', theme: 'light1', size: 'm' }) },
   { name: 'Paragraph', props: { contentHTML: '<p>Your text here</p>', size: 'm' } },
   { name: 'Zimg', props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false, imgClasses: ['w-full'] } },
   {

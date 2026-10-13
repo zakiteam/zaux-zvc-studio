@@ -56,8 +56,14 @@
         <div class="flex-1 min-h-0 p-2 overflow-auto zb-scroll">
           <template v-if="selected">
             <img :src="selected.thumbnailUrl" alt="" class="aspect-[4/3] w-full rounded-xs border-slim border-zaux-light-grey bg-zaux-light object-contain" />
-            <p class="mt-1 break-words text-[12px] font-semibold">{{ selected.name }}</p>
-            <p class="text-[11px] text-zaux-dark-grey tabular-nums">{{ selected.width }} &times; {{ selected.height }}</p>
+            <label v-if="canManage" class="mt-1 block text-[10px] text-zaux-dark-grey">
+              {{ translate('zx_builder_media_name') }}
+              <BuilderInput ref="nameInput" v-model="nameDraft" class="mt-0.25 w-full !text-[12px] font-semibold" maxlength="200" required
+                :label="translate('zx_builder_media_name')" :disabled="busy || loading"
+                @change="rename" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="cancelRename($event)" />
+            </label>
+            <p v-else class="mt-1 break-words text-[12px] font-semibold">{{ selected.name }}</p>
+            <p class="text-[11px] text-zaux-dark-grey tabular-nums pt-1">{{ selected.width }} &times; {{ selected.height }}</p>
             <BuilderInput class="mt-1 w-full font-mono !text-[10px]" readonly :modelValue="selected.url"
               :label="translate('zx_builder_media_url')" @focus="$event.target.select()" />
             <div class="flex flex-wrap gap-1 mt-1">
@@ -97,7 +103,8 @@
 <script>
 import { computed, defineComponent, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue';
 import { useTranslation } from '../../composables/useTranslation.js';
-import { listMedia, uploadMedia, archiveMedia, downloadMedia } from '../../services/media.js';
+import { listMedia, uploadMedia, renameMedia, archiveMedia, downloadMedia } from '../../services/media.js';
+import { isImageFile, mediaAssetName, svgMarkup, svgTitle } from '../../../domain/media.js';
 
 export default defineComponent({
   props: {
@@ -106,6 +113,7 @@ export default defineComponent({
   },
   emits: ['select', 'close'],
   setup(props) {
+    const { translate, language } = useTranslation();
     const scopes = computed(() => props.scopeOnly ? [props.scopeOnly] : props.projectId ? ['project', 'global'] : ['global']);
     const scope = ref(props.scopeOnly || props.initialScope || (props.projectId ? 'project' : 'global'));
     const canManage = computed(() => !props.readonly && (scope.value === 'global' || props.canManageProject));
@@ -144,12 +152,18 @@ export default defineComponent({
     }
     watch([scope, search, () => props.projectId], () => { page.value = 0; schedule(); });
     watch(page, schedule);
-    async function uploadFile(file) {
+    // Pasted images and SVG code carry no meaningful file name: date them instead.
+    const pastedName = () => translate('zx_builder_media_pasted_name', { date: new Date().toLocaleString(language.value, { dateStyle: 'short', timeStyle: 'short' }) });
+    const nameInput = ref(null);
+    const nameDraft = ref('');
+    watch(() => selected.value?.name, name => { nameDraft.value = name ?? ''; }, { immediate: true });
+    async function uploadFile(file, name = mediaAssetName(file?.name) || pastedName()) {
       if (!file || busy.value || !canManage.value) return;
       busy.value = true;
       error.value = '';
+      let asset = null;
       try {
-        const asset = await uploadMedia(file, { scope: scope.value, projectId: props.projectId });
+        asset = await uploadMedia(file, { scope: scope.value, projectId: props.projectId, name });
         if (disposed) return;
         search.value = ''; page.value = 0;
         await nextTick(); clearTimeout(timer);
@@ -157,6 +171,30 @@ export default defineComponent({
         if (!disposed) selected.value = asset;
       } catch (exception) { if (!disposed) failure(exception); }
       finally { if (!disposed) busy.value = false; }
+      // Offer the generated name for editing right away.
+      if (disposed || !asset || selected.value?.id !== asset.id) return;
+      await nextTick();
+      const input = nameInput.value?.$el;
+      if (input) { input.focus(); input.select(); }
+    }
+    async function rename() {
+      const asset = selected.value;
+      const name = nameDraft.value.trim();
+      if (!asset || !canManage.value || !name || name === asset.name) { nameDraft.value = asset?.name ?? ''; return; }
+      busy.value = true;
+      error.value = '';
+      try {
+        const result = await renameMedia(asset.id, name);
+        if (disposed) return;
+        const renamed = { ...asset, name: result.name };
+        assets.value = assets.value.map(item => item.id === asset.id ? renamed : item);
+        if (selected.value?.id === asset.id) selected.value = renamed;
+      } catch (exception) { if (!disposed) { failure(exception); nameDraft.value = asset.name; } }
+      finally { if (!disposed) busy.value = false; }
+    }
+    function cancelRename(event) {
+      nameDraft.value = selected.value?.name ?? '';
+      event.target.blur();
     }
     function upload(event) {
       const file = event.target.files?.[0];
@@ -165,22 +203,25 @@ export default defineComponent({
     }
     function paste(event) {
       if (!canManage.value || busy.value || loading.value) return;
-      const items = event.clipboardData?.items;
-      if (!items) return;
-      let file = null;
-      for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-        if (item.kind === 'file' && item.type.startsWith('image/')) { file = item.getAsFile(); break; }
-      }
-      if (!file) return;
-      // Keep normal text pastes working inside text fields that also receive text.
+      const data = event.clipboardData;
+      if (!data) return;
+      const text = data.getData('text/plain');
+      // Keep normal text pastes working inside text fields.
       const target = event.target;
       const textEntry = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
-      if (textEntry && event.clipboardData.getData('text/plain')) return;
+      if (textEntry && text) return;
+      // Copied image files (including .svg from the file manager); the server detects the format.
+      const file = [...data.files].find(isImageFile);
+      if (file) {
+        event.preventDefault();
+        uploadFile(file);
+        return;
+      }
+      // SVG copied as code (design tools, editors, inline HTML).
+      const markup = svgMarkup(data.getData('image/svg+xml') || text);
+      if (!markup) return;
       event.preventDefault();
-      // Some browsers hand clipboard images over without a name; the server requires one.
-      const extension = (file.type.split('/')[1] || 'png').replace(/\+.*/, '');
-      uploadFile(file.name ? file : new File([file], `clipboard-${Date.now()}.${extension}`, { type: file.type }));
+      uploadFile(new File([markup], 'clipboard.svg', { type: 'image/svg+xml' }), svgTitle(markup) || pastedName());
     }
     async function download(asset) {
       if (busy.value || loading.value) return;
@@ -225,11 +266,11 @@ export default defineComponent({
       dragging.value = false;
       if (!canManage.value || busy.value || loading.value) return;
       const files = [...event.dataTransfer.files];
-      uploadFile(files.find(file => file.type.startsWith('image/')) ?? files[0]);
+      uploadFile(files.find(isImageFile) ?? files[0]);
     }
     onMounted(load);
     onBeforeUnmount(() => { disposed = true; request++; clearTimeout(timer); });
-    return { ...useTranslation(), fileInput, dragging, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, paste, download, archive, dragEnter, dragOver, dragLeave, drop };
+    return { translate, fileInput, nameInput, nameDraft, rename, cancelRename, dragging, scopes, scope, canManage, assets, selected, search, page, hasMore, loading, busy, error, upload, paste, download, archive, dragEnter, dragOver, dragLeave, drop };
   }
 });
 </script>

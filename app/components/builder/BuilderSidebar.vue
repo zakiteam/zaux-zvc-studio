@@ -42,6 +42,7 @@
 			<div
 				id="zb-outline-section-content"
 				class="flex-1 min-h-0 px-1 pb-2 overflow-auto zb-scroll"
+				@click="outlineBlankClick"
 				@dragover.capture="outlineDrag.scrollOver"
 				@dragleave="outlineDrag.scrollLeave"
 			>
@@ -435,6 +436,9 @@
 				<BuilderInput v-if="mode === 'template'" v-model="elementDestination" type="select" class="!py-0.5 !text-[11px]"
 					:label="translate('zx_builder_insert_destination')"
 					:options="[{ value: 'template', label: translate('zx_builder_insert_template') }, { value: 'selection', label: translate('zx_builder_insert_selection') }]" />
+				<p v-if="insertionContainer" class="truncate text-[10px] text-zaux-accent" role="status" :title="translate('zx_builder_insert_inside_hint')">
+					{{ translate('zx_builder_insert_inside', { name: insertionContainer.name }) }}
+				</p>
 			</div>
 			<div class="flex-1 min-h-0 px-1.5 pb-2 overflow-auto zb-scroll" @scroll.passive="hideElementPreview">
 				<div
@@ -468,7 +472,7 @@
 							@mouseleave="hideElementPreview"
 							@focus="showElementPreview($event, entry)"
 							@blur="hideElementPreview"
-							@click="mode === 'template' && elementDestination === 'template' ? addTemplateElement(entry.name) : addElement(entry.name)"
+							@click="insertElement(entry.name, elementDestination === 'template')"
 						>
 							<BuilderElementThumbnail v-if="elementPreviewId(entry)" :previewId="elementPreviewId(entry)" />
 							<span class="flex min-w-0 items-center gap-0.5 px-0.5 py-0.25">
@@ -487,7 +491,7 @@
 							:draggable="canEditRemote"
 							:title="translate('zx_builder_drag_hint')"
 							@dragstart="drag($event, { kind: 'catalog', name: entry.name })"
-							@click="mode === 'template' && elementDestination === 'template' ? addTemplateElement(entry.name) : addElement(entry.name)"
+							@click="insertElement(entry.name, elementDestination === 'template')"
 						>
 							<span
 								class="zb-element-icon grid h-[22px] w-[22px] shrink-0 place-items-center rounded-xxs bg-zaux-light text-[14px] text-zaux-accent"
@@ -553,6 +557,12 @@ export default defineComponent({
 					: `[data-zb-outline-instance="${CSS.escape(target.instanceId)}"]`;
 			document.querySelector(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
 		});
+		// A click on blank outline space (not a row, control or toolbar) clears the selection, like Escape.
+		const OUTLINE_INTERACTIVE = 'button, a, input, select, textarea, label, summary, [role="menu"], [data-zb-outline-tools], [data-zb-outline-definition], .zb-tree-item, .zb-instance-heading';
+		function outlineBlankClick(event) {
+			if (event.target.closest(OUTLINE_INTERACTIVE)) return;
+			builder.deselectNode();
+		}
 		function tabKeydown(event) {
 			if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
 			event.preventDefault();
@@ -687,6 +697,7 @@ export default defineComponent({
 			...builder,
 			tabs: TABS,
 			tabKeydown,
+			outlineBlankClick,
 			springTab,
 			cancelSpring,
 			createItems,

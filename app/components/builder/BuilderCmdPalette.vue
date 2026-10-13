@@ -223,9 +223,17 @@ export default defineComponent({
 			observer?.disconnect();
 			clearRowTimers();
 		});
-		const insertTarget = computed(() => builder.mode.value === "library"
+		const baseTarget = computed(() => builder.mode.value === "library"
 			? `${builder.activeDefinition.value?.kind === "zvp" ? "ZVP" : "ZVC"}: ${builder.activeDefinition.value?.name ?? ""}`
 			: `${builder.translate("zx_builder_template")}: ${builder.activeTemplate.value.name}`);
+		// Elements and ZVPs go inside a selected container; ZVC instances stay template blocks.
+		function targetOf(item) {
+			const container = builder.insertionContainer.value;
+			return container && ["element", "zvp"].includes(item?.kind)
+				? `${baseTarget.value} › ${builder.translate("zx_builder_insert_inside", { name: container.name })}`
+				: baseTarget.value;
+		}
+		const insertTarget = computed(() => targetOf(activeItem.value));
 		const kindLabel = (item) => (item.kind === "element" ? builder.translate("zx_builder_cmd_kind_element") : (item.kind ?? "zvc").toUpperCase());
 		const kindClass = (item) => item.kind === "element" ? "bg-zaux-light-grey/40 text-zaux-dark"
 			: item.kind === "zvp" ? "bg-utility-notice/30 text-zaux-dark" : "bg-zaux-accent/15 text-zaux-accent";
@@ -239,7 +247,7 @@ export default defineComponent({
 			return builder.selectablePartials.value.some((partial) => partial.exportName === item.exportName);
 		}
 		function insertTitle(item) {
-			if (canInsert(item)) return builder.translate("zx_builder_cmd_insert") + ": " + insertTarget.value;
+			if (canInsert(item)) return builder.translate("zx_builder_cmd_insert") + ": " + targetOf(item);
 			if (!builder.canEditRemote.value) return builder.translate("zx_builder_project_readonly");
 			if (builder.mode.value === "library" && !builder.isSource.value && (item.kind ?? "zvc") === "zvc") return builder.translate("zx_builder_cmd_insert_zvc");
 			return builder.translate("zx_builder_cmd_insert_unavailable");
@@ -255,10 +263,10 @@ export default defineComponent({
 			if (!canInsert(item)) return;
 			if (builder.mode.value === "template") {
 				builder.templatesOpen.value = false;
-				if (item.kind === "element") builder.addTemplateElement(item.name);
+				if (item.kind === "element") builder.insertElement(item.name, true);
 				else if (item.kind === "zvp") builder.insertPartial(item.id);
 				else builder.insertInstance(item.id);
-			} else builder.addElement(item.kind === "element" ? item.name : item.exportName);
+			} else builder.insertElement(item.kind === "element" ? item.name : item.exportName);
 			close();
 		}
 		async function move(step) {

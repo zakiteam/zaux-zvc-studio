@@ -4,7 +4,7 @@ import { definitionCss } from './partials.js';
 import { exportName } from './workspace.js';
 import { documentEnvelope } from './export.js';
 import { validateWorkspace } from './validation.js';
-import { componentThemesCss } from './component-themes.js';
+import { componentThemesCss, projectStylesCss } from './component-themes.js';
 import { fontFiles } from './fonts.js';
 import { presetCss, mergeUISettings } from './styles.js';
 
@@ -137,6 +137,8 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
     if (css) files['style/studio-tokens.css'] = css;
     const themeCss = componentThemesCss(workspace.componentThemes);
     if (themeCss) files['style/component-themes.css'] = themeCss;
+    const projectCss = projectStylesCss(workspace.projectStyles);
+    if (projectCss) files['style/project-styles.css'] = projectCss;
     if (Object.keys(styles.uiSettings ?? {}).length) {
       files['style/ui.config.js'] = 'export default ' + json(mergeUISettings(defaultUISettings, styles.uiSettings)).trimEnd() + ';\n';
     }
@@ -157,6 +159,7 @@ Copy this package into a compatible Zaux repository. Zaux, its core components, 
 - style/tokens/*.json contains complete upstream token documents with the edited values applied, only for changed categories. Preserve your destination project's unrelated token changes when merging.
 - Load style/studio-tokens.css, when present, after Zaux styles to retain all authored variables, including custom selectors and variables that have no token mapping.
 - Load style/component-themes.css, when present, after the original component styles.
+- Load style/project-styles.css, when present, after component-themes.css: it contains the project's global CSS.
 - style/ui.config.js, when present, contains the effective Zaux UI configuration.
 - Add fonts.html links to the page head; fonts.json lists the project font references. Font binaries and media are referenced by URL, not bundled.
 - studio/workspace.json retains the editable Studio project; studio/manifest.json maps generated names and folders.

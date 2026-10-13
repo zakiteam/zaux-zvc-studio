@@ -1,7 +1,7 @@
 <template>
 	<div class="zb-workbench relative flex min-h-0 flex-1 max-[900px]:flex-wrap">
 		<div
-			v-show="!previewOnly"
+			v-show="!previewOnly && !tokensBoard"
 			class="group/panel relative flex min-h-0 shrink-0 max-[900px]:h-[80dvh]"
 		>
 			<BuilderSidebar
@@ -29,12 +29,24 @@
 			/>
 		</div>
 		<main
-			class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh] max-[900px]:w-[calc(100%_-_210px)]"
+			class="zb-main flex min-w-0 flex-1 flex-col max-[900px]:h-[80dvh]"
+			:class="tokensBoard ? 'max-[900px]:w-full' : 'max-[900px]:w-[calc(100%_-_210px)]'"
 		>
-			<BuilderTemplates v-if="templatesOpen" />
-			<BuilderCanvas v-else>
-				<template #toolbar><BuilderPreviewControls :backToTemplate="!designer" /></template>
-			</BuilderCanvas>
+			<!-- Open entities, like Figma's file tabs. Kept mounted to preserve session history. -->
+			<div
+				v-show="!tokensBoard && !(previewOnly && previewHeaderHidden)"
+				class="zb-workspace-tabs h-[40px] pt-0.5 shrink-0 justify-center border-b-slim border-zaux-light-grey bg-zaux-white px-0.5 flex flex-col"
+			>
+				<BuilderWorkspaceTabs class="min-w-0 flex-1" />
+			</div>
+			<!-- Design tokens board; the canvas stays mounted for the Page view. -->
+			<BuilderTokensBoard v-if="tokensBoard" />
+			<div v-show="!tokensBoard" class="flex min-h-0 min-w-0 flex-1 flex-col">
+				<BuilderTemplates v-if="templatesOpen" />
+				<BuilderCanvas v-else>
+					<template #toolbar><BuilderPreviewControls :backToTemplate="!designer" /></template>
+				</BuilderCanvas>
+			</div>
 		</main>
 		<div
 			v-show="!previewOnly"
@@ -73,7 +85,7 @@
 	</div>
 </template>
 <script>
-import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useBuilder } from "../../composables/useBuilder.js";
 import { readLayoutPreferences, saveLayoutPreferences } from "../../services/layout-preferences.js";
 
@@ -89,6 +101,7 @@ export default defineComponent({
 		const builder = useBuilder();
 		const leftWidth = ref(LIMITS.left[2]);
 		const rightWidth = ref(LIMITS.right[2]);
+		const tokensBoard = computed(() => builder.stylesOpen.value && builder.tokensView.value === "board" && !builder.previewOnly.value);
 		let saveTimer;
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;
@@ -103,6 +116,7 @@ export default defineComponent({
 			watch([leftWidth, rightWidth, builder.sidebarCollapsed, builder.inspectorCollapsed], () => {
 				clearTimeout(saveTimer);
 				saveTimer = setTimeout(() => saveLayoutPreferences({
+					...readLayoutPreferences(),
 					left: leftWidth.value,
 					right: rightWidth.value,
 					sidebarCollapsed: builder.sidebarCollapsed.value,
@@ -115,6 +129,7 @@ export default defineComponent({
 			...builder,
 			leftWidth,
 			rightWidth,
+			tokensBoard,
 			resizePanel,
 		};
 	},

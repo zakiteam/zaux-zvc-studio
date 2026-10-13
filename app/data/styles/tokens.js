@@ -20,7 +20,7 @@ function group(id, file, path, prefix, type = 'text') {
   }
   collect(values);
   return {
-    id, file, label: 'zx_builder_tokens_' + id,
+    id, file, prefix: prefix + '-', label: 'zx_builder_tokens_' + id,
     variables: Object.entries(tokenToCssVarsObject(values, prefix, '-', { colorsAsRgb: type === 'color' }))
       .map(([name, value]) => ({ name, value, type, tokenPath: paths[name] }))
   };
@@ -56,3 +56,16 @@ export function colorValue(value) {
   if (/^#[\da-f]{3}$/i.test(value)) value = '#' + value.slice(1).split('').map(char => char + char).join('');
   return /^#[\da-f]{6}$/i.test(value) ? value.slice(1).match(/../g).map(part => parseInt(part, 16)).join(' ') : value;
 }
+
+// Zaux core/style/styles/typography.scss assigns a font token to each text-* style prefix.
+const styleFonts = { display: 'display', body: 'body', ph: 'body', label: 'body', caption: 'body', cta: 'cta', eyelet: 'eyelet' };
+export const typographyStyles = Object.entries(typography.styles).map(([name, [fontSize, options = {}]]) => ({
+  name,
+  font: '--zx-font-' + (styleFonts[name.split('-')[0]] ?? 'main'),
+  fontSize,
+  lineHeight: options.lineHeight ?? 'normal',
+  fontWeight: options.fontWeight ?? 400,
+  letterSpacing: options.letterSpacing ?? 'normal',
+  // typography.scss also makes every text-caption-* italic.
+  fontStyle: options.fontStyle ?? (name.startsWith('caption-') ? 'italic' : 'normal')
+}));

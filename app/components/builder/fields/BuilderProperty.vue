@@ -100,6 +100,14 @@
             @update:modelValue="$emit('change', $event)"
           />
       </template>
+			<BuilderIconPicker
+				v-else-if="descriptor?.control === 'icon' && (value == null || typeof value === 'string')"
+				:modelValue="value ?? ''"
+				:label="propertyLabel"
+				:icons="options.length ? options.map(option => option.value) : null"
+				:allowEmpty="!!descriptor.allowEmpty"
+				@update:modelValue="$emit('change', $event)"
+			/>
 			<BuilderInput
 				v-else-if="options.length"
 				type="select"

@@ -21,6 +21,20 @@ export function componentThemesCss(entries = [], component) {
     .map(entry => `/* ${entry.component} */\n${entry.css}`).join('\n\n');
 }
 
+// Optional project-wide CSS (project-styles.css), loaded after the component themes.
+export function validateProjectStyles(css) {
+  parseThemeCss(css);
+}
+
+export function projectStylesCss(css) {
+  return typeof css === 'string' && css.trim() ? css : '';
+}
+
+// Preview stylesheet: saved component themes followed by the project styles.
+export function workspaceThemeCss(workspace, projectStyles = workspace?.projectStyles) {
+  return [componentThemesCss(workspace?.componentThemes), projectStylesCss(projectStyles)].filter(Boolean).join('\n\n');
+}
+
 export function ruleConditions(rule) {
   const conditions = [];
   for (let parent = rule.parent; parent && parent.type !== 'root'; parent = parent.parent) {

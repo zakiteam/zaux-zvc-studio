@@ -97,16 +97,14 @@
 						/>
 					</div>
 					<div class="grid grid-cols-2 gap-1">
-						<BuilderInput
-							type="select"
+						<BuilderIconPicker
+							allowEmpty
 							:label="translate('zx_builder_cta_icon')"
-							:options="iconOptions"
 							v-model="cta.iconName"
 						/>
-						<BuilderInput
-							type="select"
+						<BuilderIconPicker
+							allowEmpty
 							:label="translate('zx_builder_cta_action_icon')"
-							:options="iconOptions"
 							v-model="cta.actionIconName"
 						/>
 					</div>
@@ -147,11 +145,10 @@
 </template>
 
 <script>
-	import { defineComponent, ref, computed, watch } from "vue";
+	import { defineComponent, ref, watch } from "vue";
 	import { useTranslation } from "../../../composables/useTranslation.js";
 	import { parseJson } from "../../../../domain/validation.js";
 	import buttonMeta from "@zx_core/components/shared/button/ZButton.meta.js";
-	import { iconSets } from "@integration/options/icon-options.js";
 
 	function makeCta() {
 		return {
@@ -190,11 +187,6 @@
 			const jsonDraft = ref("");
 			const invalid = ref(false);
 			const collapsed = ref(new Set());
-
-			const iconOptions = computed(() => [
-				{ value: "", label: translate("zx_builder_cta_none") },
-				...(iconSets.zaux ?? []),
-			]);
 
 			function stringifyCtas(value) {
 				return JSON.stringify(Array.isArray(value) ? value : [], null, 2);
@@ -289,7 +281,6 @@
 				invalid,
 				themeOptions: buttonMeta.themes,
 				sizeOptions: buttonMeta.sizes,
-				iconOptions,
 				setMode,
 				applyJson,
 				addCTA,

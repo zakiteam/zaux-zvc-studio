@@ -12,7 +12,7 @@ import { useHead, useRoute } from '#imports';
 import { getRemoteProject } from '../../services/projects.js';
 import { previewStorageKeys, readPreviewWorkspace } from '../../services/preview-page.js';
 import { refreshSourceSnapshots } from '../../services/source-zvc.js';
-import { componentThemesCss } from '../../../domain/component-themes.js';
+import { workspaceThemeCss } from '../../../domain/component-themes.js';
 import { runtimeNodes } from '../../../domain/nodes.js';
 import { activeDefinitionOnly } from '../../../domain/variants.js';
 import { useTranslation } from '../../composables/useTranslation.js';
@@ -56,7 +56,7 @@ export default defineComponent({
         if (token !== generation) return;
         title.value = component?.name ?? template.name;
         state.value = { instances, styles: workspace.styles ?? { cssVars: [], uiSettings: {} },
-          themeCss: componentThemesCss(workspace.componentThemes), css: result.css, language: language.value,
+          themeCss: workspaceThemeCss(workspace), css: result.css, language: language.value,
           editable: false, clean: true, canvasDark: canvasDark.value };
         error.value = '';
         sendState();

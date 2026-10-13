@@ -78,7 +78,7 @@
 				</template>
 			</div>
 
-			<!-- Open entities, like Figma's file tabs. Kept mounted to preserve session history. -->
+			<!-- Open entity tabs live in their own band above the canvas (BuilderDesignView). -->
 			<div class="flex min-w-0 flex-1 items-center gap-0.5 pl-1">
 				<BuilderButton
 					v-show="workspaceView === 'design'"
@@ -91,9 +91,6 @@
 					:disabled="remoteProjectBusy"
 					@click="commandPaletteOpen = true"
 				/>
-				<div v-show="workspaceView === 'design'" class="min-w-0">
-					<BuilderWorkspaceTabs />
-				</div>
 			</div>
 
 			<div class="flex shrink-0 items-center gap-0.5">

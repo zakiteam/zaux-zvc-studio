@@ -1,6 +1,6 @@
 import { clone } from './nodes.js';
 import { activeDefinitionOnly } from './variants.js';
-import { componentThemesCss } from './component-themes.js';
+import { workspaceThemeCss } from './component-themes.js';
 
 export function libraryThumbnailState(definition, workspace, language) {
   function withoutPreview(item) {
@@ -12,7 +12,7 @@ export function libraryThumbnailState(definition, workspace, language) {
   return {
     instances: [{ id: 'thumbnail', name: definition.name, definition: withoutPreview(definition), data: {} }],
     styles: clone(workspace.styles),
-    themeCss: componentThemesCss(workspace.componentThemes),
+    themeCss: workspaceThemeCss(workspace),
     language,
     editable: false,
     clean: true,

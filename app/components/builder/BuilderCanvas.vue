@@ -25,7 +25,7 @@
 <script>
 import { computed, defineComponent, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { runtimeNodes } from '../../../domain/nodes.js';
-import { componentThemesCss } from '../../../domain/component-themes.js';
+import { workspaceThemeCss } from '../../../domain/component-themes.js';
 import { useBuilder } from '../../composables/useBuilder.js';
 export default defineComponent({
   setup() {
@@ -60,7 +60,7 @@ export default defineComponent({
     let generation = 0;
     let visibilityRequest = 0;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: componentThemesCss(builder.document.value.componentThemes), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: workspaceThemeCss(builder.document.value), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     // Lightweight message: hover-driven highlightNodeCSS calls must not resend the whole state.
     function sendInspect() {
@@ -115,7 +115,7 @@ export default defineComponent({
         if (token === generation) { dynamicCss.value = result.css; sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
-    watch([() => builder.document.value.componentThemes, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
+    watch([() => builder.document.value.componentThemes, () => builder.document.value.projectStyles, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
     watch([builder.cssInspect, builder.cssInspectProperties, builder.cssHighlight], sendInspect, { deep: true });
     watch(() => builder.revealTarget.value, (target) => {

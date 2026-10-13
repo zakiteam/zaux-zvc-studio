@@ -5,9 +5,10 @@ import { viewportTargetDescriptors } from './viewport-toggle-properties.js';
 import section from '../../../vendor/zaux/core/components/shared/section/Zsection.meta.js';
 import intro from '../../../vendor/zaux/core/components/shared/introtext/IntroText.meta.js';
 import button from '../../../vendor/zaux/core/components/shared/button/ZButton.meta.js';
+import link from '../../../vendor/zaux/core/components/shared/link/Zlink.meta.js';
 import introBuilder from '../../../vendor/zaux/core/components/shared/introtext/builder/IntroText.builder.js';
 
-const metadata = { Zsection: section, IntroText: intro.base, ZButton: button };
+const metadata = { Zsection: section, IntroText: intro.base, ZButton: button, Zlink: link };
 const builders = { IntroText: introBuilder };
 // These components have no option arrays in their metadata. Keep the gaps here.
 const supplements = {

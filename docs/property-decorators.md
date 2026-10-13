@@ -10,12 +10,12 @@ A rule is either a descriptor patch or a synchronous function returning a patch:
 
     Icon: {
       iconSet: selectOptions(Object.keys(iconSets)),
-      iconName: ({ props }) => {
-        const set = props.iconSet === undefined ? 'zaux' : props.iconSet;
-        return selectOptions(typeof set === 'string' && Object.hasOwn(iconSets, set) ? iconSets[set] : []);
-      },
+      iconName: { control: 'icon' },
       size: selectOptions(iconSizes)
     }
+
+String props named `iconName` or `<something>IconName` (for example `actionIconName`)
+get `control: 'icon', allowEmpty: true` automatically; an explicit rule replaces it.
 
 **selectOptions(values)** accepts primitive values or objects with value/label
 and produces a select descriptor with typed options. Static rules can also use
@@ -88,6 +88,7 @@ used in the Fields/Data tab.
 
 | Editor | Trigger |
 | --- | --- |
+| `icon` | `control: 'icon'` (value `null`, absent or string) → [BuilderIconPicker.vue](../app/components/builder/fields/BuilderIconPicker.vue): searchable dropdown previewing each symbol of the active icon set (global UI `iconSet`, which Icon.vue applies over a per-instance `iconSet`); `allowEmpty: true` adds a "none" option, `options` restrict the names (`''` = none) |
 | `image` | `image: true` (and value is `null` or a string) → [BuilderImageInput.vue](../app/components/builder/fields/BuilderImageInput.vue): URL + media library |
 | `media` | `media: true` → [BuilderMediaInput.vue](../app/components/builder/fields/BuilderMediaInput.vue): compact `{ type, props }` editor |
 | object | `properties: { key: descriptor }` → nested fields plus an advanced JSON view |

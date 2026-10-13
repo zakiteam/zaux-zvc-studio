@@ -4,7 +4,7 @@ Studio keeps image files on the Nuxt host and the authenticated catalog in Supab
 
 ## Setup on Plesk
 
-1. Apply `supabase/migrations/20260914120000_media_assets.sql` and `supabase/migrations/20260914140000_media_original_formats.sql` in the Supabase SQL Editor after the existing project migrations. Existing installations must apply the latter migration before uploading JPEG, PNG or SVG files.
+1. Apply `supabase/migrations/20260914120000_media_assets.sql`, `supabase/migrations/20260914140000_media_original_formats.sql` and `supabase/migrations/20261013120000_media_rename.sql` in the Supabase SQL Editor after the existing project migrations. Existing installations must apply the second migration before uploading JPEG, PNG or SVG files, and the third before renaming assets.
 2. Run Nuxt as a persistent Node application. Use a Node version supported by the installed Nuxt and Sharp packages (the project pins Node 24.14.0 for its npm scripts). Install dependencies for the actual deployment OS, including Sharp's optional native packages; do not copy Windows `node_modules` to Linux.
 3. Create a directory owned/writable by the Node application user, outside the application/release directories. The provisionally selected path is `/var/www/vhosts/zaki.it/zaux-studio-media`. Never store uploads under `.output`, `public`, `vendor/zaux`, or a folder replaced during deployment.
 4. Set these runtime environment variables in Plesk alongside the existing public Supabase configuration:
@@ -31,6 +31,8 @@ No service-role key is required. Each request validates the Supabase user and ac
 - Project menu → **Media library** opens the catalog; **Project preview** selects or clears the project's cover using project assets.
 - Each ZVC library card has a preview action using global assets, including native source definitions. The chosen preview belongs to that definition in the workspace; choosing a new preview does not change existing instance copies.
 - Image URL properties on Zimg/img and video posters expose the shared picker. Recognized native content keys and slider paths also expose it; object-valued image configuration remains JSON.
+- Uploads get a readable name: the file name without its extension; pasted images with a generic browser name (`image.png`, `blob`) and pasted SVG code without a `<title>` get "Pasted image <date>". After an upload the name field in the details panel is focused; Enter or blur saves, Escape restores. Owners/editors (project) and the owner (global) can rename any active asset; viewers see the name read-only. Renaming changes only the catalog name, never the file URL.
+- Ctrl+V/⌘V in the dialog uploads copied image files (including `.svg` copied from the file manager) or SVG markup copied as text (design tools, code editors, inline HTML). Missing `xmlns`/`xmlns:xlink` declarations are added so the decoder accepts inline SVG.
 - Manual URL entry remains available. Selecting a file saves a normal absolute URL; it does not introduce runtime media objects or a new export dependency. Bound properties still use their field values.
 
 The database catalog uses opaque UUID file keys and stores the original filename, dimensions and stored bytes (image plus thumbnail). Uploads accept static JPEG, PNG, WebP and SVG, up to 10 MiB, 40 million pixels and 12000 pixels per side. Sharp inspects the format and decodes a thumbnail; original bytes, metadata and format are preserved. Raster thumbnails retain the source format, while SVG thumbnails use PNG, fitting inside 320 by 240 pixels. Existing WebP files and thumbnails remain available. The public Nuxt route sends the matching MIME type, nosniff and a restrictive sandbox CSP so SVG files opened as documents cannot execute scripts or load external resources. A separate static media domain must provide equivalent response headers.
@@ -70,15 +72,16 @@ Manual verification remains with the user: upload/selection for all three entry 
 | `app/pages/index.vue` | Display project covers in the hub. |
 | `app/data/locale/it.json` | Italian media labels and errors. |
 | `app/data/locale/en.json` | English media labels and errors. |
-| `domain/media.js` | Recognize scalar image URL fields. |
+| `domain/media.js` | Recognize scalar image URL fields; asset names from file names; SVG markup detection for paste. |
 | `domain/validation.js` | Validate optional preview strings. |
 | `integrations/zaux/descriptors/property-descriptors.js` | Mark supported image properties in the project adapter. |
 | `server/utils/media.js` | Session checks, scope permissions, paths and stream size limits. |
 | `server/api/media/index.get.js` | Paginated authorized catalog. |
 | `server/api/media/index.post.js` | Decode, normalize, save and register uploads; clean up failed writes. |
-| `server/api/media/[id].patch.js` | Archive through RLS. |
+| `server/api/media/[id].patch.js` | Archive through RLS, or rename when the body carries `name`. |
 | `server/routes/media/[file].get.js` | Public immutable image delivery. |
 | `supabase/migrations/20260914120000_media_assets.sql` | Catalog schema, indexes, grants and RLS policies. |
+| `supabase/migrations/20261013120000_media_rename.sql` | Column grant to update `name` under the existing update policy. |
 | `nuxt.config.js` | Private media runtime configuration. |
 | `.env.example` | Persistent directory and public URL configuration examples. |
 | `package.json` | Sharp dependency. |

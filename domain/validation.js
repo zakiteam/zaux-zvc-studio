@@ -1,7 +1,7 @@
 import { normalizeSourceFields } from './source-zvc.js';
 import { FIELD_TYPES } from './fields.js';
 import { validateStylePreset } from './styles.js';
-import { validateComponentThemes } from './component-themes.js';
+import { validateComponentThemes, validateProjectStyles } from './component-themes.js';
 import { SCHEMA_VERSION } from './workspace.js';
 import { variantContentKeys } from './variants.js';
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -89,6 +89,7 @@ export function validateWorkspace(workspace) {
   requireValue(workspace.library.length <= 500 && workspace.templates.length <= 100);
   if (workspace.styles !== undefined) validateStylePreset(workspace.styles);
   if (workspace.componentThemes !== undefined) validateComponentThemes(workspace.componentThemes);
+  if (workspace.projectStyles !== undefined) validateProjectStyles(workspace.projectStyles);
   if (workspace.coverImage !== undefined) requireValue(typeof workspace.coverImage === 'string');
   for (const key of ['zauxCreatedVersion', 'zauxEditedVersion']) {
     if (workspace[key] !== undefined) requireValue(typeof workspace[key] === 'string' && workspace[key].length <= 80);

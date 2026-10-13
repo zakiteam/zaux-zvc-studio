@@ -78,6 +78,7 @@
 							:swatch="item.swatch"
 							:title="item.label"
 							:icon="item.icon"
+							:iconHref="item.iconHref"
 							:extraProps="{
 								inheritedUIFlags : {
 									'HOVER' : item.active
@@ -257,6 +258,8 @@ export default defineComponent({
 			try { el.showPopover?.(); } catch {}
 			place();
 			listen();
+			// Long lists (icon pickers) open on the current choice.
+			el.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
 			const field = filterField();
 			if (field && !focusLast) field.focus({ preventScroll: true });
 			else {

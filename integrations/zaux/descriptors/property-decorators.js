@@ -39,10 +39,8 @@ export const propertyDecorators = {
   IntroText: { subtitle: { control: 'textarea' }, ctas : { control : 'buttongroup'} },
   Icon: {
     iconSet: selectOptions(Object.keys(iconSets)),
-    iconName: ({ props }) => {
-      const set = props.iconSet === undefined ? 'zaux' : props.iconSet;
-      return selectOptions(typeof set === 'string' && Object.hasOwn(iconSets, set) ? iconSets[set] : []);
-    },
+    // Icon.vue renders the global UI set, so the picker lists and previews that set.
+    iconName: { control: 'icon' },
     size: selectOptions(iconSizes)
   },
   ResponsiveProps : { componentName : selectOptions(palette.map(entry => entry.name)) },
@@ -81,7 +79,7 @@ export const propertyDecorators = {
           type: { default: 'link', type: String, ...selectOptions(['link', 'option']) },
           title: { default: '', type: String },
           excerpt: { default: '', type: String },
-          icon: { default: '', type: String, ...selectOptions(['', ...(iconSets.zaux ?? [])]) },
+          icon: { default: '', type: String, control: 'icon', allowEmpty: true },
           href: { default: '', type: String },
           value: { default: '', type: String }
         }
@@ -106,9 +104,17 @@ export const propertyDecorators = {
   SectionSplitWide: { media: { media: true } }
 };
 
+// String props named iconName or <something>IconName hold a symbol of the active icon set.
+const ICON_NAME_PROPERTY = /(?:^i|I)conName$/;
+const iconNameDecorations = descriptors => Object.fromEntries(Object.entries(descriptors)
+  .filter(([property, descriptor]) => ICON_NAME_PROPERTY.test(property)
+    && (descriptor?.type === String || typeof descriptor?.default === 'string'))
+  .map(([property]) => [property, { control: 'icon', allowEmpty: true }]));
+
 export function decorateProperties(name, descriptors, { props = {}, trees = [] } = {}) {
   const result = { ...descriptors };
   const decorations = {
+    ...iconNameDecorations(descriptors),
     ...Object.fromEntries(Object.entries(componentSelects[name] ?? {})
       .filter(([property]) => Object.hasOwn(descriptors, property))
       .map(([property, values]) => [property, selectOptions(values)])),

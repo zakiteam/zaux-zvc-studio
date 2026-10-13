@@ -1,13 +1,14 @@
 <template>
-  <!-- DevTools-like box model, drawn in document coordinates inside the preview stage. -->
-  <div v-if="boxes.length" class="zb-css-inspector pointer-events-none absolute left-0 top-0 z-[898] font-builder" aria-hidden="true">
+  <!-- DevTools-like box model, drawn in document coordinates inside the preview stage.
+       Clipped to the stage so labels past its edges never grow the scroll area (scrollbar/resize feedback loop). -->
+  <div v-if="boxes.length" class="zb-css-inspector pointer-events-none absolute inset-0 z-[898] overflow-hidden font-builder" aria-hidden="true">
     <template v-for="item in boxes" :key="item.key">
       <div v-for="layer in item.layers" :key="layer.name" class="absolute box-border border-solid" :style="layer.style" />
       <span v-for="label in item.labels" :key="label.key"
         class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xxs bg-zaux-white/85 px-0.25 text-[9px] leading-[1.2] tabular-nums text-zaux-dark"
         :style="label.style">{{ label.text }}</span>
       <span class="absolute -translate-x-1/2 whitespace-nowrap rounded-xxs bg-zaux-dark px-0.5 py-0.25 text-[10px] leading-none tabular-nums text-zaux-white"
-        :style="item.sizeStyle">{{ item.size }}</span>
+        :class="{ '-translate-y-full': item.sizeAbove }" :style="item.sizeStyle">{{ item.size }}</span>
     </template>
   </div>
   <div v-if="details" ref="panel" data-zb-css-details
@@ -34,6 +35,8 @@ import { cssInspectorColors, cssInspectorProperties } from '../../data/css-inspe
 import { useTranslation } from '../../composables/useTranslation.js';
 
 const SIDES = ['top', 'right', 'bottom', 'left'];
+// Rendered height of the size badge (10px text + vertical padding), with a small margin.
+const SIZE_BADGE_HEIGHT = 18;
 const number = value => Number.parseFloat(value) || 0;
 const round = value => Math.round(value * 100) / 100;
 const sides = (style, prefix, suffix = '') => Object.fromEntries(SIDES.map(side => [side, number(style.getPropertyValue(`${prefix}-${side}${suffix}`))]));
@@ -84,7 +87,7 @@ export default defineComponent({
       const style = getComputedStyle(element);
       return { rect: element.getBoundingClientRect(), style, margin: sides(style, 'margin'), border: sides(style, 'border', '-width'), padding: sides(style, 'padding') };
     }
-    function overlay({ rect, margin, border, padding }) {
+    function overlay({ rect, margin, border, padding }, limit) {
       const x = rect.left + window.scrollX, y = rect.top + window.scrollY, w = rect.width, h = rect.height;
       // Negative margins pull the element; only the positive part has an area to paint.
       const outer = Object.fromEntries(SIDES.map(side => [side, Math.max(0, margin[side])]));
@@ -114,7 +117,11 @@ export default defineComponent({
       label('pb', padding.bottom, inner.left + inner.width / 2, inner.top + inner.height - padding.bottom / 2);
       label('pl', padding.left, inner.left + padding.left / 2, inner.top + inner.height / 2);
       label('pr', padding.right, inner.left + inner.width - padding.right / 2, inner.top + inner.height / 2);
-      return { layers, labels, size: `${round(w)} × ${round(h)}`, sizeStyle: { left: `${x + w / 2}px`, top: `${y + h + outer.bottom + 4}px` } };
+      // Size badge goes below the box; near the stage bottom it moves above it, or inside when neither fits.
+      const below = y + h + outer.bottom + 4, above = y - outer.top - 4;
+      const sizeAbove = below + SIZE_BADGE_HEIGHT > limit;
+      const sizeTop = !sizeAbove ? below : above - SIZE_BADGE_HEIGHT >= 0 ? above : Math.max(SIZE_BADGE_HEIGHT, Math.min(y + h, limit) - 4);
+      return { layers, labels, size: `${round(w)} × ${round(h)}`, sizeAbove, sizeStyle: { left: `${x + w / 2}px`, top: `${sizeTop}px` } };
     }
     function detailRows({ rect, style, margin, border, padding }, properties) {
       const content = [rect.width - border.left - border.right - padding.left - padding.right, rect.height - border.top - border.bottom - padding.top - padding.bottom];
@@ -150,7 +157,9 @@ export default defineComponent({
       const detailTarget = hovered ?? (pinned && (pinned.details || pinned.element.contains(pointerTarget)) ? pinned : null);
       if (!targets.length && !boxes.value.length && !details.value) return;
       const measured = new Map(targets.map(target => [target.element, metricsOf(target.element)]));
-      boxes.value = targets.map((target, index) => ({ key: `${index}:${target.nodeId}`, ...overlay(measured.get(target.element)) }));
+      // The clipped overlay never adds scroll height, so this is the stage content height.
+      const limit = document.documentElement.scrollHeight;
+      boxes.value = targets.map((target, index) => ({ key: `${index}:${target.nodeId}`, ...overlay(measured.get(target.element), limit) }));
       if (!detailTarget) { details.value = null; detailsStyle.value = { visibility: 'hidden' }; return; }
       const metrics = measured.get(detailTarget.element);
       details.value = {

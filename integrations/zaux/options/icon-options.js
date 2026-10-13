@@ -10,3 +10,11 @@ export const iconSets = Object.fromEntries(Object.entries(sprites).map(([path, s
 ]));
 // Icon.size is a CSS class; fontSize tokens become Tailwind text-* utilities.
 export const iconSizes = ['', ...Object.keys(tokens.sizes).map(size => 'text-' + size)];
+// Icon.vue renders the global UI set over any per-instance iconSet, so previews follow it.
+export function resolveIconSet(set) {
+  return typeof set === 'string' && Object.hasOwn(iconSets, set) ? set : Object.hasOwn(iconSets, 'zaux') ? 'zaux' : Object.keys(iconSets)[0] ?? 'zaux';
+}
+// Same URL Icon.vue builds (iconsAssetsPath is '/assets' in the Studio plugin).
+export function iconHref(set, name) {
+  return `/assets/icon/${resolveIconSet(set)}/symbol-defs.svg#${name}`;
+}

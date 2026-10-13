@@ -19,6 +19,9 @@ export function validateStylePreset(preset) {
   if (preset.uiSettings !== undefined && (!preset.uiSettings || typeof preset.uiSettings !== 'object' || Array.isArray(preset.uiSettings))) throw new Error('zx_builder_invalid_style_preset');
   return preset;
 }
+export function styleVariableOverride(preset, name) {
+  return preset?.cssVars?.find(group => group.selector === ':root')?.vars.find(variable => variable.name === name);
+}
 export function setStyleVariable(preset, name, value, type = 'text') {
   let group = preset.cssVars.find(group => group.selector === ':root');
   if (!group && value !== undefined) { group = { selector: ':root', vars: [] }; preset.cssVars.push(group); }

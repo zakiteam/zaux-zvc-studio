@@ -16,7 +16,7 @@
     	v-bind="extraProps"
 	>
 		<template v-if="swatch || iconHref" #preLabel>
-			<svg v-if="iconHref" class="h-[18px] w-[18px] shrink-0 self-center" :class="{ 'mr-1': !iconOnly }" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+			<svg v-if="iconHref" class="h-[18px] w-[18px] shrink-0 self-center" :class="{ 'mr-1': !iconOnly }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
 				<use :href="iconHref" />
 			</svg>
 			<span
