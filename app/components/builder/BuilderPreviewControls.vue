@@ -26,6 +26,10 @@
         class="!w-auto !border-none !py-0.5 !text-[11px] font-semibold" />
       <BuilderInput v-else type="select" v-model="viewport" :options="viewportOptions"
         :label="translate('zx_builder_viewport')" class="!w-auto !border-none !py-0.5 !text-[11px] font-semibold" />
+      <BuilderButton size="xs" variant="alt1" icon="drag" iconOnly
+        :label="translate(viewportResizeHandles ? 'zx_builder_viewport_resize_hide' : 'zx_builder_viewport_resize_show')"
+        :aria-pressed="viewportResizeHandles" :extraProps="{ inheritedUIFlags: { HOVER: viewportResizeHandles } }"
+        @click="viewportResizeHandles = !viewportResizeHandles" />
       <span class="mx-0.25 h-[20px] w-px bg-zaux-light-grey" aria-hidden="true" />
       <div class="flex items-center" role="group" :aria-label="translate('zx_builder_zoom')">
         <BuilderButton size="xs" variant="alt1" icon="zoom-out" iconOnly :label="translate('zx_builder_zoom_out') + ' (Ctrl −)'"

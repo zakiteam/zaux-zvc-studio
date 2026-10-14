@@ -10,6 +10,7 @@ import typography from '../../../vendor/zaux/style/tokens/typography.json';
 import shadows from '../../../vendor/zaux/style/tokens/shadows.json';
 import blur from '../../../vendor/zaux/style/tokens/blur.json';
 import ratios from '../../../vendor/zaux/style/tokens/ratios.json';
+import easings from '../../../vendor/zaux/style/tokens/easings.json';
 
 function leaves(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {
@@ -166,9 +167,101 @@ function borderSide(base, side) {
 }
 const borderSides = Object.keys(sideNames).flatMap(side => borderGlobals.map(base => borderSide(base, side)));
 
+// Transform and filter controls offer only Tailwind 3 theme steps (Zaux keeps the defaults,
+// except blur, which uses its tokens): no free values. A hand-typed arbitrary class reads as
+// "Custom". Every control has its own pattern and no conflict matching, so scale never reads
+// scale-x and a filter never reads its backdrop twin.
+const opacitySteps = [0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100];
+const percent = value => `${value}%`;
+const degrees = value => `${value}°`;
+// signed: also the negative steps (-rotate-45), listed from the most negative.
+function stepControl(id, prefix, steps, format, { pattern, signed = false, extra = [], label } = {}) {
+  const values = signed ? [...steps.filter(Boolean).map(value => -value).reverse(), ...steps] : steps;
+  return control(id, [], {
+    ...(label ? { label } : {}),
+    pattern: pattern ?? new RegExp(`^${signed ? '-?' : ''}${prefix}-.+$`),
+    matchValues: [],
+    options: [
+      ...values.map(value => ({ value: `${value < 0 ? '-' : ''}${prefix}-${Math.abs(value)}`, label: format(value) })),
+      ...extra
+    ]
+  });
+}
+// grayscale, sepia and invert: Tailwind has only the full effect and 0.
+function toggleFilterControl(id, prefix, label) {
+  return control(id, [], {
+    ...(label ? { label } : {}),
+    pattern: new RegExp(`^${prefix}(?:-.+)?$`),
+    matchValues: [],
+    options: [
+      { value: prefix, label: 'zx_builder_style_filter_on' },
+      { value: `${prefix}-0`, label: 'zx_builder_style_filter_off' }
+    ]
+  });
+}
+const flip = axis => ({ value: `-scale-${axis}-100`, label: 'zx_builder_style_scale_flip' });
+const scaleSteps = [0, 50, 75, 90, 95, 100, 105, 110, 125, 150];
+// Same points as the image position grid, so its icons are reused.
+const originPoints = { 'top-left': 'left-top', top: 'top', 'top-right': 'right-top', left: 'left', center: 'center', right: 'right', 'bottom-left': 'left-bottom', bottom: 'bottom', 'bottom-right': 'right-bottom' };
+// Filter controls for `filter` (prefix '') or `backdrop-filter` (prefix 'backdrop-').
+// Backdrop controls reuse the filter labels: their section names the target.
+function filterControls(prefix) {
+  const id = name => prefix ? `backdrop_${name}` : name;
+  const label = name => prefix ? `zx_builder_style_${name}` : undefined;
+  return [
+    stepControl(id('brightness'), `${prefix}brightness`, [0, 50, 75, 90, 95, 100, 105, 110, 125, 150, 200], percent, { label: label('brightness') }),
+    stepControl(id('contrast'), `${prefix}contrast`, [0, 50, 75, 100, 125, 150, 200], percent, { label: label('contrast') }),
+    stepControl(id('saturate'), `${prefix}saturate`, [0, 50, 100, 150, 200], percent, { label: label('saturate') }),
+    stepControl(id('hue_rotate'), `${prefix}hue-rotate`, [0, 15, 30, 60, 90, 180], degrees, { signed: true, label: label('hue_rotate') }),
+    toggleFilterControl(id('grayscale'), `${prefix}grayscale`, label('grayscale')),
+    toggleFilterControl(id('sepia'), `${prefix}sepia`, label('sepia')),
+    toggleFilterControl(id('invert'), `${prefix}invert`, label('invert'))
+  ];
+}
+// Transitions: Tailwind 3 defaults plus the Zaux easing and duration tokens (theme.extend).
+// Delay has no Zaux tokens. `transition` alone animates colors, opacity, shadow and transforms.
+const transitionSteps = [0, 75, 100, 150, 200, 300, 500, 700, 1000];
+const durationSteps = [...new Set([...transitionSteps, ...Object.keys(easings.transitionDuration).map(Number)])].sort((a, b) => a - b);
+const transitionControls = [
+  control('transition_property', [], {
+    pattern: /^transition(?:-.+)?$/,
+    matchValues: [],
+    options: ['', 'all', 'colors', 'opacity', 'shadow', 'transform', 'none'].map(name => ({
+      value: name ? `transition-${name}` : 'transition',
+      label: `zx_builder_style_transition_${name || 'default'}`
+    }))
+  }),
+  stepControl('duration', 'duration', durationSteps, value => `${value}ms`),
+  control('easing', [], {
+    pattern: /^ease-.+$/,
+    matchValues: [],
+    options: [
+      ...['linear', 'in', 'out', 'in-out'].map(name => ({ value: `ease-${name}`, label: `zx_builder_style_easing_${name.replace('-', '_')}` })),
+      ...Object.keys(easings.timingFunctions).map(name => ({ value: `ease-${name}`, label: name, modeLabel: 'zx_builder_style_zaux_token' }))
+    ]
+  }),
+  stepControl('delay', 'delay', transitionSteps, value => `${value}ms`)
+];
+const blendModes = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'];
+const blurControl = prefix => control(prefix === 'blur' ? 'blur_normal' : 'blur_backdrop', [], {
+  options: Object.entries(blur).map(([name, value]) => ({
+    value: `${prefix}-${name}`, label: `${name} · ${value}`
+  }))
+});
+
+// Global view: all sides, then the X (right + left) and Y (top + bottom) axes.
 function spacingSection(id, prefix) {
   const sides = ['t', 'r', 'b', 'l'].map(side => spaceControl(`${prefix}${side}`));
-  return { id, controls: sides, globalControls: [{ ...spaceControl(prefix, id), globalSides: sides }] };
+  const axis = (name, edges) => ({
+    ...spaceControl(`${prefix}${name}`, `${id}_${name}`),
+    label: `zx_builder_style_${id}`, sideLabel: `zx_builder_style_side_${name}`,
+    globalAxis: name, globalSides: sides.filter(side => edges.includes(side.prefix.slice(-1)))
+  });
+  return { id, controls: sides, globalControls: [
+    { ...spaceControl(prefix, id), globalSides: sides },
+    axis('x', ['r', 'l']),
+    axis('y', ['t', 'b'])
+  ] };
 }
 
 export const nodeStyleSections = [
@@ -201,6 +294,14 @@ export const nodeStyleSections = [
   ] },
   { id: 'placement', controls: [
     control('col_span', [...Array.from({ length: 12 }, (_, index) => `col-span-${index + 1}`), 'col-span-full'], { pattern: /^col-span-.+$/ }),
+    // Grid line where the item starts (Tailwind col-start-1…13; 13 is the end line of a 12-column grid).
+    control('col_start', [], {
+      pattern: /^col-start-.+$/,
+      options: [
+        ...Array.from({ length: 13 }, (_, index) => ({ value: `col-start-${index + 1}`, label: String(index + 1) })),
+        { value: 'col-start-auto', label: 'zx_builder_style_col_start_auto' }
+      ]
+    }),
     control('order', ['order-first', ...Array.from({ length: 12 }, (_, index) => `order-${index + 1}`), 'order-last', 'order-none'], { pattern: /^-?order-.+$/ })
   ] },
   { id: 'dimensions', controls: [
@@ -221,17 +322,34 @@ export const nodeStyleSections = [
       pattern: /^-?z-.+$/,
       options: ['auto', 0, 10, 20, 30, 40, 50].map(value => ({ value: `z-${value}`, label: String(value) }))
     }),
-    ...['top', 'right', 'bottom', 'left'].map(side => positionLengthControl(side)),
+    ...['top', 'right', 'bottom', 'left'].map(side => positionLengthControl(side))
+  ] },
+  { id: 'transform', controls: [
     positionLengthControl('translate_x', 'translate-x'),
     positionLengthControl('translate_y', 'translate-y'),
-    positionLengthControl('translate_z')
+    positionLengthControl('translate_z'),
+    stepControl('scale', 'scale', scaleSteps, percent, { pattern: /^-?scale-(?![xy]-).+$/ }),
+    stepControl('scale_x', 'scale-x', scaleSteps, percent, { extra: [flip('x')], pattern: /^-?scale-x-.+$/ }),
+    stepControl('scale_y', 'scale-y', scaleSteps, percent, { extra: [flip('y')], pattern: /^-?scale-y-.+$/ }),
+    stepControl('rotate', 'rotate', [0, 1, 2, 3, 6, 12, 45, 90, 180], degrees, { signed: true }),
+    stepControl('skew_x', 'skew-x', [0, 1, 2, 3, 6, 12], degrees, { signed: true }),
+    stepControl('skew_y', 'skew-y', [0, 1, 2, 3, 6, 12], degrees, { signed: true }),
+    control('origin', [], {
+      illustrated: true,
+      columns: 3,
+      pattern: /^origin-.+$/,
+      matchValues: [],
+      options: Object.entries(originPoints).map(([point, icon]) => ({
+        value: `origin-${point}`, label: `zx_builder_style_origin_${point.replace('-', '_')}`,
+        icon: `/assets/builder/object-position-${icon}.svg`
+      }))
+    })
   ] },
   spacingSection('padding', 'p'),
   spacingSection('margin', 'm'),
   { id: 'opacity', controls: [control('opacity', [], {
     pattern: /^opacity-.+$/,
-    options: [0, 5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 100]
-      .map(value => ({ value: `opacity-${value}`, label: `${value}%` }))
+    options: opacitySteps.map(value => ({ value: `opacity-${value}`, label: `${value}%` }))
   })] },
   { id: 'shadow', controls: [control('shadow_token', [], {
     options: Object.entries(shadows).map(([name, value]) => ({
@@ -241,13 +359,29 @@ export const nodeStyleSections = [
         ? 'zx_builder_style_shadow_inset' : 'zx_builder_style_shadow_outset'
     }))
   })] },
-  { id: 'blur', controls: [
-    ...['blur', 'backdrop-blur'].map(prefix => control(prefix === 'blur' ? 'blur_normal' : 'blur_backdrop', [], {
-      options: Object.entries(blur).map(([name, value]) => ({
-        value: `${prefix}-${name}`, label: `${name} · ${value}`
-      }))
-    }))
+  // drop-shadow is left out: Zaux maps it to the box-shadow tokens, whose spread value
+  // is invalid in drop-shadow().
+  { id: 'filter', controls: [blurControl('blur'), ...filterControls('')] },
+  { id: 'backdrop', controls: [
+    blurControl('backdrop-blur'),
+    ...filterControls('backdrop-'),
+    stepControl('backdrop_opacity', 'backdrop-opacity', opacitySteps, percent, { label: 'zx_builder_style_opacity' })
   ] },
+  // Blend modes: mix-blend (element over what is behind it) and bg-blend (between its own
+  // background layers, e.g. image and color). Tailwind 3 values; plus-lighter is mix only.
+  { id: 'blend', controls: [
+    control('mix_blend', [], {
+      pattern: /^mix-blend-.+$/,
+      matchValues: [],
+      options: [...blendModes, 'plus-lighter'].map(name => ({ value: `mix-blend-${name}`, label: `zx_builder_style_blend_${name.replaceAll('-', '_')}` }))
+    }),
+    control('bg_blend', [], {
+      pattern: /^bg-blend-.+$/,
+      matchValues: [],
+      options: blendModes.map(name => ({ value: `bg-blend-${name}`, label: `zx_builder_style_blend_${name.replaceAll('-', '_')}` }))
+    })
+  ] },
+  { id: 'transition', controls: transitionControls },
   { id: 'text', controls: [
     control('typography', Object.keys(typography.styles).map(name => `text-${name}`)),
     colorControl('text_color', 'text'),

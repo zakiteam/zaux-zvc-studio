@@ -1,6 +1,6 @@
 <template>
 	<template v-if="active && activeDefinition">
-		<div v-if="selectedNode && !isSource" ref="stylePanel">
+		<div v-if="selectedNode && !isSource" ref="stylePanel" :style="{ '--zb-style-sticky-top': quickpadHeight + 'px' }">
 			<nav
 				ref="quickpad"
 				:aria-label="translate('zx_builder_style_quickpad')"
@@ -10,25 +10,19 @@
 				<!-- Segmented groups: setup, box layout, appearance, code. -->
 				<div class="flex flex-wrap gap-1 w-full">
 					<div v-for="group in shortcutGroups" :key="group.id" class="flex gap-0.25 rounded-xs bg-zaux-light p-0.25">
-						<button
+						<BuilderStyleShortcut
 							v-for="section in group.items"
 							:key="section.id"
-							type="button"
-							:aria-label="translate(section.label)"
-							:title="translate(section.label)"
+							:icon="section.id"
+							:label="translate(section.label)"
+							:active="activeShortcut === section.id"
+							:set="shortcutSet(section)"
 							:aria-current="activeShortcut === section.id ? 'location' : undefined"
-							:class="activeShortcut === section.id
-								? 'bg-zaux-white text-zaux-accent shadow-sm'
-								: 'text-zaux-dark-grey hover:bg-zaux-white/70 hover:text-zaux-dark'"
-							class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-xxs transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zaux-accent"
 							@mouseenter="hoveredShortcut = section.id"
 							@focus="hoveredShortcut = section.id"
 							@blur="hoveredShortcut = ''"
 							@click="goToSection(section.id)"
-						>
-							<!-- Masked so the icon follows the text color (theme, hover, active accent). -->
-							<span aria-hidden="true" class="block h-[16px] w-[16px]" :style="quickpadIcon(section.id)" />
-						</button>
+						/>
 					</div>
 				</div>
 				<p class="mt-1 flex h-[14px] min-w-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wide text-zaux-dark-grey" aria-hidden="true">
@@ -64,6 +58,8 @@
 			<BuilderNodeStyles
 				:preferredScope="followViewportStyles ? viewportStyleScope : null"
 				@update:scope="styleScope = $event"
+				:state="styleState"
+				@update:state="styleState = $event"
 				:nodeName="selectedNode.name"
 				:nodeId="selectedNode.id"
 				:viewportChosen="chosenViewports.has(selectedNode.id)"
@@ -95,6 +91,7 @@ import { computed, defineComponent, nextTick, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { styleVisibility, visibleStyleSections } from "../../../../integrations/zaux/style-visibility.js";
 import { nodeStyleSections } from "../../../../integrations/zaux/controls/node-style-controls.js";
+import { useNodeStyleEditor } from "../../../composables/useNodeStyleEditor.js";
 import { imageStyleTarget } from "../../../../integrations/zaux/controls/image-style-controls.js";
 export default defineComponent({
 	props: { active: Boolean },
@@ -126,6 +123,20 @@ export default defineComponent({
 			);
 		}
 		const hoveredShortcut = ref("");
+		// The sticky state bar in BuilderNodeStyles sits right under the sticky quickpad.
+		const quickpadHeight = ref(0);
+		watch(quickpad, (element, _previous, onCleanup) => {
+			if (!element || typeof ResizeObserver === "undefined") return;
+			const observer = new ResizeObserver(() => { quickpadHeight.value = element.offsetHeight; });
+			observer.observe(element);
+			onCleanup(() => observer.disconnect());
+		});
+		// Bottom of the sticky headers (quickpad, then the state bar once it is stuck).
+		function stickyBottom() {
+			const bottom = quickpad.value.getBoundingClientRect().bottom;
+			const bar = stylePanel.value?.querySelector("[data-style-sticky]")?.getBoundingClientRect();
+			return bar && bar.top <= bottom + 1 ? Math.max(bottom, bar.bottom) : bottom;
+		}
 		// A shortcut scroll owns the active item until it ends; scroll-spy then follows the user.
 		let programmaticScroll = false;
 		let programmaticTimer = null;
@@ -138,7 +149,7 @@ export default defineComponent({
 		function spySection(scroller) {
 			const panel = stylePanel.value;
 			if (!panel || !quickpad.value) return;
-			const line = quickpad.value.getBoundingClientRect().bottom + 12;
+			const line = stickyBottom() + 12;
 			const sections = shortcuts.value
 				.map(item => ({ id: item.id, element: panel.querySelector(`[data-style-section="${item.id}"]`) }))
 				.filter(item => item.element);
@@ -183,15 +194,15 @@ export default defineComponent({
 		});
 		const shortcuts = computed(() => [
 			...(visibility.value.advanced ? [{ id: "classes", label: "zx_builder_classes" }] : []),
-			{ id: "breakpoint", label: "zx_builder_style_breakpoint" },
+			{ id: "breakpoint", label: "zx_builder_style_scope_state" },
 			...(visibility.value.image && imageStyleTarget(builder.selectedNode.value?.name)
 				? [{ id: "image", label: "zx_builder_style_image" }] : []),
-			...visibleStyleSections(nodeStyleSections, visibility.value).map(({ id }) => ({ id, label: `zx_builder_style_${id}` })),
+			...visibleStyleSections(nodeStyleSections, visibility.value).map(section => ({ id: section.id, label: `zx_builder_style_${section.id}`, section })),
 			...(visibility.value.advanced ? [{ id: "inline", label: "zx_builder_style_inline" }] : []),
 		]);
 		const shortcutGroupOf = {
 			classes: "setup", breakpoint: "setup", image: "setup",
-			layout: "box", placement: "box", dimensions: "box", aspect_ratio: "box", positioning: "box", margin: "box", padding: "box",
+			layout: "box", placement: "box", dimensions: "box", aspect_ratio: "box", positioning: "box", transform: "box", margin: "box", padding: "box",
 			inline: "code",
 		};
 		const shortcutGroups = computed(() => shortcuts.value.reduce((groups, item) => {
@@ -201,16 +212,18 @@ export default defineComponent({
 			else groups.push({ id, items: [item] });
 			return groups;
 		}, []));
-		// Zaux's Tailwind palette replaces the default colors, so there is no bg-current: paint inline.
-		function quickpadIcon(id) {
-			const image = `url("/assets/builder/quickpad-${id}.svg")`;
-			return {
-				backgroundColor: "currentColor",
-				maskImage: image, WebkitMaskImage: image,
-				maskSize: "100% 100%", WebkitMaskSize: "100% 100%",
-				maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat",
-				maskPosition: "center", WebkitMaskPosition: "center",
-			};
+		// Category dots, as in Quick style: the same headless editor reads the node classes at the
+		// scope and state BuilderNodeStyles edits. Inline styles count when any is set.
+		const indicator = useNodeStyleEditor({
+			classes: () => builder.selectedNode.value?.props.class,
+			scope: styleScope,
+			state: builder.styleState,
+			onChange: () => {},
+		});
+		function shortcutSet(item) {
+			if (item.section) return indicator.sectionSet(item.section);
+			const style = builder.selectedNode.value?.props.style;
+			return item.id === "inline" && !!style && typeof style === "object" && Object.keys(style).length > 0;
 		}
 		// The caption previews the hovered/focused shortcut, otherwise names the current section.
 		const captionShortcut = computed(() => hoveredShortcut.value || activeShortcut.value);
@@ -234,9 +247,12 @@ export default defineComponent({
 			const target = section.querySelector("summary") ?? section;
 			// Focus the destination without letting the browser scroll other ancestors.
 			target.focus({ preventScroll: true });
+			// Sections below the state bar land under it too, since it will be stuck there.
+			const bar = panel.querySelector("[data-style-sticky]");
+			const covered = bar && bar.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING ? bar.offsetHeight : 0;
 			const top = section.getBoundingClientRect().top
 				- scroller.getBoundingClientRect().top - scroller.clientTop
-				+ scroller.scrollTop - quickpad.value.getBoundingClientRect().height - 8;
+				+ scroller.scrollTop - quickpad.value.getBoundingClientRect().height - covered - 8;
 			const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 			flareSection(section, reducedMotion);
 			// Keep the clicked item active during the smooth scroll; the timeout covers
@@ -249,7 +265,7 @@ export default defineComponent({
 				behavior: reducedMotion ? "instant" : "smooth",
 			});
 		}
-		return { ...builder, styleScope, visibility, chosenViewports, stylePanel, quickpad, activeShortcut, hoveredShortcut, shortcuts, shortcutGroups, captionShortcut, captionLabel, quickpadIcon, goToSection };
+		return { ...builder, quickpadHeight, styleScope, visibility, chosenViewports, stylePanel, quickpad, activeShortcut, hoveredShortcut, shortcuts, shortcutGroups, captionShortcut, captionLabel, shortcutSet, goToSection };
 	},
 });
 </script>

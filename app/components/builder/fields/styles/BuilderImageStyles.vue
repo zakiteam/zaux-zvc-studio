@@ -39,7 +39,7 @@
           @update:important="changeImportant(imagePositionControl, $event)"
         >
           <BuilderInput
-            :key="scope + current(imagePositionControl)"
+            :key="scope + state + current(imagePositionControl)"
             :modelValue="readPositionValue(current(imagePositionControl), imagePositionControl)"
             highlightWhenSet
             :label="translate('zx_builder_style_object_custom')"
@@ -63,23 +63,23 @@ import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, s
 import { imageStyleTarget, imageFitControl, imagePositionControl, imageCoverControls } from '../../../../../integrations/zaux/controls/image-style-controls.js';
 
 export default defineComponent({
-  props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, disabled: Boolean, compact: Boolean },
+  props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, state: { type: String, default: '' }, disabled: Boolean, compact: Boolean },
   emits: ['update:modelValue', 'edit-error'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const target = computed(() => imageStyleTarget(props.nodeName));
     const classes = computed(() => props.modelValue ?? target.value.defaults);
     const editable = computed(() => literalClasses(classes.value) !== null);
-    const current = control => readResponsiveStyle(classes.value, control, props.scope).replace(/^!/, '');
-    const important = control => readResponsiveImportant(classes.value, control, props.scope);
-    const controlDisabled = control => props.disabled || !editable.value || needsResponsiveBase(classes.value, control, props.scope);
+    const current = control => readResponsiveStyle(classes.value, control, props.scope, props.state).replace(/^!/, '');
+    const important = control => readResponsiveImportant(classes.value, control, props.scope, props.state);
+    const controlDisabled = control => props.disabled || !editable.value || needsResponsiveBase(classes.value, control, props.scope, props.state);
     function applyEdit(result) {
       emit('edit-error', result.error || '');
       if (!result.error && result.value !== classes.value) emit('update:modelValue', target.value.array ? literalClasses(result.value) : result.value);
     }
     function changeImportant(control, enabled) {
       if (props.disabled || !editable.value) return;
-      applyEdit(setResponsiveImportant(classes.value, control, enabled, props.scope));
+      applyEdit(setResponsiveImportant(classes.value, control, enabled, props.scope, props.state));
     }
     // Checked when both w-full and h-full apply at this scope.
     const covers = computed(() => imageCoverControls.every(control => current(control) === control.full));
@@ -88,7 +88,7 @@ export default defineComponent({
       if (props.disabled || !editable.value) return;
       let result = { value: classes.value };
       for (const control of imageCoverControls) {
-        result = replaceResponsiveStyle(result.value, control, enabled ? control.full : props.scope ? control.auto : '', props.scope);
+        result = replaceResponsiveStyle(result.value, control, enabled ? control.full : props.scope ? control.auto : '', props.scope, props.state);
         if (result.error) break;
       }
       applyEdit(result.error ? { value: classes.value, error: result.error } : result);
@@ -105,7 +105,7 @@ export default defineComponent({
     });
     function change(control, value) {
       if (props.disabled || !editable.value) return;
-      applyEdit(replaceResponsiveStyle(classes.value, control, value, props.scope));
+      applyEdit(replaceResponsiveStyle(classes.value, control, value, props.scope, props.state));
     }
     function changePosition(event) {
       const value = positionValueClass(imagePositionControl, event.target.value);

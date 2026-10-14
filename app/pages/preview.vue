@@ -1,5 +1,5 @@
 <template>
-  <div class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @mousedown.capture="preventShiftSelect" @click.capture="select" @contextmenu="contextMenu" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
+  <div ref="stageRoot" class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable, 'opacity-0': restoring }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @mousedown.capture="preventShiftSelect" @click.capture="select" @contextmenu="contextMenu" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
     <p v-if="fontErrors.length" role="alert" class="bg-utility-error/10 p-2 font-builder text-[12px] text-utility-error">{{ translate('zx_builder_fonts_load_error') }}</p>
     <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.clean && !state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
@@ -70,7 +70,44 @@ export default defineComponent({
     let dragPoint = null;
     let dragFrame = null;
     let selectionFrame = null;
+    // Scroll offsets belong to the editor tab: the editor stores them and sends one back when the shown entity changes.
+    // The restore must not be visible: the document is locked tall enough for the target, the stage stays hidden
+    // while async components and the runtime CSS settle, then it appears already at the stored offset.
+    let scrollKey = null;
+    let restore = null;
+    const restoring = ref(false);
+    const stageRoot = ref(null);
     function post(message) { window.parent.postMessage({ channel: 'zaux-studio', ...message }, window.location.origin); }
+    function startRestore(y) {
+      finishRestore();
+      if (y < 1) { window.scrollTo({ top: 0, behavior: 'instant' }); return; }
+      restore = { y, quiet: null, cap: setTimeout(finishRestore, 1200) };
+      restoring.value = true;
+      document.documentElement.style.minHeight = `${y + window.innerHeight}px`;
+      window.scrollTo({ top: y, behavior: 'instant' });
+    }
+    function finishRestore() {
+      if (!restore) return;
+      const { y, quiet, cap } = restore;
+      clearTimeout(quiet); clearTimeout(cap);
+      restore = null;
+      document.documentElement.style.minHeight = '';
+      window.scrollTo({ top: y, behavior: 'instant' });
+      restoring.value = false;
+    }
+    // Runs after each render and resize: show the stage once the target is reachable and the layout is quiet.
+    function settleRestore() {
+      if (!restore) return;
+      window.scrollTo({ top: restore.y, behavior: 'instant' });
+      clearTimeout(restore.quiet);
+      const reachable = (stageRoot.value?.offsetHeight ?? 0) >= restore.y + window.innerHeight;
+      if (reachable && !state.value.cssPending) restore.quiet = setTimeout(finishRestore, 80);
+    }
+    // Scrolls caused by the content swap or by the restore itself must not overwrite the stored offset.
+    function reportScroll(event) {
+      if (event.target !== document || restore || !scrollKey) return;
+      post({ type: 'scroll', key: scrollKey, y: window.scrollY });
+    }
     function hotkey(event) {
       // Canvas zoom and panel toggles also apply in Preview mode, but never on the standalone page.
       const layoutAction = state.value.clean ? null : layoutShortcut(event, AUTHORED);
@@ -116,6 +153,7 @@ export default defineComponent({
         : `[data-zb-instance="${CSS.escape(message.instanceId ?? '')}"]`;
       const element = document.querySelector(selector);
       if (!element) return;
+      finishRestore();
       element.scrollIntoView({ block: 'center', behavior: 'smooth' });
       pendingReveal = null;
     }
@@ -131,6 +169,10 @@ export default defineComponent({
         if (event.data.styles) styleBridge.apply(event.data.styles, { preview: true });
         fontLoader.apply(event.data.styles?.fonts ?? []);
         renderFailure.value = '';
+        if (typeof event.data.scrollKey === 'string' && event.data.scrollKey !== scrollKey) {
+          scrollKey = event.data.scrollKey;
+          startRestore(Math.max(0, Number(event.data.scrollY) || 0));
+        }
         state.value = event.data;
         lastContext = null;
         if (!event.data.editable) clearDrag();
@@ -138,6 +180,7 @@ export default defineComponent({
         await nextTick();
         if (generation !== receiveGeneration) return;
         showThemeSample?.();
+        settleRestore();
         measureSelection();
         renderedGeneration = generation;
         renderRevision.value++;
@@ -320,7 +363,10 @@ export default defineComponent({
       window.addEventListener('scroll', scheduleMeasurements, true);
       window.addEventListener('dragend', clearDrag);
       window.addEventListener('drop', clearDrag);
-      observer = new ResizeObserver(scheduleMeasurements); observer.observe(document.body);
+      window.addEventListener('scroll', reportScroll, { passive: true });
+      // A pending restore yields to any user scroll intent.
+      for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) window.addEventListener(type, finishRestore, { passive: true });
+      observer = new ResizeObserver(() => { settleRestore(); scheduleMeasurements(); }); observer.observe(document.body);
       post({ type: 'ready' });
     });
     onBeforeUnmount(() => {
@@ -339,10 +385,13 @@ export default defineComponent({
       window.removeEventListener('scroll', scheduleMeasurements, true);
       window.removeEventListener('dragend', clearDrag);
       window.removeEventListener('drop', clearDrag);
+      window.removeEventListener('scroll', reportScroll);
+      for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) window.removeEventListener(type, finishRestore);
+      finishRestore();
       observer?.disconnect();
       document.body.classList.remove('zb-preview-body');
     });
-    return { ...translation, inspect, renderRevision, nodeName, renderFailure, fontErrors, state, bulk, selectionBoxes, preventShiftSelect, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, contextMenu, startDrag, dragOver, dragLeave, drop };
+    return { ...translation, stageRoot, restoring, inspect, renderRevision, nodeName, renderFailure, fontErrors, state, bulk, selectionBoxes, preventShiftSelect, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, contextMenu, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

@@ -1,23 +1,33 @@
 <template>
   <section class="py-2 my-2 border-y-slim border-zaux-light-grey">
     <h3 class="text-[12px] font-semibold">{{ translate('zx_builder_style_title') }}</h3>
-    <label data-style-section="breakpoint" tabindex="-1" class="block mb-2">
-      <span class="mb-1 block text-[11px]">{{ translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint') }}</span>
-      <BuilderInput type="select" :modelValue="scope" @update:modelValue="selectScope" :label="translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint')" :options="scopeOptions" class="w-full" />
-    </label>
-    <div v-if="configuredScopes.length" class="flex flex-wrap gap-1 mb-2">
-      <span v-for="viewport in configuredScopes" :key="viewport.value" class="inline-flex items-center rounded-xxs border-slim" :class="scope === viewport.value ? 'border-zaux-accent bg-zaux-accent/15' : 'border-zaux-light-grey'">
-        <button type="button" class="px-1.5 py-0 text-[10px] font-semibold" :aria-pressed="scope === viewport.value" @click="selectScope(viewport.value)">{{ viewport.label }}</button>
-        <button type="button" class="px-1 py-0.5 text-[12px] disabled:opacity-40" :disabled="disabled" :aria-label="translate('zx_builder_style_reset_viewport') + ': ' + viewport.label" :title="translate('zx_builder_style_reset_viewport') + ': ' + viewport.label" @click="resetScope(viewport.value)">
-          &times;
-        </button>
-      </span>
+    <div data-style-section="breakpoint" tabindex="-1">
+      <label class="block mb-2">
+        <span class="mb-1 block text-[11px]">{{ translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint') }}</span>
+        <BuilderInput type="select" :modelValue="scope" @update:modelValue="selectScope" :label="translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint')" :options="scopeOptions" class="w-full" />
+      </label>
+      <div v-if="configuredScopes.length" class="flex flex-wrap gap-1 mb-2">
+        <span v-for="viewport in configuredScopes" :key="viewport.value" class="inline-flex items-center rounded-xxs border-slim" :class="scope === viewport.value ? 'border-zaux-accent bg-zaux-accent/15' : 'border-zaux-light-grey'">
+          <button type="button" class="px-1.5 py-0 text-[10px] font-semibold" :aria-pressed="scope === viewport.value" @click="selectScope(viewport.value)">{{ viewport.label }}</button>
+          <button type="button" class="px-1 py-0.5 text-[12px] disabled:opacity-40" :disabled="disabled" :aria-label="translate('zx_builder_style_reset_viewport') + ': ' + viewport.label" :title="translate('zx_builder_style_reset_viewport') + ': ' + viewport.label" @click="resetScope(viewport.value)">
+            &times;
+          </button>
+        </span>
+      </div>
+      <p class="mb-2 text-[10px] text-zaux-dark-grey">{{ translate(descendingStyles && visibility.hint === 'zx_builder_style_hint' ? 'zx_builder_style_descending_hint' : visibility.hint) }}</p>
+      <p v-if="descendingStyles && scope" class="mb-2 text-[10px] text-zaux-dark-grey">
+        {{ translate('zx_builder_style_responsive_base_hint') }}
+        <button type="button" class="underline" @click="selectScope('')">{{ translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }}</button>
+      </p>
     </div>
-    <p class="mb-2 text-[10px] text-zaux-dark-grey">{{ translate(descendingStyles && visibility.hint === 'zx_builder_style_hint' ? 'zx_builder_style_descending_hint' : visibility.hint) }}</p>
-    <p v-if="descendingStyles && scope" class="mb-2 text-[10px] text-zaux-dark-grey">
-      {{ translate('zx_builder_style_responsive_base_hint') }}
-      <button type="button" class="underline" @click="selectScope('')">{{ translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }}</button>
-    </p>
+    <!-- Breakpoint and state compose one class prefix: md:hover:bg-…
+         A direct child of the section, so it stays stuck under the Inspector quickpad
+         (--zb-style-sticky-top, set by BuilderInspectorStyleTab) along all the controls. -->
+    <div data-style-sticky class="sticky z-[9] -mx-2 mb-2 border-b-slim bg-zaux-white/90 px-2 py-1.5 backdrop-blur-sm"
+      :class="state ? 'border-zaux-accent' : 'border-zaux-light-grey'" :style="{ top: 'var(--zb-style-sticky-top, 0px)' }">
+      <BuilderStyleState :modelValue="state" :values="stateValues" :disabled="disabled || !editable" @update:modelValue="$emit('update:state', $event)" @reset="resetState" />
+    </div>
+    <p v-if="state" class="mb-2 text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_style_state_hint') }}</p>
     <p v-if="editError" role="status" class="mb-2 text-[11px] text-zaux-accent">{{ translate(editError) }}</p>
     <p v-if="!editable" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_style_dynamic') }}</p>
     <BuilderImageStyles
@@ -27,6 +37,7 @@
       @edit-error="editError = $event"
       :modelValue="imageTarget.array ? imgClasses : modelValue"
       :scope="scope"
+      :state="state"
       :disabled="disabled"
       @update:modelValue="$emit(imageTarget.array ? 'update:imgClasses' : 'update:modelValue', $event)"
     />
@@ -62,7 +73,7 @@
 import { computed, defineComponent, ref, watch } from 'vue';
 import { useTranslation } from '../../../../composables/useTranslation.js';
 import { useNodeStyleEditor } from '../../../../composables/useNodeStyleEditor.js';
-import { hasStyleScope, removeStyleScope, transferBaseStyles, literalClasses } from '../../../../../domain/node-styles.js';
+import { hasStyleScope, removeStyleScope, removeStyleState, transferBaseStyles, literalClasses } from '../../../../../domain/node-styles.js';
 import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
 import { hasResponsiveStyle, resetResponsiveStyles } from '../../../../../domain/responsive-node-styles.js';
 import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
@@ -73,8 +84,8 @@ import { imageStyleTarget, imageFitControl, imagePositionControl, imageCoverCont
 const imageClassControls = [imageFitControl, imagePositionControl, ...imageCoverControls];
 
 export default defineComponent({
-  props: { modelValue: { default: '' }, nodeName: String, nodeId: String, preferredScope: { type: String, default: null }, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
-  emits: ['update:modelValue', 'update:imgClasses', 'update:viewportStyles', 'viewport-chosen', 'update:scope'],
+  props: { modelValue: { default: '' }, nodeName: String, nodeId: String, preferredScope: { type: String, default: null }, state: { type: String, default: '' }, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
+  emits: ['update:modelValue', 'update:imgClasses', 'update:viewportStyles', 'viewport-chosen', 'update:scope', 'update:state'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const scope = ref('');
@@ -82,6 +93,7 @@ export default defineComponent({
     const editor = useNodeStyleEditor({
       classes: () => props.modelValue,
       scope,
+      state: computed(() => props.state),
       disabled: () => props.disabled,
       target: () => props.nodeId,
       onChange: value => emit('update:modelValue', value)
@@ -101,12 +113,13 @@ export default defineComponent({
       ...nodeStyleSections.flatMap(section => section.controls),
       ...(imageTarget.value && !imageTarget.value.array ? imageClassControls : [])
     ]);
-    const hasScope = (value, controls, prefix) => descendingStyles ? hasResponsiveStyle(value, controls, prefix) : hasStyleScope(value, prefix);
+    // Breakpoint chips and resets follow the edited state layer.
+    const hasScope = (value, controls, prefix) => descendingStyles ? hasResponsiveStyle(value, controls, prefix, props.state) : hasStyleScope(value, prefix + props.state);
     const configuredScopes = computed(() => styleBreakpoints.filter(({ value }) =>
       hasScope(props.modelValue, styleControls.value, value) || (imageTarget.value?.array && hasScope(props.imgClasses, imageClassControls, value))
     ));
     function selectScope(next) {
-      if (!descendingStyles && next && !props.viewportChosen && !scope.value && !configuredScopes.value.length && !props.disabled) {
+      if (!descendingStyles && !props.state && next && !props.viewportChosen && !scope.value && !configuredScopes.value.length && !props.disabled) {
         const controls = nodeStyleSections.flatMap(section => section.controls);
         if (imageTarget.value && !imageTarget.value.array) controls.push(imageFitControl, imagePositionControl);
         const patch = { class: transferBaseStyles(props.modelValue, next, controls) };
@@ -121,20 +134,29 @@ export default defineComponent({
     function resetScope(value) {
       if (props.disabled) return;
       if (descendingStyles) {
-        const classes = resetResponsiveStyles(props.modelValue, styleControls.value, value);
+        const classes = resetResponsiveStyles(props.modelValue, styleControls.value, value, props.state);
         const images = imageTarget.value?.array && props.imgClasses != null
-          ? resetResponsiveStyles(props.imgClasses, imageClassControls, value) : null;
+          ? resetResponsiveStyles(props.imgClasses, imageClassControls, value, props.state) : null;
         editError.value = classes.error || images?.error || '';
         if (editError.value) return;
         emit('update:viewportStyles', { class: classes.value, ...(images ? { imgClasses: literalClasses(images.value) } : {}) });
         return;
       }
-      const patch = { class: removeStyleScope(props.modelValue, value) };
-      if (imageTarget.value?.array && props.imgClasses != null) patch.imgClasses = removeStyleScope(props.imgClasses, value);
+      const patch = { class: removeStyleScope(props.modelValue, value + props.state) };
+      if (imageTarget.value?.array && props.imgClasses != null) patch.imgClasses = removeStyleScope(props.imgClasses, value + props.state);
       emit('update:viewportStyles', patch);
       if (scope.value === value) scope.value = '';
     }
-    return { descendingStyles, editor, editError, visibility, filteredSections, configuredScopes, selectScope, resetScope, granular, imageTarget, translate, scope, scopeOptions, visibleControls, editable };
+    // Class lists that may hold state variants: the node classes and, for Zimg, imgClasses.
+    const stateValues = computed(() => [props.modelValue, ...(imageTarget.value?.array && props.imgClasses != null ? [props.imgClasses] : [])]);
+    // Removes every class of a state at all breakpoints, as typed or authored by the controls.
+    function resetState(value) {
+      if (props.disabled || !editable.value) return;
+      const patch = { class: removeStyleState(props.modelValue, value) };
+      if (imageTarget.value?.array && props.imgClasses != null) patch.imgClasses = removeStyleState(props.imgClasses, value);
+      emit('update:viewportStyles', patch);
+    }
+    return { descendingStyles, stateValues, resetState, editor, editError, visibility, filteredSections, configuredScopes, selectScope, resetScope, granular, imageTarget, translate, scope, scopeOptions, visibleControls, editable };
   }
 });
 </script>

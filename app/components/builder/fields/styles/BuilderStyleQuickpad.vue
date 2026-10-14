@@ -1,26 +1,35 @@
 <template>
   <div class="flex min-w-0 flex-col gap-1">
-    <div class="flex min-w-0 items-center gap-1">
-      <div role="group" :aria-label="translate('zx_builder_quick_style_controls')" class="flex shrink-0 gap-0.25 rounded-xs bg-zaux-light p-0.25">
-        <button
-          v-for="tab in views"
-          :key="tab.id"
-          type="button"
-          :aria-label="tabLabel(tab) + (configured(tab) ? ' · ' + translate('zx_builder_quick_style_set') : '')"
-          :title="tabLabel(tab)"
-          :aria-expanded="active === tab.id"
-          :aria-controls="panelId"
-          :class="active === tab.id
-            ? 'bg-zaux-white text-zaux-accent shadow-sm'
-            : 'text-zaux-dark-grey hover:bg-zaux-white/70 hover:text-zaux-dark'"
-          class="relative flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-xxs transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zaux-accent"
-          @click="toggle(tab.id)"
-        >
-          <!-- Masked so the icon follows the text color (hover, active accent). -->
-          <span aria-hidden="true" class="block h-[16px] w-[16px]" :style="tabIcon(tab)" />
-          <span v-if="configured(tab)" aria-hidden="true" class="absolute right-[3px] top-[3px] h-[5px] w-[5px] rounded-full bg-zaux-accent" />
-        </button>
+    <div @mouseleave="hovered = ''">
+      <!-- Segmented groups (setup, box, appearance) wrap as a whole when the panel is narrow. -->
+      <div role="group" :aria-label="translate('zx_builder_quick_style_controls')" class="flex min-w-0 flex-wrap gap-1">
+        <div v-for="segment in segments" :key="segment.id" class="flex gap-0.25 rounded-xs bg-zaux-light p-0.25">
+          <BuilderStyleShortcut
+            v-for="tab in segment.tabs"
+            :key="tab.id"
+            :icon="tab.icon ?? tab.id"
+            :label="tabLabel(tab)"
+            :active="active === tab.id"
+            :set="configured(tab)"
+            :aria-expanded="active === tab.id"
+            :aria-controls="panelId"
+            @mouseenter="hovered = tab.id"
+            @focus="hovered = tab.id"
+            @blur="hovered = ''"
+            @click="toggle(tab.id)"
+          />
+        </div>
       </div>
+      <!-- Caption: the hovered/focused tab, otherwise the open one (as in the Inspector quickpad). -->
+      <p class="m-0 mt-1 flex h-[14px] min-w-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wide text-zaux-dark-grey" aria-hidden="true">
+        <span class="h-[5px] w-[5px] shrink-0 rounded-full transition-colors"
+          :class="captionTab && captionTab.id === active ? 'bg-zaux-accent' : 'bg-zaux-light-grey'" />
+        <span class="min-w-0 truncate">{{ captionTab ? tabLabel(captionTab) : translate('zx_builder_quick_style_controls') }}</span>
+      </p>
+    </div>
+    <!-- What the tabs edit: interaction state (shared with the Inspector Style tab) and breakpoint. -->
+    <div class="flex min-w-0 items-center gap-1">
+      <BuilderStyleState compact class="shrink-0" :modelValue="state" :values="[modelValue]" @update:modelValue="$emit('update:state', $event)" />
       <span class="ml-auto min-w-0 truncate text-[10px] text-zaux-dark-grey" :title="scopeTitle">{{ scopeLabel }}</span>
     </div>
     <section v-if="activeTab" :id="panelId" :aria-label="tabLabel(activeTab)" class="rounded-xs border-slim border-zaux-light-grey">
@@ -79,6 +88,8 @@ export default defineComponent({
     modelValue: { type: String, default: '' },
     // Breakpoint scope the controls edit ('' is the base).
     scope: { type: String, default: '' },
+    // Interaction state the controls edit ('' is the normal state, else e.g. 'hover:').
+    state: { type: String, default: '' },
     tabs: { type: Array, default: () => quickStyleTabs },
     // Tabs not built from nodeStyleSections ({ id, label?, icon?, set? }), shown first;
     // their UI comes from the `tab-<id>` slot.
@@ -87,50 +98,49 @@ export default defineComponent({
     target: { default: null },
     disabled: Boolean
   },
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'update:state'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
     const panelId = useId();
     const scope = computed(() => props.scope);
+    const state = computed(() => props.state);
     const editor = useNodeStyleEditor({
       classes: () => props.modelValue,
       scope,
+      state,
       disabled: () => props.disabled,
       target: () => props.target,
       onChange: value => emit('update:modelValue', value)
     });
     // The viewport policy applies here too: a tab shows only what the Inspector would show.
     const views = computed(() => [
-      ...props.extraTabs.map(tab => ({ ...tab, groups: [] })),
+      ...props.extraTabs.map(tab => ({ segment: 'setup', ...tab, groups: [] })),
       ...styleViews(props.tabs, visibleStyleSections(nodeStyleSections, styleVisibility(props.scope)))
     ]);
+    const segments = computed(() => views.value.reduce((list, tab) => {
+      const id = tab.segment ?? 'appearance';
+      const segment = list.find(entry => entry.id === id);
+      if (segment) segment.tabs.push(tab);
+      else list.push({ id, tabs: [tab] });
+      return list;
+    }, []));
+    const hovered = ref('');
     const active = ref(lastTab);
+    const captionTab = computed(() => views.value.find(tab => tab.id === (hovered.value || active.value)) ?? null);
     const activeTab = computed(() => views.value.find(tab => tab.id === active.value) ?? null);
     watch(active, value => { lastTab = value; });
     function toggle(id) {
       active.value = active.value === id ? '' : id;
     }
     const tabLabel = tab => translate(tab.label ?? `zx_builder_style_${tab.id}`);
-    // Zaux's Tailwind palette replaces the default colors, so there is no bg-current: paint inline.
-    function tabIcon(tab) {
-      const image = `url("/assets/builder/quickpad-${tab.icon ?? tab.id}.svg")`;
-      return {
-        backgroundColor: 'currentColor',
-        maskImage: image, WebkitMaskImage: image,
-        maskSize: '100% 100%', WebkitMaskSize: '100% 100%',
-        maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat',
-        maskPosition: 'center', WebkitMaskPosition: 'center'
-      };
-    }
-    // Marks tabs whose controls hold an authored value at the edited scope.
-    const configured = tab => !!tab.set || tab.groups.some(group =>
-      [...group.controls, ...(group.globalControls ?? [])].some(control => editor.isSet(control)));
+    // Marks tabs whose controls hold an authored value at the edited scope and state.
+    const configured = tab => !!tab.set || tab.groups.some(editor.sectionSet);
     const scopeLabel = computed(() => props.scope
       ? styleBreakpoints.find(item => item.value === props.scope)?.label ?? props.scope
       : translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base'));
     const scopeTitle = computed(() => translate(descendingStyles ? 'zx_builder_style_descending_scope' : 'zx_builder_style_breakpoint') + ': ' + scopeLabel.value);
     const { editError, editable, granular, visibleControls } = editor;
-    return { translate, panelId, editor, editError, editable, granular, visibleControls, views, active, activeTab, toggle, tabLabel, tabIcon, configured, scopeLabel, scopeTitle };
+    return { translate, panelId, segments, hovered, captionTab, editor, editError, editable, granular, visibleControls, views, active, activeTab, toggle, tabLabel, configured, scopeLabel, scopeTitle };
   }
 });
 </script>

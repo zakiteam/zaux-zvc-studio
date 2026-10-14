@@ -141,6 +141,8 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   const nodeId = ref(null);
   const collapsedOutline = ref(new Set());
   const hiddenOutlineNodes = ref(new Set());
+  // Session-only preview scroll offsets per open entity, restored by the canvas on tab switches.
+  const previewScroll = new Map();
   function toggleOutline(key) {
     if (collapsedOutline.value.has(key)) collapsedOutline.value.delete(key);
     else collapsedOutline.value.add(key);
@@ -188,6 +190,18 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     { value: 'auto', label: i18n.translate('zx_builder_viewport_auto') },
     ...viewports.map(item => ({ value: item.name, label: `${item.name} (${item.width} px)` }))
   ]);
+  // Canvas resize handles snap to the breakpoints of the active viewport mode: ascending widths, Automatic last.
+  const viewportResizeHandles = ref(true);
+  const viewportSteps = computed(() => {
+    const steps = viewportMode.value === 'simple'
+      ? simpleViewports.filter(item => item.width !== null).map(item => ({ value: item.value, width: item.width }))
+      : viewports.map(item => ({ value: item.name, width: item.width }));
+    return [...steps.sort((a, b) => a.width - b.width), { value: 'auto', width: null }];
+  });
+  const viewportStep = computed({
+    get: () => viewportMode.value === 'simple' ? simpleViewport.value : viewport.value,
+    set: value => { if (viewportMode.value === 'simple') simpleViewport.value = value; else viewport.value = value; }
+  });
   const previewOnly = ref(false);
   const previewHeaderHidden = ref(false);
   const canvasDark = ref(false);
@@ -915,6 +929,9 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     updateNode({ ...selectedNode.value.props, ...patch });
   }
   function setNodeClasses(value) { updateNodeStyle({ class: value }); }
+  // Interaction state ('' or a styleStates value such as 'hover:') edited by the Style tab and
+  // Quick style; shared so both surfaces edit the same layer. Session only, never persisted.
+  const styleState = ref('');
   // Inline class editor opened from the node context menu; anchor is a viewport rectangle.
   const quickStyle = ref(null);
   function openQuickStyle(anchor = null) {
@@ -1426,11 +1443,11 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     const branch = outlineBranch(outlineId, nodeId);
     if (branch) setOutlineBranch(outlineId, nodeId, !collapsedOutline.value.has(branch.self));
   }
-  const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, insertElement, insertionContainer, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, tokensView, selectedToken, iconSet, updateComponentTheme, updateProjectStyles, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, bindSelectedProps, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
+  const api = { canReplaceNodeWithZvc, libraryHighlight, revealInLibrary, cssInspect, cssInspectProperties, setCssInspectProperties, cssHighlight, highlightNodeCSS, clearNodeCSSHighlight, commandPaletteOpen,panelFocusRequest, canvasZoom, canvasScale, zoomSteps, zoomBy, sidebarCollapsed, inspectorCollapsed, runLayoutShortcut, syncActiveLibraryInstances, resetActiveLibraryInstances, outlineSelection, outlineSelected, selectOutlineRow, outlineBulk, inOutlineBulk, toggleOutlineRow, duplicateOutlineSelection, deleteOutlineSelection, outlineGroupRange, openOutlineGroup, outlineDragPayload, addTemplateElement, insertElement, insertionContainer, groupInZvc, templatesOpen, clipboardNodeName, canCopyNode, canPasteNode, copySelectedNode, pasteNode, canPasteNodeAt, clearNodeClipboard, ...i18n, canvasDark, previewHeaderHidden, updateBodyBackground, openPreviewPage, selectablePartials, libraryKind, partialLibraryDefinition, restorePartialReference, availablePartials, selectedPartial, insertPartial, workspaceView, tokensView, selectedToken, iconSet, updateComponentTheme, updateProjectStyles, updateProjectFonts, updateProjectCover, updateLibraryPreview, collapsedOutline, toggleOutline, collapseAllOutline, revealTarget, reveal, revealOutlineTarget, revealOutline, instanceLibraryDefinition, restoreActiveInstance, workspaceReady, prepareToLeave, document, mode, templateId, libraryId, instanceId, nodeId, leftTab, libraryCategory, librarySearch, inspectorTab, viewportMode, simpleViewport, viewport, viewportWidth, viewportLabel, viewportOptions, simpleViewportOptions, followViewportStyles, viewportStyleScope, viewportResizeHandles, viewportSteps, viewportStep, previewOnly, stylesOpen, updateStyleVariable, updateStyleUI, replaceStyles, resetStyles, modal, error, saveStatus, recovery, incoming, undoStack, redoStack, activeTemplate, activeInstance, activeDefinition, isSource, isSourceBase, hasSource, convertToVisual, selectedNode, previewInstances, remoteProjects, activeRemoteProject, remoteProjectBusy, renameRemoteProject, deleteRemoteProject, remoteSaveStatus, remoteConflict, remoteErrorDetail, canEditRemote, refreshRemoteProjects, openRemoteProject, createRemoteProject, flushRemoteSave, commit, undo, redo, selectTemplate, selectLibrary, selectInstance, insertInstance, moveInstance, newComponent, newTemplate, rename, duplicate, remove, updateNode, bindSelectedProps, changeNodeType, addElement, insertOverlayContent, removeOverlayContent, duplicateOverlayContent, moveOverlayContent, canDropElement, dropElement, deleteNode, duplicateNode, wrapNode, shiftNode, updateDefinition, updateData, saveToLibrary, importDocument, resolveConflict, flushSave, scheduleSave };
   Object.assign(api, { thumbnailBatch, refreshLibraryThumbnails, libraryThumbnails, libraryThumbnailSource, ensureLibraryThumbnail, refreshLibraryThumbnail });
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
-  Object.assign(api, { hiddenOutlineNodes, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });
-  Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle });
+  Object.assign(api, { hiddenOutlineNodes, previewScroll, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });
+  Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle, styleState });
   Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, saveNodeToLibrary });
   const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId: () => auth.user.value?.id });
   function openGlobalDesigner(id) { globalLinks.openGlobalDesigner(id); }

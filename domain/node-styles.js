@@ -105,7 +105,9 @@ function candidates(value, control, scope) {
 export function readStyleClass(value, control, scope = '') {
   if (control.globalSides) {
     const values = control.globalSides.map(side => globalEdgeValue(readStyleClass(value, side, scope)));
-    return values.every(item => item === values[0]) ? values[0] : '__mixed__';
+    if (!values.every(item => item === values[0])) return '__mixed__';
+    // Axis controls (px/py, mx/my) read the shared side value as their own utility.
+    return control.globalAxis ? values[0].replace(/^(!?-?[pm])-/, `$1${control.globalAxis}-`) : values[0];
   }
   const found = candidates(value, control, scope);
   // Tailwind's side utilities override axis/all-side utilities; important wins first.
@@ -244,6 +246,23 @@ export function removeStyleScope(value, scope) {
   const tokens = literalClasses(value);
   if (tokens === null) return value;
   const remaining = tokens.filter(token => !hasStyleScope(token, scope));
+  return Array.isArray(value) ? remaining : remaining.join(' ');
+}
+
+// Interaction state variants ('hover:') at any breakpoint: hover:x, md:hover:x.
+function inStyleState(token, state) {
+  const { scope } = splitClass(token);
+  return scope === state || scope.endsWith(':' + state);
+}
+
+export function hasStyleState(value, state) {
+  return (literalClasses(value) ?? []).some(token => inStyleState(token, state));
+}
+
+export function removeStyleState(value, state) {
+  const tokens = literalClasses(value);
+  if (tokens === null) return value;
+  const remaining = tokens.filter(token => !inStyleState(token, state));
   return Array.isArray(value) ? remaining : remaining.join(' ');
 }
 

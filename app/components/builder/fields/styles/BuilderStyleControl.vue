@@ -17,6 +17,7 @@
         :options="editor.illustratedOptions(control)"
         :disabled="editor.controlDisabled(control)"
         :showLabels="control.id === 'display'"
+        :columns="control.columns"
         :iconClass="editor.alignmentIconClass(control.id)"
         @update:modelValue="editor.change(control, $event)"
       />
@@ -78,7 +79,8 @@ export default defineComponent({
   },
   setup(props) {
     const { translate } = useTranslation();
-    const scope = computed(() => props.editor.scope.value);
+    // Remount custom inputs when the edited breakpoint or state changes.
+    const scope = computed(() => props.editor.scope.value + props.editor.state.value);
     return { translate, scope };
   }
 });

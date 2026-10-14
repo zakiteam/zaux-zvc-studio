@@ -16,10 +16,10 @@
         <BuilderStyleInput :modelValue="nodeClasses ?? ''" :label="translate('zx_builder_classes')" @update:modelValue="apply" />
       </div>
       <!-- Tabs and controls come from quickStyleTabs (integrations/zaux/controls/quick-style-controls.js). -->
-      <BuilderStyleQuickpad :modelValue="nodeClasses ?? ''" :scope="scope" :target="target.nodeId" :extraTabs="extraTabs" @update:modelValue="change">
+      <BuilderStyleQuickpad :modelValue="nodeClasses ?? ''" :scope="scope" :state="styleState" @update:state="styleState = $event" :target="target.nodeId" :extraTabs="extraTabs" @update:modelValue="change">
         <!-- Same image controls as the Inspector; Zimg keeps them in imgClasses, img in class. -->
         <template #tab-image="{ editor }">
-          <BuilderImageStyles compact :nodeName="selectedNode.name" :scope="scope"
+          <BuilderImageStyles compact :nodeName="selectedNode.name" :scope="scope" :state="styleState"
             :modelValue="imageTarget.array ? selectedNode.props.imgClasses : nodeClasses"
             @edit-error="editor.editError.value = $event" @update:modelValue="changeImage" />
         </template>

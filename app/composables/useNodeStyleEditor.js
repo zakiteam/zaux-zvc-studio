@@ -6,34 +6,38 @@ import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, s
 import { nodeStyleSections, styleBreakpoints } from '../../integrations/zaux/controls/node-style-controls.js';
 
 // Headless editor for the control descriptors in node-style-controls.js: reads and writes one
-// class list at one breakpoint scope through the responsive domain functions. Any surface
+// class list at one breakpoint scope and interaction state through the responsive domain functions. Any surface
 // (Inspector Style tab, Quick style) renders descriptors with BuilderStyleControl and this API.
-// classes(): class value; scope: ref of the edited scope; disabled(): read-only;
+// classes(): class value; scope: ref of the edited scope; state: ref of the edited interaction
+// state ('' or a styleStates value such as 'hover:'); disabled(): read-only;
 // target(): identity of the styled node (resets the error); onChange(value): commit new classes.
-export function useNodeStyleEditor({ classes, scope, disabled = () => false, target = () => null, onChange }) {
+export function useNodeStyleEditor({ classes, scope, state = ref(''), disabled = () => false, target = () => null, onChange }) {
   const { translate } = useTranslation();
   const editError = ref('');
-  watch([scope, target], () => { editError.value = ''; });
+  watch([scope, state, target], () => { editError.value = ''; });
   // Sections with global/side pairs show the global control unless switched to granular.
   const granular = ref({ border: false, rounding: false, padding: false, margin: false });
   const editable = computed(() => literalClasses(classes()) !== null);
 
-  const current = control => readResponsiveStyle(classes(), control, scope.value).replace(/^!/, '');
-  const important = control => readResponsiveImportant(classes(), control, scope.value);
-  // Authored value that differs from the editor baseline (responsive layout defaults read as unset).
-  const isSet = control => { const value = current(control); return !!value && value !== (control.responsiveDefault ?? ''); };
-  const controlDisabled = control => disabled() || !editable.value || needsResponsiveBase(classes(), control, scope.value);
+  const current = control => readResponsiveStyle(classes(), control, scope.value, state.value).replace(/^!/, '');
+  const important = control => readResponsiveImportant(classes(), control, scope.value, state.value);
+  // Authored value that differs from the editor baseline (responsive layout defaults read as unset;
+  // a state layer has no baseline).
+  const isSet = control => { const value = current(control); return !!value && value !== (state.value ? '' : control.responsiveDefault ?? ''); };
+  // A section (or Quick style group) holds an authored value: drives the category dots.
+  const sectionSet = section => [...section.controls, ...(section.globalControls ?? [])].some(isSet);
+  const controlDisabled = control => disabled() || !editable.value || needsResponsiveBase(classes(), control, scope.value, state.value);
   function applyEdit(result) {
     editError.value = result.error || '';
     if (!result.error && result.value !== classes()) onChange(result.value);
   }
   function changeImportant(control, enabled) {
     if (disabled() || !editable.value) return;
-    applyEdit(setResponsiveImportant(classes(), control, enabled, scope.value));
+    applyEdit(setResponsiveImportant(classes(), control, enabled, scope.value, state.value));
   }
   function change(control, value) {
     if (!editable.value || disabled()) return;
-    applyEdit(replaceResponsiveStyle(classes(), control, value, scope.value));
+    applyEdit(replaceResponsiveStyle(classes(), control, value, scope.value, state.value));
   }
   function changePositionValue(control, event) {
     const value = positionValueClass(control, event.target.value);
@@ -44,6 +48,7 @@ export function useNodeStyleEditor({ classes, scope, disabled = () => false, tar
     }
     change(control, value);
   }
+  // Layout-dependent UI follows the normal state: states rarely change display or direction.
   function inheritedLayoutClass(id) {
     const layout = nodeStyleSections.find(section => section.id === 'layout');
     const control = layout.controls.find(item => item.id === id);
@@ -126,8 +131,8 @@ export function useNodeStyleEditor({ classes, scope, disabled = () => false, tar
     ];
   }
   return {
-    scope, editError, editable, granular,
-    current, important, isSet, controlDisabled, applyEdit, change, changeImportant, changePositionValue, readPositionValue,
+    scope, state, editError, editable, granular,
+    current, important, isSet, sectionSet, controlDisabled, applyEdit, change, changeImportant, changePositionValue, readPositionValue,
     visibleControls, controlLabel, illustratedOptions, alignmentIconClass, controlOptions
   };
 }

@@ -4,11 +4,26 @@
     <div ref="stage" class="zb-canvas-stage zb-scroll min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
       <div class="zb-canvas-frame mx-auto" :style="{ width: `${layout.width * layout.scale}px` }">
         <div class="zb-canvas-label flex h-[22px] items-end justify-between gap-2 pb-0.5 font-mono text-[10px]" :style="{ color: canvasDark ? '#a1a1aa' : '#52525b' }">
-          <span class="truncate">{{ viewportLabel }}</span>
+          <span class="truncate" :class="{ 'font-semibold': resizing }">{{ viewportLabel }}</span>
           <span class="shrink-0">{{ Math.round(layout.scale * 100) }}%</span>
         </div>
         <div class="relative" :style="{ height: `${layout.height * layout.scale}px` }">
+          <!-- Resize handles: dragging or arrow keys move between the breakpoints of the active viewport mode. -->
+          <template v-if="viewportResizeHandles">
+            <div v-for="side in [-1, 1]" :key="side" role="slider" tabindex="0"
+              class="zb-canvas-resize group absolute top-0 z-[1] flex h-full w-[14px] cursor-ew-resize touch-none items-center justify-center outline-none"
+              :class="side < 0 ? 'right-full mr-[2px]' : 'left-full ml-[2px]'"
+              :aria-label="translate(side < 0 ? 'zx_builder_viewport_resize_start' : 'zx_builder_viewport_resize_end')"
+              aria-orientation="horizontal" :aria-valuemin="0" :aria-valuemax="viewportSteps.length - 1"
+              :aria-valuenow="stepIndex" :aria-valuetext="viewportLabel" :title="translate('zx_builder_viewport_resize_hint')"
+              @pointerdown="startResize($event, side)" @pointermove="moveResize" @pointerup="endResize" @pointercancel="endResize"
+              @lostpointercapture="endResize" @keydown="resizeKey($event, side)">
+              <span aria-hidden="true" class="h-[48px] w-[4px] rounded-xxs transition-colors group-focus-visible:ring-2 group-focus-visible:ring-zaux-accent"
+                :class="resizing ? 'bg-zaux-accent' : canvasDark ? 'bg-[#71717a] group-hover:bg-[#d4d4d8]' : 'bg-[#a1a1aa] group-hover:bg-[#3f3f46]'" />
+            </div>
+          </template>
           <div class="zb-preview-frame absolute left-0 top-0 origin-top-left overflow-hidden rounded-xxs border-slim border-zaux-light-grey bg-zaux-white shadow-deep [&>iframe]:block [&>iframe]:h-full [&>iframe]:w-full [&>iframe]:border-none"
+            :class="{ '[&>iframe]:pointer-events-none': resizing }"
             :style="{ width: `${layout.width}px`, height: `${layout.height}px`, transform: layout.scale === 1 ? null : `scale(${layout.scale})` }">
             <iframe ref="frame" src="/preview" :style="{ backgroundColor: canvasDark ? '#18181b' : '#ffffff' }" :title="translate('zx_builder_preview_title')" @load="sendState(); sendInspect()" />
           </div>
@@ -55,12 +70,56 @@ export default defineComponent({
       return { scale, width: Math.floor(nominal ?? availableWidth / scale), height: Math.floor(availableHeight / scale) };
     });
     watch(() => layout.value.scale, scale => { builder.canvasScale.value = scale; }, { immediate: true });
+    const stepIndex = computed(() => builder.viewportSteps.value.findIndex(step => step.value === builder.viewportStep.value));
+    // The frame is centred, so both edges move: the pointer travels half the width change, in screen pixels.
+    const resizing = ref(false);
+    let resizeStart = null;
+    function startResize(event, side) {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.focus();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      resizeStart = { x: event.clientX, side, width: layout.value.width, scale: layout.value.scale };
+      resizing.value = true;
+    }
+    function moveResize(event) {
+      if (!resizeStart) return;
+      const { x, side, width, scale } = resizeStart;
+      const target = width + side * 2 * (event.clientX - x) / scale;
+      const steps = builder.viewportSteps.value;
+      const widest = steps.at(-2)?.width ?? 0;
+      // Automatic is reachable past the widest breakpoint even when the stage is narrower than it.
+      const autoWidth = Math.max(Math.floor(Math.max(240, stageSize.value.width - 32) / scale), widest + 160);
+      const nearest = steps.reduce((best, step) => Math.abs((step.width ?? autoWidth) - target) < Math.abs((best.width ?? autoWidth) - target) ? step : best);
+      if (nearest.value !== builder.viewportStep.value) builder.viewportStep.value = nearest.value;
+    }
+    function endResize() {
+      resizeStart = null;
+      resizing.value = false;
+    }
+    // Arrow keys follow the handle side: pushing outward widens, Home/End jump to the extremes.
+    function resizeKey(event, side) {
+      const steps = builder.viewportSteps.value;
+      const delta = { ArrowLeft: -side, ArrowRight: side, ArrowUp: 1, ArrowDown: -1 }[event.key];
+      const index = event.key === 'Home' ? 0 : event.key === 'End' ? steps.length - 1
+        : delta ? Math.min(steps.length - 1, Math.max(0, (stepIndex.value < 0 ? steps.length - 1 : stepIndex.value) + delta)) : null;
+      if (index === null) return;
+      event.preventDefault();
+      builder.viewportStep.value = steps[index].value;
+    }
     const dynamicCss = ref('');
+    // Runtime CSS per entity: a tab switch sends the last compiled CSS at once instead of re-laying out later.
+    const cssCache = new Map();
+    let cssKey = null;
     let timer;
     let generation = 0;
     let visibilityRequest = 0;
+    // The preview restores this offset only when the key changes, so tab switches keep each entity's scroll.
+    const scrollKey = () => builder.mode.value === 'library' ? `library:${builder.libraryId.value}` : `template:${builder.templateId.value}`;
     function sendState() {
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css: dynamicCss.value, themeCss: workspaceThemeCss(builder.document.value), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      const key = scrollKey();
+      const css = cssKey === key ? dynamicCss.value : cssCache.get(key) ?? dynamicCss.value;
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', scrollKey: key, scrollY: builder.previewScroll.get(key) ?? 0, cssPending: cssKey !== key && !cssCache.has(key), outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css, themeCss: workspaceThemeCss(builder.document.value), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     // Lightweight message: hover-driven highlightNodeCSS calls must not resend the whole state.
     function sendInspect() {
@@ -74,6 +133,10 @@ export default defineComponent({
           if (message.type === 'undo') builder.undo();
           else builder.redo();
         }
+        return;
+      }
+      if (message.type === 'scroll') {
+        if (typeof message.key === 'string' && Number.isFinite(message.y)) builder.previewScroll.set(message.key, message.y);
         return;
       }
       if (message.type === 'outline-visibility' && message.request === visibilityRequest && Array.isArray(message.hidden)) {
@@ -110,13 +173,14 @@ export default defineComponent({
     }
     async function compileCss() {
       const token = ++generation;
+      const key = scrollKey();
       try {
         const result = await $fetch('/api/preview-css', { method: 'POST', body: { content: JSON.stringify({ rendered: builder.previewInstances.value.map(instance => runtimeNodes(instance.definition, instance.data)), instances: builder.previewInstances.value, uiSettings: builder.document.value.styles.uiSettings }) } });
-        if (token === generation) { dynamicCss.value = result.css; sendState(); }
+        if (token === generation) { dynamicCss.value = result.css; cssKey = key; cssCache.set(key, result.css); sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
     watch([() => builder.document.value.componentThemes, () => builder.document.value.projectStyles, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
-    watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, 450); }, { deep: true });
+    watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, scrollKey() === cssKey ? 450 : 0); }, { deep: true });
     watch([builder.cssInspect, builder.cssInspectProperties, builder.cssHighlight], sendInspect, { deep: true });
     watch(() => builder.revealTarget.value, (target) => {
       if (!target) return;
@@ -131,7 +195,7 @@ export default defineComponent({
       stageObserver.observe(stage.value);
     });
     onBeforeUnmount(() => { stageObserver?.disconnect(); builder.hiddenOutlineNodes.value = new Set(); window.removeEventListener('message', receive); clearTimeout(timer); generation++; });
-    return { ...builder, frame, stage, layout, sendState, sendInspect, contextMenu, contextItems, contextAction };
+    return { ...builder, frame, stage, layout, stepIndex, resizing, startResize, moveResize, endResize, resizeKey, sendState, sendInspect, contextMenu, contextItems, contextAction };
   }
 });
 </script>
