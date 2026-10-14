@@ -63,6 +63,17 @@ export default [
     }
   },
   {
+    // Head (eyelet, title, subtitle) above a two-column body: ctas and a RichText
+    // excerpt. `excerpt` is RichText props ({ contentHTML }), not a string (IntroDesc.vue).
+    name: 'IntroDesc',
+    createProps: t => ({
+      theme: 'light1', size: 'm', headAlignment: 'left', invert: false,
+      eyelet: t('zx_builder_preset_eyelet'), title: t('zx_builder_preset_title'), subtitle: '',
+      excerpt: { contentHTML: '<p>' + t('zx_builder_preset_excerpt') + '</p>' },
+      ctas: [{ href: '#', label: t('zx_builder_preset_button') }]
+    })
+  },
+  {
     name: 'ZButton',
     props: {
       label: 'Scopri di più',

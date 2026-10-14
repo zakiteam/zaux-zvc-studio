@@ -85,14 +85,32 @@ const { default: loadConfig } = await import('tailwindcss/loadConfig.js');
 const { default: resolveConfig } = await import('tailwindcss/resolveConfig.js');
 const resolvedConfig = resolveConfig(loadConfig(resolve(output, 'tailwind.source.js')));
 write('tailwind.runtime.json', JSON.stringify({ theme: resolvedConfig.theme }));
+// Same registries as upstream `gen:attr-hooks` and `gen:content-hooks`
+// (.zaux/scripts/setup/scripts/extract-*.js), written here instead of the release.
+// attributes-flat.json lists components that bind `attributes` directly on one
+// element (inputs, HtmlRenderer) instead of distributing it to inner hooks.
 const attributes = {};
+const contentHooks = {};
+const flatAttributes = new Set();
+const templatesOf = text => [...text.matchAll(/<template\b[^>]*>([\s\S]*?)<\/template>/gi)].map(match => match[1]).join('\n');
+const hookKeys = (text, name) => [
+  ...[...text.matchAll(new RegExp(`${name}\\??\\.([\\w-]+)`, 'g'))].map(match => match[1]),
+  ...[...text.matchAll(new RegExp(`${name}\\??\\[\\s*['"]([^'"]+)['"]\\s*\\]`, 'g'))].map(match => match[1])
+];
 for (const area of ['core', 'project']) {
-  for (const file of filesIn(resolve(source, area, 'components')).filter(file => file.endsWith('.vue'))) {
-    const keys = [...readFileSync(file, 'utf8').matchAll(/attributes\??\.([\w-]+)/g)].map(match => match[1]);
-    if (keys.length) attributes[basename(file, '.vue')] = [...new Set(keys)].sort();
+  for (const file of filesIn(resolve(source, area, 'components')).filter(file => file.endsWith('.vue') && !file.endsWith('.docs.vue'))) {
+    const text = readFileSync(file, 'utf8');
+    const name = basename(file, '.vue');
+    const keys = hookKeys(text, 'attributes');
+    if (keys.length) attributes[name] = [...new Set([...(attributes[name] ?? []), ...keys])].sort();
+    const slots = hookKeys(templatesOf(text), 'contentSlots').filter(key => /^\w+$/.test(key));
+    if (slots.length) contentHooks[name] = [...new Set([...(contentHooks[name] ?? []), ...slots])].sort();
+    if (/v-bind\s*=\s*["'](?:props\.)?attributes["']/.test(text)) flatAttributes.add(name);
   }
 }
 write('attributes-hooks.json', JSON.stringify(attributes, null, 2));
+write('content-hooks.json', JSON.stringify(contentHooks, null, 2));
+write('attributes-flat.json', JSON.stringify([...flatAttributes].sort(), null, 2));
 generateThemeCatalog();
 generateStaticClasses();
 console.log('Zaux bridge prepared outside the read-only release.');

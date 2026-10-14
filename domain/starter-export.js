@@ -82,13 +82,47 @@ ${name}.parameters = {
   return { [`${directory}/${name}.tpl.js`]: source, [`${directory}/${name}.stories.js`]: story };
 }
 
-const ALL_PARTS = Object.freeze({ components: true, imported: true, templates: true, styles: true, fonts: true });
+const ALL_PARTS = Object.freeze({ components: true, imported: true, templates: true, styles: true, fonts: true, studio: true });
+// Style sub-parts default to the `styles` switch when they are not set.
+export const STARTER_STYLE_PARTS = Object.freeze(['tokens', 'variables', 'componentThemes', 'projectStyles', 'uiConfig']);
+
+// Converts the export dialog selection (excluded ids, style/studio switches)
+// into `starterFiles` parts. New library entries and templates stay included.
+export function starterSelectionParts(workspace, selection) {
+  const excludedDefinitions = new Set(selection.excludedDefinitions ?? []);
+  const excludedTemplates = new Set(selection.excludedTemplates ?? []);
+  return {
+    definitionIds: workspace.library.filter(definition => !excludedDefinitions.has(definition.id)).map(definition => definition.id),
+    templateIds: workspace.templates.filter(template => !excludedTemplates.has(template.id)).map(template => template.id),
+    ...Object.fromEntries(STARTER_STYLE_PARTS.map(key => [key, selection[key] !== false])),
+    fonts: selection.fonts !== false,
+    studio: selection.studio === true
+  };
+}
+
+// Which style parts would produce files, so the dialog can mark empty ones.
+export function starterStyleAvailability(workspace, { tokenGroups, tokenDocuments }) {
+  const styles = workspace.styles ?? { cssVars: [], uiSettings: {} };
+  return {
+    tokens: Object.keys(tokenFiles(styles, tokenGroups, tokenDocuments)).length > 0,
+    variables: Boolean(presetCss(styles)),
+    componentThemes: Boolean(componentThemesCss(workspace.componentThemes)),
+    projectStyles: Boolean(projectStylesCss(workspace.projectStyles)),
+    uiConfig: Object.keys(styles.uiSettings ?? {}).length > 0,
+    fonts: Object.keys(fontFiles(styles.fonts)).length > 0
+  };
+}
 
 export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenDocuments, defaultUISettings, templateId, parts = {} }) {
   const selection = { ...ALL_PARTS, ...parts };
+  const styleSelected = key => Boolean(selection[key] ?? selection.styles);
   // Project components are authored in the editor; imported components carry a
   // sourceKey and resolve their implementation from the native source catalog.
   const includeDefinition = definition => Boolean(definition.sourceKey ? selection.imported : selection.components);
+  // Optional id lists narrow library entries and templates; included template
+  // instances still export their own independent definitions.
+  const includeLibrary = definition => includeDefinition(definition) && (!selection.definitionIds || selection.definitionIds.includes(definition.id));
+  const includeTemplate = template => Boolean(selection.templates) && (!selection.templateIds || selection.templateIds.includes(template.id));
   if (templateId !== undefined) {
     const template = workspace.templates.find(item => item.id === templateId);
     if (!template) throw new Error('zx_builder_invalid_document');
@@ -115,37 +149,36 @@ export function starterFiles(workspace, { filesForComponent, tokenGroups, tokenD
     components.push({ kind: definition.kind ?? 'zvc', name: exported.exportName, originalName: definition.exportName, directory });
     return exported.exportName;
   }
-  workspace.library.forEach(definition => { if (includeDefinition(definition)) addDefinition(definition); });
+  workspace.library.forEach(definition => { if (includeLibrary(definition)) addDefinition(definition); });
   const templateNames = new Set();
-  if (selection.templates) {
-    for (const template of workspace.templates) {
-      const base = exportName(template.name).slice(3);
-      const name = uniqueName(/^[A-Za-z]/.test(base) ? base : 'Template' + base, templateNames);
-      const blocks = template.instances.flatMap(instance => instance.kind === 'free'
-        ? runtimeNodes(instance.definition, instance.data).map(node => ({ node }))
-        : [{ blockName: addDefinition(instance.definition), data: clone(instance.data) }]);
-      const freeCss = template.instances.filter(instance => instance.kind === 'free').map(instance => definitionCss(instance.definition)).filter(Boolean).join('\n');
-      if (freeCss) files[`style/template-${name.toLowerCase()}.css`] = freeCss;
-      Object.assign(files, templateFiles(template, name, blocks));
-      templates.push({ id: template.id, name, directory: `project/templates/${name.toLowerCase()}` });
-    }
+  for (const template of workspace.templates.filter(includeTemplate)) {
+    const base = exportName(template.name).slice(3);
+    const name = uniqueName(/^[A-Za-z]/.test(base) ? base : 'Template' + base, templateNames);
+    const blocks = template.instances.flatMap(instance => instance.kind === 'free'
+      ? runtimeNodes(instance.definition, instance.data).map(node => ({ node }))
+      : [{ blockName: addDefinition(instance.definition), data: clone(instance.data) }]);
+    const freeCss = template.instances.filter(instance => instance.kind === 'free').map(instance => definitionCss(instance.definition)).filter(Boolean).join('\n');
+    if (freeCss) files[`style/template-${name.toLowerCase()}.css`] = freeCss;
+    Object.assign(files, templateFiles(template, name, blocks));
+    templates.push({ id: template.id, name, directory: `project/templates/${name.toLowerCase()}` });
   }
   const styles = workspace.styles ?? { cssVars: [], uiSettings: {} };
-  if (selection.styles) {
-    Object.assign(files, tokenFiles(styles, tokenGroups, tokenDocuments));
-    const css = presetCss(styles);
-    if (css) files['style/studio-tokens.css'] = css;
-    const themeCss = componentThemesCss(workspace.componentThemes);
-    if (themeCss) files['style/component-themes.css'] = themeCss;
-    const projectCss = projectStylesCss(workspace.projectStyles);
-    if (projectCss) files['style/project-styles.css'] = projectCss;
-    if (Object.keys(styles.uiSettings ?? {}).length) {
-      files['style/ui.config.js'] = 'export default ' + json(mergeUISettings(defaultUISettings, styles.uiSettings)).trimEnd() + ';\n';
-    }
+  if (styleSelected('tokens')) Object.assign(files, tokenFiles(styles, tokenGroups, tokenDocuments));
+  const css = styleSelected('variables') && presetCss(styles);
+  if (css) files['style/studio-tokens.css'] = css;
+  const themeCss = styleSelected('componentThemes') && componentThemesCss(workspace.componentThemes);
+  if (themeCss) files['style/component-themes.css'] = themeCss;
+  const projectCss = styleSelected('projectStyles') && projectStylesCss(workspace.projectStyles);
+  if (projectCss) files['style/project-styles.css'] = projectCss;
+  if (styleSelected('uiConfig') && Object.keys(styles.uiSettings ?? {}).length) {
+    files['style/ui.config.js'] = 'export default ' + json(mergeUISettings(defaultUISettings, styles.uiSettings)).trimEnd() + ';\n';
   }
   if (selection.fonts) Object.assign(files, fontFiles(styles.fonts));
-  files['studio/workspace.json'] = json(documentEnvelope('workspace', workspace));
-  files['studio/manifest.json'] = json({ components, templates });
+  // Studio backup and name map are only needed to reopen the project in Studio.
+  if (selection.studio) {
+    files['studio/workspace.json'] = json(documentEnvelope('workspace', workspace));
+    files['studio/manifest.json'] = json({ components, templates });
+  }
   const cssPaths = Object.keys(files).filter(path => /\.(css|scss)$/.test(path));
   files['README.md'] = `# Zaux project starter
 
@@ -162,8 +195,7 @@ Copy this package into a compatible Zaux repository. Zaux, its core components, 
 - Load style/project-styles.css, when present, after component-themes.css: it contains the project's global CSS.
 - style/ui.config.js, when present, contains the effective Zaux UI configuration.
 - Add fonts.html links to the page head; fonts.json lists the project font references. Font binaries and media are referenced by URL, not bundled.
-- studio/workspace.json retains the editable Studio project; studio/manifest.json maps generated names and folders.
-
+${selection.studio ? '- studio/workspace.json retains the editable Studio project; studio/manifest.json maps generated names and folders.\n' : ''}
 ## Independent components
 
 Library definitions and template copies with different implementations/configuration receive distinct names. Template data remains attached to each block. Identical definitions share an export. Numeric suffixes avoid case-insensitive name collisions.

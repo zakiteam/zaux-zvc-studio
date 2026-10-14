@@ -9,6 +9,7 @@ export { styleBreakpoints } from '../responsive-styles.js';
 import typography from '../../../vendor/zaux/style/tokens/typography.json';
 import shadows from '../../../vendor/zaux/style/tokens/shadows.json';
 import blur from '../../../vendor/zaux/style/tokens/blur.json';
+import ratios from '../../../vendor/zaux/style/tokens/ratios.json';
 
 function leaves(object, prefix = '') {
   return Object.entries(object).flatMap(([key, value]) => {
@@ -208,6 +209,10 @@ export const nodeStyleSections = [
     dimensionControl('min_width', 'min-w'), dimensionControl('min_height', 'min-h'),
     dimensionControl('max_width', 'max-w'), dimensionControl('max_height', 'max-h')
   ] },
+  // Zaux replaces Tailwind's aspectRatio scale with these tokens (aspect-16-9, …).
+  { id: 'aspect_ratio', controls: [control('aspect_ratio', [], {
+    options: Object.entries(ratios).map(([key, value]) => ({ value: `aspect-${key}`, label: value.replace('/', ':') }))
+  })] },
   { id: 'positioning', controls: [
     control('position', ['static', 'relative', 'fixed', 'absolute'], { matchValues: ['static', 'relative', 'fixed', 'absolute', 'sticky'] }),
     control('z_index', [], {

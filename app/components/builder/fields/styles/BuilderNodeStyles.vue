@@ -67,7 +67,10 @@ import { descendingStyles } from '../../../../../integrations/zaux/responsive-st
 import { hasResponsiveStyle, resetResponsiveStyles } from '../../../../../domain/responsive-node-styles.js';
 import { styleVisibility, visibleStyleSections } from '../../../../../integrations/zaux/style-visibility.js';
 import { nodeStyleSections, styleBreakpoints } from '../../../../../integrations/zaux/controls/node-style-controls.js';
-import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
+import { imageStyleTarget, imageFitControl, imagePositionControl, imageCoverControls } from '../../../../../integrations/zaux/controls/image-style-controls.js';
+
+// Controls that edit imgClasses when the image classes live in their own array prop.
+const imageClassControls = [imageFitControl, imagePositionControl, ...imageCoverControls];
 
 export default defineComponent({
   props: { modelValue: { default: '' }, nodeName: String, nodeId: String, preferredScope: { type: String, default: null }, viewportChosen: Boolean, imgClasses: { default: null }, disabled: Boolean },
@@ -96,11 +99,11 @@ export default defineComponent({
     const scopeOptions = computed(() => [{ value: '', label: translate(descendingStyles ? 'zx_builder_style_descending_base' : 'zx_builder_style_base') }, ...(descendingStyles ? [...styleBreakpoints].reverse() : styleBreakpoints)]);
     const styleControls = computed(() => [
       ...nodeStyleSections.flatMap(section => section.controls),
-      ...(imageTarget.value && !imageTarget.value.array ? [imageFitControl, imagePositionControl] : [])
+      ...(imageTarget.value && !imageTarget.value.array ? imageClassControls : [])
     ]);
     const hasScope = (value, controls, prefix) => descendingStyles ? hasResponsiveStyle(value, controls, prefix) : hasStyleScope(value, prefix);
     const configuredScopes = computed(() => styleBreakpoints.filter(({ value }) =>
-      hasScope(props.modelValue, styleControls.value, value) || (imageTarget.value?.array && hasScope(props.imgClasses, [imageFitControl, imagePositionControl], value))
+      hasScope(props.modelValue, styleControls.value, value) || (imageTarget.value?.array && hasScope(props.imgClasses, imageClassControls, value))
     ));
     function selectScope(next) {
       if (!descendingStyles && next && !props.viewportChosen && !scope.value && !configuredScopes.value.length && !props.disabled) {
@@ -108,7 +111,7 @@ export default defineComponent({
         if (imageTarget.value && !imageTarget.value.array) controls.push(imageFitControl, imagePositionControl);
         const patch = { class: transferBaseStyles(props.modelValue, next, controls) };
         if (imageTarget.value?.array && props.imgClasses != null) {
-          patch.imgClasses = transferBaseStyles(props.imgClasses, next, [imageFitControl, imagePositionControl]);
+          patch.imgClasses = transferBaseStyles(props.imgClasses, next, imageClassControls);
         }
         emit('update:viewportStyles', patch);
       }
@@ -120,7 +123,7 @@ export default defineComponent({
       if (descendingStyles) {
         const classes = resetResponsiveStyles(props.modelValue, styleControls.value, value);
         const images = imageTarget.value?.array && props.imgClasses != null
-          ? resetResponsiveStyles(props.imgClasses, [imageFitControl, imagePositionControl], value) : null;
+          ? resetResponsiveStyles(props.imgClasses, imageClassControls, value) : null;
         editError.value = classes.error || images?.error || '';
         if (editError.value) return;
         emit('update:viewportStyles', { class: classes.value, ...(images ? { imgClasses: literalClasses(images.value) } : {}) });

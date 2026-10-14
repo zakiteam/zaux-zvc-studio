@@ -80,6 +80,9 @@ export default defineComponent({
     // Breakpoint scope the controls edit ('' is the base).
     scope: { type: String, default: '' },
     tabs: { type: Array, default: () => quickStyleTabs },
+    // Tabs not built from nodeStyleSections ({ id, label?, icon?, set? }), shown first;
+    // their UI comes from the `tab-<id>` slot.
+    extraTabs: { type: Array, default: () => [] },
     // Identity of the styled node: clears a previous edit error when it changes.
     target: { default: null },
     disabled: Boolean
@@ -97,7 +100,10 @@ export default defineComponent({
       onChange: value => emit('update:modelValue', value)
     });
     // The viewport policy applies here too: a tab shows only what the Inspector would show.
-    const views = computed(() => styleViews(props.tabs, visibleStyleSections(nodeStyleSections, styleVisibility(props.scope))));
+    const views = computed(() => [
+      ...props.extraTabs.map(tab => ({ ...tab, groups: [] })),
+      ...styleViews(props.tabs, visibleStyleSections(nodeStyleSections, styleVisibility(props.scope)))
+    ]);
     const active = ref(lastTab);
     const activeTab = computed(() => views.value.find(tab => tab.id === active.value) ?? null);
     watch(active, value => { lastTab = value; });
@@ -117,7 +123,7 @@ export default defineComponent({
       };
     }
     // Marks tabs whose controls hold an authored value at the edited scope.
-    const configured = tab => tab.groups.some(group =>
+    const configured = tab => !!tab.set || tab.groups.some(group =>
       [...group.controls, ...(group.globalControls ?? [])].some(control => editor.isSet(control)));
     const scopeLabel = computed(() => props.scope
       ? styleBreakpoints.find(item => item.value === props.scope)?.label ?? props.scope

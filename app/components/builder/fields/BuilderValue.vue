@@ -3,6 +3,13 @@
 		<BuilderMediaInput v-if="type === 'media'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
 		<BuilderComponentInput v-else-if="type === 'component'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
 		<BuilderImageInput v-else-if="image || type === 'image'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
+		<BuilderButtonInput
+			v-else-if="type === 'button'"
+			:label="label || translate('zx_builder_button')"
+			:modelValue="modelValue"
+			:disabled="disabled"
+			@update:modelValue="$emit('update:modelValue', $event)"
+		/>
 		<BuilderButtonGroupInput
 			v-else-if="type === 'buttongroup'"
 			:label="translate('zx_builder_buttongroup')"

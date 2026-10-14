@@ -191,7 +191,7 @@ export default defineComponent({
 		]);
 		const shortcutGroupOf = {
 			classes: "setup", breakpoint: "setup", image: "setup",
-			layout: "box", placement: "box", dimensions: "box", positioning: "box", margin: "box", padding: "box",
+			layout: "box", placement: "box", dimensions: "box", aspect_ratio: "box", positioning: "box", margin: "box", padding: "box",
 			inline: "code",
 		};
 		const shortcutGroups = computed(() => shortcuts.value.reduce((groups, item) => {

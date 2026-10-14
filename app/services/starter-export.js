@@ -1,4 +1,4 @@
-import { starterFiles, nativeStarterFiles } from '../../domain/starter-export.js';
+import { starterFiles, nativeStarterFiles, starterStyleAvailability } from '../../domain/starter-export.js';
 import { tokenGroups, tokenDocuments } from '../data/styles/tokens.js';
 import { defaultUISettings } from './styles.js';
 import { filesForDefinition } from './source-zvc.js';
@@ -11,4 +11,8 @@ export function projectStarterFiles(workspace, templateId, parts) {
       return definition.sourceKey ? nativeStarterFiles(definition, files) : files;
     }
   });
+}
+
+export function projectStarterStyleAvailability(workspace) {
+  return starterStyleAvailability(workspace, { tokenGroups, tokenDocuments });
 }

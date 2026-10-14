@@ -1,4 +1,4 @@
-import { clone, dataFor, isBinding, resolveValue } from './nodes.js';
+import { clone, dataFor, isBinding, resolveValue, withoutSpread } from './nodes.js';
 import { copyDefinition } from './workspace.js';
 
 const isStyle = key => /^(class|className|style|styles|css)$|Classes$|Style$/i.test(key);
@@ -44,7 +44,8 @@ export function restoreInstance(instance, definition) {
   // Native snapshots are regenerated from data, never patched as visual nodes.
   if (!instance.definition.sourceKey) {
     for (const { node, path } of saved) {
-      const props = contentProperties(resolveValue(node.props, originalData));
+      // A whole-props field binding is restored through the data, not as literal props.
+      const props = contentProperties(resolveValue(withoutSpread(node.props), originalData));
       const candidates = targets.filter(item => item.node.name === node.name);
       const identity = node.sourceNodeId ?? node.id;
       let matches = candidates.filter(item => (item.node.sourceNodeId ?? item.node.id) === identity);

@@ -91,6 +91,7 @@ used in the Fields/Data tab.
 | `icon` | `control: 'icon'` (value `null`, absent or string) → [BuilderIconPicker.vue](../app/components/builder/fields/BuilderIconPicker.vue): searchable dropdown previewing each symbol of the active icon set (global UI `iconSet`, which Icon.vue applies over a per-instance `iconSet`); `allowEmpty: true` adds a "none" option, `options` restrict the names (`''` = none) |
 | `image` | `image: true` (and value is `null` or a string) → [BuilderImageInput.vue](../app/components/builder/fields/BuilderImageInput.vue): URL + media library |
 | `media` | `media: true` → [BuilderMediaInput.vue](../app/components/builder/fields/BuilderMediaInput.vue): compact `{ type, props }` editor |
+| `component` | `control: 'component'` → [BuilderComponentInput.vue](../app/components/builder/fields/BuilderComponentInput.vue), the editor of `component` fields: one `{ type: 'component', name, props }` descriptor (Zaux components, HTML elements, ZVP references) or an array of them, plus JSON; `null` shows the picker and clearing stores `null` |
 | object | `properties: { key: descriptor }` → nested fields plus an advanced JSON view |
 | array | `items: { default, properties }` → add / edit / remove rows |
 
@@ -110,9 +111,46 @@ used in the Fields/Data tab.
 10. fallback → `text`
 
 `BuilderProperty` then intercepts, before the scalar fallback, in this order:
-bindings, `media: true`, `properties` (object), `items` (array), `buttongroup`,
-then a `select` when `options` is non-empty, and finally `BuilderValue`
-(passing `image: true` through when set).
+bindings, explicit `null` (see below), `media: true`, `control: 'component'`, `properties` (object),
+`items` (array), `buttongroup`, `icon`, then a `select` when `options` is
+non-empty (with the typed custom-value editor under it when the value is outside
+the list), and finally `BuilderValue` (passing `image: true` through when set).
+
+### Null values and property actions
+
+Every property heading has a ⋮ menu: **Set to null** stores a literal `null`;
+**Reset to default (remove)** deletes the key so the Vue default applies again
+(top-level props, authored keys of nested objects and component-item props; the
+parent opts in with `removable` and handles `remove`). A `null` value shows a
+`null` badge and, unless the editor already treats null as a state (a select
+with a `null` option, `classes`, `icon`), a placeholder with **Set a value**,
+which writes `propertyInitialValue(descriptor, { notNull: true })` from
+`domain/properties.js`: the plain default, else the first non-null option, else
+an empty value of the declared type (`media` → `{ type: 'img', props: {} }`).
+Props added from **Add property** start from the same editable value
+(`propertyAddedValue`), except where `null` is already a choice of the editor.
+
+### Shared conventions
+
+`conventionDecorations` in `property-decorators.js` decorates props that have
+neither upstream options nor an explicit control: `<x>Tag` → h1–h6/p/div/span
+select; `rounded`, `pilled`, `dotsRounded`, `roundedMedia` with a `null`
+default → theme default (null) / yes / no; string `align` → left/center/right;
+`classes`, `customClasses`, `<x>Class(es)` → `classes` editor. Icon pickers
+also cover `icon`, `titleIcon`, `openIcon` and `closeIcon` string props.
+Component rules and `componentSelects` still take precedence.
+
+### Sections and suggested props
+
+`integrations/zaux/descriptors/property-groups.js` is the editorial curation of
+the palette components' props. `propertyGroup(name, key, descriptor)` places a
+prop in Content, Appearance, Layout, Behavior, Other or Advanced (component
+placements, shared name lists, then naming patterns). `featuredProperties(name)`
+lists the props suggested first in **Add property**; `isInternalProperty` hides
+Zaux plumbing (`inheritedUIFlags`, `customSpacing`, `placeHolder`, …) from that
+menu only — authored values stay visible. Props declared but not read by the
+pinned templates (Dropdown `label`/`icon`/`stayOpen`/`rounded`, Zsection
+`bgColor`) are placed in Advanced and never suggested.
 
 ### How a select is built
 
@@ -124,6 +162,7 @@ Out-of-list values keep a "custom value" entry and remain editable.
 ## Existing examples
 
 - Icon.iconName: actual bundled SVG symbol IDs.
+- SliderMultiple.introContent: `control: 'component'` (upstream renders `<component :is="introContent.name" v-bind="introContent.props">` when `type == 'component'`, else `v-html` of `introContent.content`, still editable as JSON).
 - Icon.iconSet: bundled asset folders; unknown sets retain custom editing. Since Zaux 2.4.0 the global `uiSettings.global.iconSet` setting wins over this per-instance prop when they differ; the Studio UI settings panel exposes that global value.
 - Icon.size: fontSize token keys from vendor/zaux/style/tokens/icons.json, prefixed with text- (for example text-icon-m). Icon.vue applies size directly as a CSS class; raw icon-m is not a utility.
 - Zimg.src, Zimg.fallbackSrc, img.src, video.poster: image picker metadata.

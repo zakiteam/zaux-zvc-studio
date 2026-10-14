@@ -20,3 +20,11 @@ export const imagePositionControl = {
     icon: `/assets/builder/object-position-${value}.svg`
   }))
 };
+
+// "Cover the frame" toggle: w-full and h-full on the image. Outside the base scope
+// turning it off writes w-auto/h-auto so a smaller breakpoint can undo it.
+export const imageCoverControls = ['w', 'h'].map(prefix => ({
+  id: `image_cover_${prefix}`,
+  full: `${prefix}-full`, auto: `${prefix}-auto`,
+  options: [{ value: `${prefix}-full` }, { value: `${prefix}-auto` }]
+}));

@@ -36,6 +36,14 @@ export default [
     ) 
   },
   {
+    // Avatar + name + role. The cta button renders only with size 'l' (Usermeta.vue).
+    name: 'Usermeta', createProps: t => ({
+      title: t('zx_builder_preset_user_name'), qualification: t('zx_builder_preset_user_role'),
+      theme: 'light1', size: 'm', circled: true, stacked: false,
+      media: { type: 'img', props: { src: '/assets/builder/placeholder.svg', alt: '', lazyload: false } }
+    })
+  },
+  {
     name: 'ButtonBlock', createProps: t => ({
       theme: 'light1', size: 'm', align: 'left', rounded: true,
       content: { title: t('zx_builder_preset_title'), excerpt: t('zx_builder_preset_excerpt'), size: 'm', layout: 'stacked' },

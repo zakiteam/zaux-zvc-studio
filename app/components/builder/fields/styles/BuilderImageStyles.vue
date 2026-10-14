@@ -1,9 +1,14 @@
 <template>
-  <details open class="py-2 border-t-slim border-zaux-light-grey">
-    <summary class="cursor-pointer text-[12px] mb-0 font-semibold">{{ translate('zx_builder_style_image') }}</summary>
-    <p class="my-2 text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_style_image_hint') }}</p>
+  <!-- compact: inside a container that already names the section (Quick style tab). -->
+  <component :is="compact ? 'div' : 'details'" :open="compact ? undefined : true" :class="compact ? '' : 'py-2 border-t-slim border-zaux-light-grey'">
+    <summary v-if="!compact" class="cursor-pointer text-[12px] mb-0 font-semibold">{{ translate('zx_builder_style_image') }}</summary>
+    <p :class="compact ? 'mb-1' : 'my-2'" class="text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_style_image_hint') }}</p>
     <p v-if="!editable" class="mb-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_style_dynamic') }}</p>
-    <fieldset :disabled="disabled || !editable" class="grid grid-cols-2 gap-2 py-2">
+    <fieldset :disabled="disabled || !editable" :class="compact ? 'py-1' : 'py-2'" class="grid grid-cols-2 gap-2">
+      <label class="col-span-2 flex items-center gap-1.5 text-[11px]" :title="translate('zx_builder_style_image_cover_hint')">
+        <input type="checkbox" class="!w-auto accent-zaux-accent" :checked="covers" :disabled="coverDisabled" @change="changeCover($event.target.checked)" />
+        {{ translate('zx_builder_style_image_cover') }}
+      </label>
       <div class="min-w-0">
         <span class="mb-1 block text-[10px]">{{ translate('zx_builder_style_object_fit') }}</span>
         <BuilderStyleField
@@ -47,7 +52,7 @@
         </BuilderStyleField>
       </div>
     </fieldset>
-  </details>
+  </component>
 </template>
 <script>
 import { computed, defineComponent } from 'vue';
@@ -55,10 +60,10 @@ import { useTranslation } from '../../../../composables/useTranslation.js';
 import { literalClasses, readPositionValue, positionValueClass } from '../../../../../domain/node-styles.js';
 import { descendingStyles } from '../../../../../integrations/zaux/responsive-styles.js';
 import { readResponsiveStyle, readResponsiveImportant, replaceResponsiveStyle, setResponsiveImportant, needsResponsiveBase } from '../../../../../domain/responsive-node-styles.js';
-import { imageStyleTarget, imageFitControl, imagePositionControl } from '../../../../../integrations/zaux/controls/image-style-controls.js';
+import { imageStyleTarget, imageFitControl, imagePositionControl, imageCoverControls } from '../../../../../integrations/zaux/controls/image-style-controls.js';
 
 export default defineComponent({
-  props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, disabled: Boolean },
+  props: { modelValue: { default: null }, nodeName: String, scope: { default: '' }, disabled: Boolean, compact: Boolean },
   emits: ['update:modelValue', 'edit-error'],
   setup(props, { emit }) {
     const { translate } = useTranslation();
@@ -75,6 +80,18 @@ export default defineComponent({
     function changeImportant(control, enabled) {
       if (props.disabled || !editable.value) return;
       applyEdit(setResponsiveImportant(classes.value, control, enabled, props.scope));
+    }
+    // Checked when both w-full and h-full apply at this scope.
+    const covers = computed(() => imageCoverControls.every(control => current(control) === control.full));
+    const coverDisabled = computed(() => imageCoverControls.some(controlDisabled));
+    function changeCover(enabled) {
+      if (props.disabled || !editable.value) return;
+      let result = { value: classes.value };
+      for (const control of imageCoverControls) {
+        result = replaceResponsiveStyle(result.value, control, enabled ? control.full : props.scope ? control.auto : '', props.scope);
+        if (result.error) break;
+      }
+      applyEdit(result.error ? { value: classes.value, error: result.error } : result);
     }
     const positionOptions = computed(() => imagePositionControl.options.map(option => ({ ...option, label: translate(option.label) })));
     const fitOptions = computed(() => {
@@ -99,7 +116,7 @@ export default defineComponent({
       }
       change(imagePositionControl, value);
     }
-    return { controlDisabled, important, changeImportant, translate, editable, current, imageFitControl, imagePositionControl, fitOptions, positionOptions, change, changePosition, readPositionValue };
+    return { covers, coverDisabled, changeCover, controlDisabled, important, changeImportant, translate, editable, current, imageFitControl, imagePositionControl, fitOptions, positionOptions, change, changePosition, readPositionValue };
   }
 });
 </script>

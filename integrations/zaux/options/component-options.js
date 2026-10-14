@@ -11,6 +11,10 @@ export const componentVariants = {
   // CardPic implements only light1; its content uses the fixed CardBaseDefault light2 theme.
   CardPic: { sizes: ['m', 'l'], themes: ['light1'] },
   Snippetlabel: { sizes: ['s', 'm', 'l'], themes: ['light1', 'light2', 'dark1', 'dark2'] },
+  // IntroDesc.vue styles only size m; IntroDesc.theme.scss implements light1 and dark1.
+  IntroDesc: { sizes: ['m'], themes: ['light1', 'dark1'] },
+  // Usermeta.vue sizes and Usermeta.theme.scss themes (light2 is white text for dark backgrounds).
+  Usermeta: { sizes: ['s', 'm', 'l'], themes: ['light1', 'light2'] },
   ButtonBlock: { sizes: ['s', 'm', 'l'], themes: ['light1', 'dark1', 'transparent1', 'transparent2'] },
   Accordion: { sizes: ['s', 'm', 'l'], themes: ['light1', 'dark1'] },
   OffCanvas: { sizes: ['s', 'm'], themes: ['light1', 'lightblur1', 'darkblur1', 'transparent'] },

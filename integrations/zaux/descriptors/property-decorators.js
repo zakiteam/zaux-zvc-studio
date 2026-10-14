@@ -37,6 +37,13 @@ export const propertyDecorators = {
   ViewportToggle: viewportToggleDecorators,
   ...motionDecorators,
   IntroText: { subtitle: { control: 'textarea' }, ctas : { control : 'buttongroup'} },
+  IntroDesc: {
+    subtitle: { control: 'textarea' },
+    ctas: { control: 'buttongroup' },
+    headAlignment: selectOptions(['left', 'center', 'right']),
+    // RichText props; other RichText keys (theme, size…) stay editable as extra nested keys.
+    excerpt: { default: { contentHTML: '' }, properties: { contentHTML: { type: String, default: '' } } }
+  },
   Icon: {
     iconSet: selectOptions(Object.keys(iconSets)),
     // Icon.vue renders the global UI set, so the picker lists and previews that set.
@@ -47,7 +54,7 @@ export const propertyDecorators = {
   Videoplayer: {
     size: selectOptions(['s', 'm']),
     theme: selectOptions(['light1']),
-    rounded: selectOptions([null, true, false]),
+    // rounded (default null) uses the shared default/yes/no choice.
     // Videoplayer always enables pauseOnClick on its child Zvideo.
     video: { properties: Object.fromEntries(Object.entries(videoProperties).filter(([key]) => key !== 'pauseOnClick')) }
   },
@@ -96,24 +103,73 @@ export const propertyDecorators = {
   CardMediaBox: { media: { media: true } },
   CardPic: { media: { media: true } },
   ZFigure: { media: { media: true } },
-  Usermeta: { media: { media: true } },
+  Usermeta: {
+    media: { media: true },
+    // href defaults to false upstream; a string keeps the text editor (empty = no link).
+    href: { type: String, default: '' },
+    // cta defaults to false; added from "Add property" it starts as a ZButton-like object.
+    cta: {
+      default: { label: '', href: '#' },
+      hintKey: 'zx_builder_usermeta_cta_hint',
+      properties: {
+        label: { type: String, default: '' },
+        href: { type: String, default: '#' },
+        icon: { type: String, default: '', control: 'icon', allowEmpty: true },
+        theme: { type: String, default: 'alt1' }
+      }
+    }
+  },
   DisplayBox: { media: { media: true } },
   FeatBannerSection: { media: { media: true } },
   SectionSplit: { media: { media: true } },
   SectionSplitIntro: { media: { media: true } },
-  SectionSplitWide: { media: { media: true } }
+  SectionSplitWide: { media: { media: true } },
+  // introContent renders one { type: 'component', name, props } descriptor above the
+  // slides; the component field editor picks and edits it (null = no intro content).
+  SliderMultiple: { introContent: { control: 'component' } }
 };
 
-// String props named iconName or <something>IconName hold a symbol of the active icon set.
-const ICON_NAME_PROPERTY = /(?:^i|I)conName$/;
+// String props named iconName or <something>IconName (plus the icon props of
+// Snippetlabel, Dropdown, Accordion and inputs) hold a symbol of the active icon set.
+const ICON_NAME_PROPERTY = /^(?:(?:i|.+I)conName|icon|titleIcon|openIcon|closeIcon)$/;
+const isText = descriptor => descriptor?.type === String || typeof descriptor?.default === 'string';
 const iconNameDecorations = descriptors => Object.fromEntries(Object.entries(descriptors)
-  .filter(([property, descriptor]) => ICON_NAME_PROPERTY.test(property)
-    && (descriptor?.type === String || typeof descriptor?.default === 'string'))
+  .filter(([property, descriptor]) => ICON_NAME_PROPERTY.test(property) && isText(descriptor))
   .map(([property]) => [property, { control: 'icon', allowEmpty: true }]));
+
+// Shared conventions of Zaux props, applied only where neither upstream metadata
+// nor an explicit rule already chose a control:
+// - titleTag/eyeletTag/excerptTag… choose the rendered element;
+// - rounded/pilled default to null (theme decides), so null stays a choice;
+// - align is a left/center/right string;
+// - <something>Classes / containerClass hold class strings (Tailwind assistance).
+const TAG_PROPERTY = /.Tag$/;
+const TRISTATE_PROPERTY = /^(?:rounded|pilled|dotsRounded|roundedMedia)$/;
+const CLASS_PROPERTY = /^(?:classes|customClasses|.+Class(?:es)?)$/;
+const tristate = {
+  control: 'select',
+  options: [
+    { value: null, labelKey: 'zx_builder_option_theme_default' },
+    { value: true, labelKey: 'zx_builder_yes' },
+    { value: false, labelKey: 'zx_builder_no' }
+  ]
+};
+function conventionDecorations(descriptors) {
+  const result = {};
+  for (const [property, descriptor] of Object.entries(descriptors)) {
+    if (descriptor?.options || descriptor?.control) continue;
+    if (TAG_PROPERTY.test(property) && isText(descriptor)) result[property] = selectOptions(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'span']);
+    else if (TRISTATE_PROPERTY.test(property) && descriptor?.default === null) result[property] = tristate;
+    else if (property === 'align' && isText(descriptor)) result[property] = selectOptions(['left', 'center', 'right']);
+    else if (CLASS_PROPERTY.test(property) && (isText(descriptor) || descriptor?.default === null)) result[property] = { control: 'classes' };
+  }
+  return result;
+}
 
 export function decorateProperties(name, descriptors, { props = {}, trees = [] } = {}) {
   const result = { ...descriptors };
   const decorations = {
+    ...conventionDecorations(descriptors),
     ...iconNameDecorations(descriptors),
     ...Object.fromEntries(Object.entries(componentSelects[name] ?? {})
       .filter(([property]) => Object.hasOwn(descriptors, property))

@@ -75,6 +75,7 @@ export function validateDefinition(definition, depth = 0) {
       requireValue(object(node) && typeof node.id === 'string' && !ids.has(node.id));
       ids.add(node.id);
       requireValue(typeof node.name === 'string' && /^[A-Za-z][\w-]*$/.test(node.name) && object(node.props));
+      requireValue(node.props.$spread === undefined || (typeof node.props.$spread === 'string' && /^[A-Za-z_][\w.]*$/.test(node.props.$spread)));
       requireValue(!['script', 'iframe', 'object', 'embed', 'style', 'link', 'meta', 'base'].includes(node.name.toLowerCase()));
       walk(node.children, depth + 1);
     }

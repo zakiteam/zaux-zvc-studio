@@ -91,7 +91,7 @@
 					@change="changeType(field.key, $event.target.value)"
 				>
 					<option v-for="type in types" :key="type" :value="type">
-						{{ translate(`zx_builder_${type}`) }}
+						{{ translate(`zx_builder_${type}`) }} · {{ type }}
 					</option>
 				</select>
 			</div>
@@ -172,7 +172,7 @@
 				<label>{{ translate("zx_builder_field_type") }}</label
 				><select class="px-2 py-1 border-none bg-zaux-light" v-model="newType">
 					<option v-for="type in types" :key="type" :value="type">
-						{{ translate(`zx_builder_${type}`) }}
+						{{ translate(`zx_builder_${type}`) }} · {{ type }}
 					</option>
 				</select>
 			</div>
@@ -324,10 +324,10 @@ export default defineComponent({
 				?.focus();
 		}
 		function deleteField(key) {
+			const tree = JSON.stringify(builder.activeDefinition.value.tree);
 			if (
-				JSON.stringify(builder.activeDefinition.value.tree).includes(
-					`"$bind":${JSON.stringify(key)}`,
-				)
+				tree.includes(`"$bind":${JSON.stringify(key)}`) ||
+				tree.includes(`"$spread":${JSON.stringify(key)}`)
 			) {
 				fieldError.value = "zx_builder_field_used";
 				return;

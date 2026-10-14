@@ -1,4 +1,4 @@
-import { clone, createNode, isBinding, runtimeNodes, uid } from './nodes.js';
+import { clone, createNode, isBinding, runtimeNodes, spreadKey, uid, withoutSpread } from './nodes.js';
 import { sourceTree } from './source-zvc.js';
 import { validateDefinition, validateWorkspace, parseJson } from './validation.js';
 import { createDefinition } from './workspace.js';
@@ -105,12 +105,17 @@ export function parseDocument(text) {
   return { kind: 'workspace', data: validateWorkspace(payload) };
 }
 
-// JSON values become JS literals; only explicit $bind markers become gv calls.
+// JSON values become JS literals; only explicit $bind markers become gv calls
+// and a $spread marker spreads its field last, so the field value wins.
 // No input code is evaluated, and user-provided strings remain quoted strings.
 function jsValue(value, depth = 0) {
   if (isBinding(value)) return `gv(${JSON.stringify(value.$bind)})`;
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  const entries = Array.isArray(value) ? value.map(item => jsValue(item, depth + 1)) : Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}: ${jsValue(item, depth + 1)}`);
+  const spread = spreadKey(value);
+  const entries = Array.isArray(value) ? value.map(item => jsValue(item, depth + 1)) : [
+    ...Object.entries(spread === null ? value : withoutSpread(value)).map(([key, item]) => `${JSON.stringify(key)}: ${jsValue(item, depth + 1)}`),
+    ...(spread === null ? [] : [`...gv(${JSON.stringify(spread)})`])
+  ];
   const [open, close] = Array.isArray(value) ? ['[', ']'] : ['{', '}'];
   return entries.length ? `${open}\n${'  '.repeat(depth + 1)}${entries.join(',\n' + '  '.repeat(depth + 1))}\n${'  '.repeat(depth)}${close}` : open + close;
 }
@@ -164,7 +169,11 @@ function vueExpr(value) {
   if (typeof value === 'boolean' || typeof value === 'number') return String(value);
   if (typeof value === 'string') return vueString(value);
   if (Array.isArray(value)) return '[' + value.map(vueExpr).join(', ') + ']';
-  if (typeof value === 'object') return '{ ' + Object.entries(value).map(([key, item]) => `${vueKey(key)}: ${vueExpr(item)}`).join(', ') + ' }';
+  if (typeof value === 'object') {
+    const spread = spreadKey(value);
+    const entries = Object.entries(spread === null ? value : withoutSpread(value)).map(([key, item]) => `${vueKey(key)}: ${vueExpr(item)}`);
+    return '{ ' + [...entries, ...(spread === null ? [] : [`...${spread}`])].join(', ') + ' }';
+  }
   return JSON.stringify(value);
 }
 function vueKey(key) {
@@ -184,7 +193,8 @@ function vueNode(node, depth) {
   const pad = '  '.repeat(depth);
   const name = node.name;
   const html = HTML_ELEMENT_RE.test(name);
-  const props = { ...(node.props ?? {}) };
+  const spread = spreadKey(node.props);
+  const props = withoutSpread(node.props ?? {});
   const children = (node.children ?? []).filter(Boolean);
 
   let textContent = '';
@@ -200,7 +210,8 @@ function vueNode(node, depth) {
     }
   }
 
-  const attrs = Object.entries(props).map(([key, value]) => vueAttr(key, value)).filter(Boolean);
+  // A whole-props field binding comes last so its values win over the literal attributes.
+  const attrs = [...Object.entries(props).map(([key, value]) => vueAttr(key, value)), spread === null ? '' : `v-bind="${spread}"`].filter(Boolean);
   const attrString = attrs.length ? ' ' + attrs.join(' ') : '';
 
   if (CONTENT_SLOT_COMPONENTS.includes(name) && children.length) {

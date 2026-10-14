@@ -57,7 +57,7 @@
 				/>
 			</div>
 			<div
-				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
+				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
 			>
 				<label>{{ translate("zx_builder_node_name") }}</label
 				><BuilderDropdown
@@ -70,14 +70,14 @@
 					<template #trigger="{ open, menuId }">
 						<button
 							type="button"
-							class="flex w-full min-w-0 items-center gap-1 rounded-xxs bg-zaux-light px-1 py-0.75 text-left text-[11px] focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
+							class="flex w-full min-w-0 items-center gap-1 rounded-xxs bg-zaux-light px-1.5 py-1 text-left text-cta-s focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
 							:title="selectedNode.name"
 							:aria-label="`${translate('zx_builder_node_name')}: ${selectedNode.name}`"
 							:aria-expanded="open"
 							aria-haspopup="menu"
 							:aria-controls="menuId"
 						>
-							<span class="min-w-0 flex-1 truncate font-mono">{{ selectedNode.name }}</span>
+							<span class="min-w-0 flex-1 truncate text-body-s">{{ selectedNode.name }}</span>
 							<small v-if="selectedTypeGroup" class="shrink-0 text-[9px] uppercase tracking-wider text-zaux-dark-grey">{{ selectedTypeGroup }}</small>
 							<svg class="h-[12px] w-[12px] shrink-0 transition-transform" :class="{ 'rotate-180': open }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><use :href="iconHref(iconSet, 'dropdown-bottom')" /></svg>
 						</button>
@@ -90,6 +90,12 @@
 			>
 				{{ translate("zx_builder_overlay_trigger_hint") }}
 			</p>
+
+			<BuilderPropsBinding
+				v-if="!selectedPartial"
+				:key="'props-binding-' + selectedNode.id"
+				:node="selectedNode"
+			/>
 
 			<BuilderPartialFields
 				v-if="selectedPartial"
@@ -125,47 +131,105 @@
 				:node="selectedNode"
 			/>
 
-			<BuilderContentSlots
-				v-if="contentSlotConfig && contentSlotsEditable"
-				:key="selectedNode.id + selectedNode.name"
-				:node="selectedNode"
-			/>
-
 			<BuilderMedia
 				v-if="mediaConfig"
 				:key="selectedNode.id + selectedNode.name"
 				:node="selectedNode"
 			/>
 
-			<BuilderProperty
-				v-for="property in visibleProperties"
-				:key="`${selectedNode.id}-${selectedNode.name}-${property}`"
-				:property="property"
-				:value="propertyValue(property)"
-				:fields="activeDefinition.fields"
-				:descriptor="descriptors[property]"
-				@change="setProperty(property, $event)"
-			/>
-
 			<div
-				class="zb-field mb-2.5 [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark [&_label_small]:mt-0.5 [&_label_small]:block [&_label_small]:font-mono [&_label_small]:text-[9px] [&_label_small]:text-zaux-dark-grey"
+				v-if="visibleProperties.length || extraProperties.length"
+				ref="propertyToolbar"
+				class="mb-1 mt-1 flex items-center gap-1"
 			>
-				<label
-					>{{ translate("zx_builder_add") }} ·
-					{{ translate("zx_builder_properties") }}</label
-				><BuilderInput
-					type="select"
-					modelValue=""
-					:options="[
-						{ value: '', label: '+' },
-						...extraProperties.map((property) => ({
-							value: property,
-							label: property,
-						})),
-					]"
-					@change="addProperty"
+				<input
+					v-if="visibleProperties.length >= 6"
+					v-model="propertyFilter"
+					type="search"
+					class="min-w-0 flex-1 border-none bg-zaux-light px-1.5 py-0.75 text-[11px]"
+					:placeholder="translate('zx_builder_prop_filter')"
+					:aria-label="translate('zx_builder_prop_filter')"
+					autocomplete="off"
+					@keydown.esc="propertyFilter = ''"
 				/>
+				<p v-else class="min-w-0 flex-1 truncate text-[11px] font-medium">{{ translate("zx_builder_properties") }}</p>
+				<BuilderDropdown
+					v-if="extraProperties.length"
+					:label="translate('zx_builder_prop_add')"
+					:items="addItems"
+					filterItems
+					align="end"
+					@select="addProperty($event.id)"
+				>
+					<template #trigger="{ open, menuId }">
+						<button
+							type="button"
+							class="flex shrink-0 items-center gap-0.5 rounded-xxs bg-zaux-accent/10 px-1 py-0.75 text-[11px] font-medium text-zaux-accent hover:bg-zaux-accent/20"
+							:title="translate('zx_builder_prop_add')"
+							:aria-expanded="open"
+							aria-haspopup="menu"
+							:aria-controls="menuId"
+						>
+							<svg class="h-[11px] w-[11px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><use :href="iconHref(iconSet, 'plus')" /></svg>
+							{{ translate("zx_builder_prop_add_short") }}
+						</button>
+					</template>
+				</BuilderDropdown>
 			</div>
+			<p v-if="propertyFilter && !groupedProperties.length" class="mb-2 text-[11px] text-zaux-dark-grey">
+				{{ translate("zx_builder_dropdown_no_results") }}
+			</p>
+
+			<BuilderInspectorSection
+				v-for="group in groupedProperties"
+				:id="`props-${group.id}`"
+				:key="group.id"
+				:title="translate(`zx_builder_prop_group_${group.id}`)"
+				:count="group.keys.length"
+				:defaultOpen="group.id !== 'advanced' || groupedProperties.length === 1"
+				:forceOpen="!!propertyFilter"
+			>
+				<BuilderProperty
+					v-for="property in group.keys"
+					:key="`${selectedNode.id}-${selectedNode.name}-${property}`"
+					:property="property"
+					:value="propertyValue(property)"
+					:fields="activeDefinition.fields"
+					:descriptor="descriptors[property]"
+					:overriddenBy="spreadOverrides.has(property) ? spreadField : ''"
+					removable
+					@change="setProperty(property, $event)"
+					@remove="removeProperty(property)"
+				/>
+			</BuilderInspectorSection>
+
+			<BuilderInspectorSection
+				v-if="contentSlotsEditor"
+				id="content-slots"
+				:title="translate('zx_builder_content_slots')"
+				:count="filledSlots"
+				accent
+			>
+				<BuilderContentSlots
+					:key="selectedNode.id + selectedNode.name"
+					:node="selectedNode"
+				/>
+			</BuilderInspectorSection>
+
+			<BuilderInspectorSection
+				v-if="attributesEditor"
+				id="attributes"
+				:title="translate('zx_builder_attributes')"
+				:count="attributeTotal"
+				accent
+				:defaultOpen="false"
+			>
+				<BuilderAttributes
+					:key="selectedNode.id + selectedNode.name"
+					:node="selectedNode"
+					:config="attributesEditor"
+				/>
+			</BuilderInspectorSection>
 
 			<details>
 				<summary>{{ translate("zx_builder_advanced") }}</summary>
@@ -227,22 +291,30 @@
 	</template>
 </template>
 <script>
-import { defineComponent, computed, ref, watch } from "vue";
+import { defineComponent, computed, nextTick, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
+import { useInspectorSections } from "../../../composables/useInspectorSections.js";
 import { catalog, propertyInfo, componentMenuItems } from "../../../services/catalog.js";
 import { iconHref } from "@integration/options/icon-options.js";
 import { parseJson } from "../../../../domain/validation.js";
-import { clone, isBinding } from "../../../../domain/nodes.js";
+import { SPREAD, dataFor, getValue, isBinding, spreadKey } from "../../../../domain/nodes.js";
+import { propertyAddedValue } from "../../../../domain/properties.js";
+import { attributesEditable, attributeCount } from "../../../../domain/attributes.js";
 import { sliderControls } from "../../../../integrations/zaux/controls/slider-controls.js";
 import { lightboxControls, isLightboxTrigger } from "../../../../integrations/zaux/controls/lightbox-controls.js";
-import { contentSlotControls } from "../../../../integrations/zaux/controls/content-slot-controls.js";
+import { contentSlotConfig } from "../../../../integrations/zaux/controls/content-slot-controls.js";
+import { attributeConfig } from "../../../../integrations/zaux/controls/attribute-controls.js";
+import { propertyGroups, propertyGroup, isInternalProperty, featuredProperties } from "../../../../integrations/zaux/descriptors/property-groups.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
 export default defineComponent({
 	props: { active: Boolean },
 	emits: ["error"],
 	setup(_props, { emit }) {
 		const builder = useBuilder();
+		const { setSectionOpen } = useInspectorSections();
 		const propsDraft = ref("");
+		const propertyFilter = ref("");
+		const propertyToolbar = ref(null);
 		const sliderConfig = computed(
 			() => sliderControls[builder.selectedNode.value?.name],
 		);
@@ -258,14 +330,40 @@ export default defineComponent({
 		const mediaConfig = computed(
 			() => builder.selectedNode.value?.name === "Media",
 		);
-		const contentSlotConfig = computed(
-			() => contentSlotControls[builder.selectedNode.value?.name],
-		);
-		// A bound or non-object contentSlots value keeps the generic editor.
-		const contentSlotsEditable = computed(() => {
-			const value = builder.selectedNode.value?.props?.contentSlots;
-			return value == null || isPlainRecord(value);
+		const descriptors = computed(() => {
+			const node = builder.selectedNode.value;
+			const trees =
+				builder.mode.value === "library"
+					? [builder.activeDefinition.value?.tree ?? []]
+					: (builder.activeTemplate.value?.instances ?? []).map(
+							(instance) => instance.definition.tree,
+						);
+			return propertyInfo(node?.name, { props: node?.props ?? {}, trees });
 		});
+		// The component declares (or the node already carries) the prop.
+		function supports(key) {
+			return Object.hasOwn(descriptors.value, key) || Object.hasOwn(builder.selectedNode.value?.props ?? {}, key);
+		}
+		// Dedicated editors driven by the generated Zaux hook registries. A bound or
+		// non-object value keeps the generic property editor.
+		const contentSlotsEditor = computed(() => {
+			const node = builder.selectedNode.value;
+			if (!node || !supports("contentSlots")) return false;
+			const value = node.props?.contentSlots;
+			return !!contentSlotConfig(node.name, node.props ?? {}) && (value == null || isPlainRecord(value));
+		});
+		const attributesEditor = computed(() => {
+			const node = builder.selectedNode.value;
+			if (!node || !supports("attributes") || !attributesEditable(node.props?.attributes)) return null;
+			return attributeConfig(node.name);
+		});
+		const filledSlots = computed(() => {
+			const value = builder.selectedNode.value?.props?.contentSlots;
+			return isPlainRecord(value) ? Object.keys(value).length : 0;
+		});
+		const attributeTotal = computed(() =>
+			attributeCount(builder.selectedNode.value?.props?.attributes, attributesEditor.value?.mode),
+		);
 		function specializedProperty(key) {
 			if (
 				mediaConfig.value &&
@@ -276,8 +374,8 @@ export default defineComponent({
 				builder.selectedPartial.value?.fields.some((field) => field.key === key)
 			)
 				return true;
-			if (contentSlotConfig.value && key === "contentSlots")
-				return contentSlotsEditable.value;
+			if (key === "contentSlots" && contentSlotsEditor.value) return true;
+			if (key === "attributes" && attributesEditor.value) return true;
 			const node = builder.selectedNode.value;
 			if (lightboxConfig.value) {
 				return ["id", "items", "options"].includes(key);
@@ -304,30 +402,65 @@ export default defineComponent({
 				!isBinding(props[key])
 			);
 		}
-		const descriptors = computed(() => {
-			const node = builder.selectedNode.value;
-			const trees =
-				builder.mode.value === "library"
-					? [builder.activeDefinition.value?.tree ?? []]
-					: (builder.activeTemplate.value?.instances ?? []).map(
-							(instance) => instance.definition.tree,
-						);
-			return propertyInfo(node?.name, { props: node?.props ?? {}, trees });
-		});
 		const visibleProperties = computed(() =>
 			Object.keys(builder.selectedNode.value?.props ?? {}).filter(
-				(key) => !["class", "style"].includes(key) && !specializedProperty(key),
+				(key) => !["class", "style", SPREAD].includes(key) && !specializedProperty(key),
 			),
 		);
+		// Props whose value currently comes from the field bound to the whole component.
+		const spreadField = computed(() => {
+			const key = spreadKey(builder.selectedNode.value?.props);
+			const field = builder.activeDefinition.value?.fields.find((item) => item.key === key);
+			return key === null ? "" : field?.label || key;
+		});
+		const spreadOverrides = computed(() => {
+			const key = spreadKey(builder.selectedNode.value?.props);
+			if (key === null) return new Set();
+			const data = dataFor(builder.activeDefinition.value, builder.mode.value === "template" ? builder.activeInstance.value?.data ?? {} : {});
+			const value = getValue(data, key);
+			return new Set(value && typeof value === "object" && !Array.isArray(value) ? Object.keys(value) : []);
+		});
+		function groupOf(key) {
+			return propertyGroup(builder.selectedNode.value?.name, key, descriptors.value[key] ?? {});
+		}
+		function propertyLabel(key) {
+			const labelKey = descriptors.value[key]?.labelKey;
+			return labelKey ? builder.translate(labelKey) : key;
+		}
+		// Authored props by section, in authored order; the filter matches name and label.
+		const groupedProperties = computed(() => {
+			const query = propertyFilter.value.trim().toLowerCase();
+			const keys = visibleProperties.value.filter((key) =>
+				!query || key.toLowerCase().includes(query) || propertyLabel(key).toLowerCase().includes(query),
+			);
+			return propertyGroups
+				.map((id) => ({ id, keys: keys.filter((key) => groupOf(key) === id) }))
+				.filter((group) => group.keys.length);
+		});
 		const extraProperties = computed(() =>
 			Object.keys(descriptors.value)
 				.filter(
 					(key) =>
 						!Object.hasOwn(builder.selectedNode.value?.props ?? {}, key) &&
-						!["class", "style"].includes(key),
+						!["class", "style"].includes(key) &&
+						!isInternalProperty(key) &&
+						!(key === "contentSlots" && contentSlotsEditor.value) &&
+						!(key === "attributes" && attributesEditor.value),
 				)
 				.sort(),
 		);
+		// Add menu: the component's suggested props first, then every section.
+		const addItems = computed(() => {
+			const featured = featuredProperties(builder.selectedNode.value?.name).filter((key) => extraProperties.value.includes(key));
+			const item = (key) => ({ id: key, label: propertyLabel(key) === key ? key : `${propertyLabel(key)} · ${key}` });
+			return [
+				...(featured.length ? [{ id: "heading-featured", heading: builder.translate("zx_builder_prop_suggested") }, ...featured.map(item)] : []),
+				...propertyGroups.flatMap((group) => {
+					const keys = extraProperties.value.filter((key) => !featured.includes(key) && groupOf(key) === group);
+					return keys.length ? [{ id: "heading-" + group, heading: builder.translate(`zx_builder_prop_group_${group}`) }, ...keys.map(item)] : [];
+				}),
+			];
+		});
 		watch(
 			builder.selectedNode,
 			(value) => {
@@ -335,6 +468,7 @@ export default defineComponent({
 			},
 			{ deep: true, immediate: true },
 		);
+		watch(() => builder.selectedNode.value?.id, () => { propertyFilter.value = ""; });
 		function propertyValue(key) {
 			const node = builder.selectedNode.value;
 			return node.name === "ButtonBlock" &&
@@ -356,24 +490,20 @@ export default defineComponent({
 				props.content = { ...props.content, size: value };
 			builder.updateNode(props);
 		}
-		function addProperty(event) {
-			const key = event.target.value;
+		// Removing the key lets the component default apply again.
+		function removeProperty(key) {
+			const { [key]: _removed, ...props } = builder.selectedNode.value.props;
+			builder.updateNode(props);
+		}
+		async function addProperty(key) {
 			if (!key) return;
-			const descriptor = descriptors.value[key];
-			const value = descriptor?.default;
-			setProperty(
-				key,
-				typeof value === "function"
-					? descriptor.type === Array
-						? []
-						: descriptor.type === Object
-							? {}
-							: null
-					: value === undefined
-						? ""
-						: clone(value),
-			);
-			event.target.value = "";
+			setProperty(key, propertyAddedValue(descriptors.value[key]));
+			propertyFilter.value = "";
+			setSectionOpen(`props-${groupOf(key)}`, true);
+			await nextTick();
+			const field = propertyToolbar.value?.parentElement?.querySelector(`[data-zb-property="${CSS.escape(key)}"]`);
+			field?.scrollIntoView({ block: "nearest" });
+			field?.querySelector(":scope > :not(.zb-field-heading) :is(input, textarea, select)")?.focus();
 		}
 		// Grouped catalog entries; a name outside the catalog (sourced or ZVP) stays listed as current.
 		const typeItems = computed(() => {
@@ -418,17 +548,26 @@ export default defineComponent({
 			lightboxTrigger,
 			overlayContent,
 			mediaConfig,
-			contentSlotConfig,
-			contentSlotsEditable,
+			contentSlotsEditor,
+			attributesEditor,
+			filledSlots,
+			attributeTotal,
 			typeItems,
 			selectedTypeGroup,
 			iconHref,
 			descriptors,
 			visibleProperties,
+			spreadField,
+			spreadOverrides,
+			groupedProperties,
 			extraProperties,
+			addItems,
+			propertyFilter,
+			propertyToolbar,
 			propsDraft,
 			propertyValue,
 			setProperty,
+			removeProperty,
 			addProperty,
 			changeType,
 			clearProps,

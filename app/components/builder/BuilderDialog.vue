@@ -90,12 +90,11 @@
 			<p v-if="scope === 'starter'" class="mb-2 !text-[12px] text-zaux-dark-grey">
 				{{ translate('zx_builder_starter_hint') }}
 			</p>
-			<label v-if="scope === 'starter'" class="mb-2 flex cursor-pointer items-center gap-1.5 text-[12px] text-zaux-dark">
-				<input v-model="includeImported" type="checkbox" class="!w-auto accent-zaux-accent" />
-				<span>{{ translate("zx_builder_starter_include_imported") }}</span>
-			</label>
 			<p v-if="packageResult.error" role="alert" class="mb-2 !text-[12px] !text-utility-error">
 				{{ translate(packageResult.error) }}
+			</p>
+			<p v-else-if="starterEmpty" role="status" class="mb-2 !text-[12px] text-zaux-dark-grey">
+				{{ translate("zx_builder_starter_nothing_selected") }}
 			</p>
 			<p
 				v-if="
@@ -119,6 +118,14 @@
 			>
 				{{ translate("zx_builder_vue_hint") }}
 			</p>
+			<BuilderStarterOptions
+				v-if="scope === 'starter'"
+				class="mb-1.5"
+				v-model="starterSelection"
+				:workspace="document"
+				:availability="starterAvailability"
+				:files="jsFiles"
+			/>
 			<BuilderFileExplorer
 				v-if="isPackage"
 				class="mb-1.5"
@@ -293,7 +300,7 @@
 					size="xs"
 					variant="primary"
 					:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : 'zx_builder_download_js')"
-					:disabled="saving || !Object.keys(jsFiles).length"
+					:disabled="saving || !Object.keys(jsFiles).length || starterEmpty"
 					@click="downloadJs"
 				/><BuilderButton
 					v-else
@@ -356,7 +363,8 @@ import {
 	vueComponent,
 } from "../../../domain/export.js";
 import { createDefinition } from "../../../domain/workspace.js";
-import { projectStarterFiles } from "../../services/starter-export.js";
+import { projectStarterFiles, projectStarterStyleAvailability } from "../../services/starter-export.js";
+import { starterSelectionParts } from "../../../domain/starter-export.js";
 import { fontFiles } from "../../../domain/fonts.js";
 import { filesForDefinition } from "../../services/source-zvc.js";
 import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
@@ -374,12 +382,17 @@ export default defineComponent({
 		const scope = ref(builder.modal.value.scope ?? (builder.designer ? "component" : "workspace"));
 		const format = ref(builder.modal.value.format ?? "json");
 		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
-		const includeImported = ref(true);
+		// Starter package contents: everything except the Studio part by default.
+		const starterSelection = ref({ excludedDefinitions: [], excludedTemplates: [], studio: false });
+		const starterAvailability = computed(() => scope.value === 'starter' ? projectStarterStyleAvailability(builder.document.value) : {});
 		const packageResult = computed(() => {
 			if (scope.value !== 'starter' && !(scope.value === 'template' && format.value === 'js')) return { files: {}, error: '' };
-			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined, scope.value === 'starter' ? { imported: includeImported.value } : undefined), error: '' }; }
+			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined, scope.value === 'starter' ? starterSelectionParts(builder.document.value, starterSelection.value) : undefined), error: '' }; }
 			catch (error) { return { files: {}, error: error.message.startsWith('zx_') ? error.message : 'zx_builder_starter_error' }; }
 		});
+		// The README alone is not a useful package.
+		const starterEmpty = computed(() => scope.value === 'starter' && !packageResult.value.error
+			&& Object.keys(packageResult.value.files).every(path => path === 'README.md'));
 		const selectedFile = ref("");
 		const localError = ref("");
 		const localErrorDetail = ref("");
@@ -550,6 +563,8 @@ export default defineComponent({
 			jsFiles,
 			(files) => {
 				const paths = Object.keys(files);
+				// Keep the previewed file while toggling package contents.
+				if (scope.value === 'starter' && Object.hasOwn(files, selectedFile.value)) return;
 				selectedFile.value = (scope.value === 'template' ? paths.find(path => path.endsWith('.tpl.js')) : null) ?? paths[0] ?? "";
 			},
 			{ immediate: true },
@@ -692,7 +707,9 @@ export default defineComponent({
 			scope,
 			format,
 			selectedFile,
-			includeImported,
+			starterSelection,
+			starterAvailability,
+			starterEmpty,
 			localError,
 			localErrorDetail,
 			copied,

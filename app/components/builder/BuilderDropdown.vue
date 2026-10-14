@@ -70,7 +70,9 @@
 						>
 							{{ item.heading }}
 						</p>
+						<!-- A separator or heading precedes its item; one without a label is decoration only. -->
 						<BuilderButton
+							v-if="item.label || !(item.separator || item.heading)"
 							role="menuitem"
 							variant="alt1"
 							tabindex="-1"

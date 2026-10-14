@@ -1,4 +1,9 @@
 @use '../../../integrations/zaux/generated/styles.scss' as *;
 @use 'bigger-picture/dist/bigger-picture.scss' as *;
+@use 'editor-components';
 
+// Single Tailwind entry: every content change regenerates only this stylesheet.
+// Tailwind moves the @layer blocks above into these directives.
+@tailwind base;
+@tailwind components;
 @tailwind utilities;

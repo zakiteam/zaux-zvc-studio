@@ -1,11 +1,12 @@
 <template>
-	<div class="zb-property min-w-0 mb-2.5">
+	<div class="zb-property min-w-0 mb-2.5" :data-zb-property="propertyPath">
 		<div
-			class="zb-field-heading flex flex-wrap items-baseline justify-between gap-1 [&_label]:min-w-0 [&_label]:[overflow-wrap:anywhere] [&_label]:mb-1 [&_label]:text-[11px] [&_label]:font-medium [&>select]:max-w-full [&>select]:w-[125px] [&>select]:border-none [&>select]:bg-transparent [&>select]:p-0.5 [&>select]:text-[9px] [&>select]:text-zaux-dark-grey"
+			class="zb-field-heading flex flex-wrap items-baseline justify-between gap-1 [&_label]:min-w-0 [&_label]:[overflow-wrap:anywhere] [&_label]:mb-1 [&_label]:text-[11px] [&_label]:font-medium [&_select]:max-w-full [&_select]:w-[125px] [&_select]:border-none [&_select]:bg-transparent [&_select]:p-0.5 [&_select]:text-[9px] [&_select]:text-zaux-dark-grey"
 		>
-			<label :for="`prop-${encodeURIComponent(propertyPath)}`">{{
+			<label :for="`prop-${encodeURIComponent(propertyPath)}`" :title="descriptor?.labelKey ? property : undefined">{{
 				propertyLabel
-			}}</label
+			}}<code v-if="value === null" class="ml-0.5 rounded-xxs bg-zaux-light px-0.5 font-mono text-[9px] font-normal text-zaux-dark-grey">null</code></label
+			><span class="ml-auto flex items-center gap-0.5"
 			><select
 				:id="`prop-${encodeURIComponent(propertyPath)}`"
 				:aria-label="`${translate('zx_builder_binding')}: ${propertyLabel}`"
@@ -16,14 +17,51 @@
 				<option v-for="field in fields" :key="field.key" :value="field.key">
 					↗ {{ field.label }}
 				</option>
-			</select>
+			</select
+			><BuilderDropdown
+				:label="`${translate('zx_builder_prop_actions')}: ${propertyLabel}`"
+				:items="actionItems"
+				align="end"
+				@select="runAction"
+			>
+				<template #trigger="{ open, menuId }">
+					<button
+						type="button"
+						class="grid h-[18px] w-[18px] place-items-center rounded-xxs text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark"
+						:class="open ? 'bg-zaux-light text-zaux-dark' : ''"
+						:title="translate('zx_builder_prop_actions')"
+						:aria-label="`${translate('zx_builder_prop_actions')}: ${propertyLabel}`"
+						:aria-expanded="open"
+						aria-haspopup="menu"
+						:aria-controls="menuId"
+					>
+						<svg class="h-[12px] w-[12px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><use :href="iconHref(iconSet, 'more-vertical')" /></svg>
+					</button>
+				</template>
+			</BuilderDropdown></span>
 		</div>
 		<p v-if="descriptor?.hintKey" class="mb-1 text-[10px] text-zaux-dark-grey">{{ translate(descriptor.hintKey) }}</p>
+		<p v-if="overriddenBy" class="mb-1 text-[10px] text-zaux-accent">↗ {{ translate("zx_builder_props_binding_overridden", { field: overriddenBy }) }}</p>
 		<div
 			v-if="isBinding(value)"
 			class="zb-binding-pill rounded-xxs border-slim border-zaux-accent/20 bg-zaux-accent/5 p-1.5 font-mono text-[11px] text-zaux-accent"
 		>
 			↗ {{ value.$bind }}
+		</div>
+		<!-- An explicit null is a value of its own (Zaux often reads it as "theme default"); editors that
+		     treat null as empty (selects with a null choice, class and icon pickers) keep their field. -->
+		<div
+			v-else-if="nullState"
+			class="flex items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-light-grey px-1.5 py-1"
+		>
+			<span class="min-w-0 flex-1 text-[10px] leading-[1.4] text-zaux-dark-grey">{{ translate("zx_builder_prop_null_hint") }}</span>
+			<BuilderButton
+				size="xs"
+				variant="light"
+				icon="edit"
+				:label="translate('zx_builder_prop_set_value')"
+				@click="assignValue"
+			/>
 		</div>
 		<div
 			v-else-if="descriptor?.media"
@@ -33,6 +71,16 @@
 				:modelValue="value"
 				:label="propertyLabel"
 				@update:modelValue="$emit('change', $event)"
+			/>
+		</div>
+		<div
+			v-else-if="descriptor?.control === 'component'"
+			class="border-l-slim border-zaux-light-grey pl-1.5"
+		>
+			<BuilderComponentInput
+				:modelValue="value"
+				:label="propertyLabel"
+				@update:modelValue="changeComponent"
 			/>
 		</div>
 		<div
@@ -47,7 +95,9 @@
 				:value="nestedValue(key)"
 				:fields="fields"
 				:descriptor="descriptor.properties[key] ?? {}"
+				:removable="Object.hasOwn(value, key)"
 				@change="changeNested(key, $event)"
+				@remove="removeNested(key)"
 			/>
 			<details>
 				<summary class="mb-1 text-[11px]">
@@ -108,16 +158,26 @@
 				:allowEmpty="!!descriptor.allowEmpty"
 				@update:modelValue="$emit('change', $event)"
 			/>
-			<BuilderInput
-				v-else-if="options.length"
-				type="select"
-				:modelValue="selectedOption"
-				:label="propertyLabel"
-				:options="selectOptions"
-				@update:modelValue="selectOption"
-			/>
+			<template v-else-if="options.length">
+				<BuilderInput
+					type="select"
+					:modelValue="selectedOption"
+					:label="propertyLabel"
+					:options="selectOptions"
+					@update:modelValue="selectOption"
+				/>
+				<!-- "Custom value", or a stored value outside the list, keeps its typed editor. -->
+				<BuilderValue
+					v-if="selectedOption === -1"
+					class="mt-1"
+					:modelValue="value"
+					:label="propertyLabel"
+					:type="valueType"
+					@update:modelValue="$emit('change', $event)"
+				/>
+			</template>
 			<BuilderValue
-				v-else-if="!options.length || selectedOption === -1"
+				v-else
 				:modelValue="value"
 				:label="propertyLabel"
 				:image="
@@ -133,7 +193,9 @@
 import { defineComponent, computed, ref, watch } from "vue";
 import { isBinding, clone } from "../../../../domain/nodes.js";
 import { useTranslation } from "../../../composables/useTranslation.js";
-import { propertyValueType } from "../../../../domain/properties.js";
+import { propertyValueType, propertyInitialValue } from "../../../../domain/properties.js";
+import { useBuilder } from "../../../composables/useBuilder.js";
+import { iconHref } from "@integration/options/icon-options.js";
 export default defineComponent({
 	name: "BuilderProperty",
 	props: {
@@ -144,10 +206,15 @@ export default defineComponent({
 		// Authored props without a descriptor (for example the id of the header and
 		// footer presets) fall back to an empty descriptor, so the field still renders.
 		descriptor: { type: Object, default: () => ({}) },
+		// The parent can delete this key (the component default applies again): emits `remove`.
+		removable: Boolean,
+		// Label of the field bound to the whole component that currently overrides this prop.
+		overriddenBy: { type: String, default: "" },
 	},
-	emits: ["change"],
+	emits: ["change", "remove"],
 	setup(props, { emit }) {
 		const i18n = useTranslation();
+		const iconSet = useBuilder()?.iconSet;
 		const custom = ref(false);
 		const propertyLabel = computed(() => props.descriptor?.labelKey ? i18n.translate(props.descriptor.labelKey) : props.property);
 		const propertyPath = computed(() => props.path ?? props.property);
@@ -174,6 +241,10 @@ export default defineComponent({
 		}
 		function changeNested(key, value) {
 			emit("change", { ...clone(props.value), [key]: clone(value) });
+		}
+		function removeNested(key) {
+			const { [key]: _removed, ...rest } = clone(props.value);
+			emit("change", rest);
 		}
 		function changeItem(index, value) {
 			const items = clone(props.value);
@@ -222,6 +293,30 @@ export default defineComponent({
 			custom.value = index === -1;
 			if (index !== -1) emit("change", clone(options.value[index].value));
 		}
+		// Editors that already show null as an empty or selectable state keep their field.
+		const nullState = computed(() =>
+			props.value === null &&
+			!options.value.some((option) => option.value === null) &&
+			!["classes", "icon", "component"].includes(props.descriptor?.control),
+		);
+		const actionItems = computed(() => [
+			{ id: "null", label: i18n.translate("zx_builder_prop_set_null"), icon: "remove", disabled: props.value === null },
+			...(nullState.value ? [{ id: "value", label: i18n.translate("zx_builder_prop_set_value"), icon: "edit" }] : []),
+			...(props.removable ? [{ id: "remove", label: i18n.translate("zx_builder_prop_reset"), icon: "refresh", danger: true }] : []),
+		]);
+		function assignValue() {
+			emit("change", propertyInitialValue(props.descriptor, { notNull: true }));
+		}
+		function runAction(item) {
+			if (item.id === "null") emit("change", null);
+			else if (item.id === "value") assignValue();
+			else if (item.id === "remove") emit("remove");
+		}
+		// An emptied component prop goes back to null (no content) rather than `{}`.
+		function changeComponent(value) {
+			const empty = value && typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length;
+			emit("change", empty ? null : value);
+		}
 		function setBinding(event) {
 			const key = event.target.value;
 			if (key) emit("change", { $bind: key });
@@ -240,6 +335,13 @@ export default defineComponent({
 			arrayItems,
 			nestedValue,
 			changeNested,
+			removeNested,
+			nullState,
+			actionItems,
+			assignValue,
+			runAction,
+			iconSet,
+			iconHref,
 			changeItem,
 			addItem,
 			removeItem,
@@ -250,6 +352,7 @@ export default defineComponent({
 			selectedOption,
 			selectOption,
 			setBinding,
+			changeComponent,
 		};
 	},
 });

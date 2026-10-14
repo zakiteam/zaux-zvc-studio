@@ -16,7 +16,14 @@
         <BuilderStyleInput :modelValue="nodeClasses ?? ''" :label="translate('zx_builder_classes')" @update:modelValue="apply" />
       </div>
       <!-- Tabs and controls come from quickStyleTabs (integrations/zaux/controls/quick-style-controls.js). -->
-      <BuilderStyleQuickpad :modelValue="nodeClasses ?? ''" :scope="scope" :target="target.nodeId" @update:modelValue="change" />
+      <BuilderStyleQuickpad :modelValue="nodeClasses ?? ''" :scope="scope" :target="target.nodeId" :extraTabs="extraTabs" @update:modelValue="change">
+        <!-- Same image controls as the Inspector; Zimg keeps them in imgClasses, img in class. -->
+        <template #tab-image="{ editor }">
+          <BuilderImageStyles compact :nodeName="selectedNode.name" :scope="scope"
+            :modelValue="imageTarget.array ? selectedNode.props.imgClasses : nodeClasses"
+            @edit-error="editor.editError.value = $event" @update:modelValue="changeImage" />
+        </template>
+      </BuilderStyleQuickpad>
       <p class="m-0 text-[10px] text-zaux-dark-grey" @mousedown.prevent>{{ translate('zx_builder_quick_style_keys') }}</p>
     </div>
   </Teleport>
@@ -24,6 +31,8 @@
 <script>
 import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
+import { styleVisibility } from '../../../integrations/zaux/style-visibility.js';
+import { imageStyleTarget } from '../../../integrations/zaux/controls/image-style-controls.js';
 const EDGE = 8;
 // Inline class editor for the node that was selected when Quick style opened (builder.quickStyle).
 // Enter, the close button or leaving the panel apply the classes; Escape discards the draft.
@@ -50,6 +59,15 @@ export default defineComponent({
     const scope = computed(() => builder.followViewportStyles.value ? builder.viewportStyleScope.value : '');
     function change(value) {
       if (selected()) builder.setNodeClasses(value);
+    }
+    // Image tab: as in the Inspector, shown for image nodes when the viewport policy allows it.
+    const imageTarget = computed(() => imageStyleTarget(builder.selectedNode.value?.name));
+    const extraTabs = computed(() => imageTarget.value && styleVisibility(scope.value).image
+      ? [{ id: 'image', label: 'zx_builder_style_image' }] : []);
+    function changeImage(value) {
+      if (!selected()) return;
+      if (imageTarget.value?.array) builder.updateNodeStyle({ imgClasses: value });
+      else builder.setNodeClasses(value);
     }
     function onKeydown(event) {
       if (event.isComposing) return;
@@ -112,7 +130,7 @@ export default defineComponent({
       document.removeEventListener('pointerdown', onPointerDown, true);
       resizeObserver?.disconnect();
     });
-    return { ...builder, panel, position, nodeName, target, scope, apply, change, onKeydown, onFocusOut };
+    return { ...builder, panel, position, nodeName, target, scope, apply, change, imageTarget, extraTabs, changeImage, onKeydown, onFocusOut };
   },
 });
 </script>

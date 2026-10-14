@@ -15,9 +15,9 @@
             <span class="block truncate text-[12px]" :class="scope === 'project' ? 'font-semibold text-zaux-accent' : ''">{{ translate('zx_builder_theme_project_styles') }}</span>
             <span class="block truncate font-mono text-[10px] text-zaux-dark-grey">project-styles.css</span>
           </span>
-          <span v-if="projectDirty" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-utility-warning"
+          <span v-if="projectDirty" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-utility-warning"
             :title="translate('zx_builder_theme_unsaved')" :aria-label="translate('zx_builder_theme_unsaved')" />
-          <span v-if="savedProjectCss.trim()" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-zaux-accent"
+          <span v-if="savedProjectCss.trim()" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-zaux-accent"
             :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
         </button>
         <h2 class="flex items-center justify-between px-1 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-[1.4px] text-zaux-dark-grey">
@@ -61,8 +61,8 @@
             {{ translate('zx_builder_theme_source') }}: {{ selected.source }}
           </p>
         </div>
-        <span v-if="currentDirty" class="shrink-0 rounded-full bg-utility-warning/20 px-1 py-0.25 text-[11px] font-semibold">{{ translate('zx_builder_theme_unsaved') }}</span>
-        <div class="flex shrink-0 flex-wrap items-center gap-0.5">
+        <span v-if="currentDirty" class="shrink-0 rounded-xxs bg-utility-warning/20 px-1 py-0.25 text-[11px] font-semibold">{{ translate('zx_builder_theme_unsaved') }}</span>
+        <div class="flex shrink-0 flex-wrap items-center gap-1">
           <template v-if="scope === 'project'">
             <BuilderButton size="xs" variant="alt1" :label="translate('zx_builder_theme_discard')" :disabled="!projectDirty" @click="discardProjectDraft" />
             <BuilderButton size="xs" variant="primary" :label="translate('zx_builder_theme_project_save')" :disabled="!canEditRemote || !projectDirty || !validProjectDraft" @click="saveProjectStyles" />

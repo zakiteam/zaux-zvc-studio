@@ -10,5 +10,12 @@ export const quickStyleTabs = [
   { id: 'padding', sections: { padding: true } },
   { id: 'margin', sections: { margin: true } },
   { id: 'text', sections: { text: ['typography', 'text_color'] } },
-  { id: 'fill', label: 'zx_builder_style_background', sections: { fill: ['background'] } }
+  { id: 'fill', label: 'zx_builder_style_background', sections: { fill: ['background'] } },
+  { id: 'dimensions', sections: { dimensions: ['width', 'height'] } },
+  { id: 'aspect_ratio', sections: { aspect_ratio: true } },
+  { id: 'overflow', sections: { layout: ['overflow'] } },
+  { id: 'shadow', sections: { shadow: true } },
+  { id: 'border', sections: { border: true } },
+  { id: 'rounding', sections: { rounding: true } },
+  { id: 'blur', sections: { blur: true } }
 ];

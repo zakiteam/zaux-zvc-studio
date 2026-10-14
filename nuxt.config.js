@@ -29,6 +29,7 @@ export default defineNuxtConfig({
   alias: {
     ...aliases,
     '@zx_core/storybook/data/_generated/attributes-hooks.json': path('./integrations/zaux/generated/attributes-hooks.json'),
+    '@zx_core/storybook/data/_generated/content-hooks.json': path('./integrations/zaux/generated/content-hooks.json'),
     '@zx_style/tailwind.config': path('./integrations/zaux/generated/tailwind.runtime.json'),
     '@zx_assets': path('./vendor/zaux/public/assets'),
     '@zx/zaux.config': path('./integrations/zaux/config.js'),

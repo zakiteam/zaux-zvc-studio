@@ -5,6 +5,11 @@ export const clone = value => JSON.parse(JSON.stringify(value));
 export const uid = () => globalThis.crypto.randomUUID();
 export const bind = key => ({ $bind: key });
 export const isBinding = value => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 1 && typeof value.$bind === 'string';
+// `{ $spread: key, ...props }` binds a whole props object to an object field: the field
+// value is merged over the other props, which stay as fallbacks (styles, defaults).
+export const SPREAD = '$spread';
+export const spreadKey = value => value && typeof value === 'object' && !Array.isArray(value) && typeof value[SPREAD] === 'string' ? value[SPREAD] : null;
+export const withoutSpread = value => Object.fromEntries(Object.entries(value).filter(([key]) => key !== SPREAD));
 
 export function getValue(data, path) {
   if (Object.hasOwn(data, path)) return data[path];
@@ -13,7 +18,13 @@ export function getValue(data, path) {
 export function resolveValue(value, data) {
   if (isBinding(value)) return getValue(data, value.$bind) ?? null;
   if (Array.isArray(value)) return value.map(item => resolveValue(item, data));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveValue(item, data)]));
+  if (value && typeof value === 'object') {
+    const key = spreadKey(value);
+    const result = Object.fromEntries(Object.entries(key === null ? value : withoutSpread(value)).map(([name, item]) => [name, resolveValue(item, data)]));
+    if (key === null) return result;
+    const spread = getValue(data, key);
+    return spread && typeof spread === 'object' && !Array.isArray(spread) ? { ...result, ...spread } : result;
+  }
   return value;
 }
 export function createNode(name = 'div', props = {}, children = []) {

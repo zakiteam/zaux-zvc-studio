@@ -16,7 +16,9 @@
 				:value="item.props[property]"
 				:fields="bindings"
 				:descriptor="descriptors[property]"
+				removable
 				@change="setProperty(property, $event)"
+				@remove="removeProperty(property)"
 			/>
 			<div class="zb-field [&>label]:mb-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium">
 				<label>{{ translate("zx_builder_add") }} · {{ translate("zx_builder_properties") }}</label>
@@ -43,7 +45,7 @@
 	import { useBuilder } from "../../../../composables/useBuilder.js";
 	import { useTranslation } from "../../../../composables/useTranslation.js";
 	import { propertyInfo } from "../../../../services/catalog.js";
-	import { clone } from "../../../../../domain/nodes.js";
+	import { propertyAddedValue } from "../../../../../domain/properties.js";
 	import { isPlainRecord } from "../../../../../domain/slider.js";
 
 	// Edits one { name, props } descriptor: ZVP partials through their fields,
@@ -82,17 +84,17 @@
 			function setProperty(key, value) {
 				update({ ...props.item, props: { ...props.item.props, [key]: value } });
 			}
+			function removeProperty(key) {
+				const { [key]: _removed, ...rest } = props.item.props;
+				update({ ...props.item, props: rest });
+			}
 			function addProperty(event) {
 				const key = event.target.value;
 				if (!key) return;
-				const descriptor = descriptors.value[key];
-				const value = descriptor?.default;
-				setProperty(key, typeof value === "function"
-					? descriptor.type === Array ? [] : descriptor.type === Object ? {} : null
-					: value === undefined ? "" : clone(value));
+				setProperty(key, propertyAddedValue(descriptors.value[key]));
 				event.target.value = "";
 			}
-			return { translate, partial, descriptors, itemProperties, extraProperties, isPlainRecord, update, setProperty, addProperty };
+			return { translate, partial, descriptors, itemProperties, extraProperties, isPlainRecord, update, setProperty, removeProperty, addProperty };
 		},
 	});
 </script>
