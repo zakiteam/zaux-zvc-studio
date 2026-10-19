@@ -119,7 +119,7 @@ export default defineComponent({
     function sendState() {
       const key = scrollKey();
       const css = cssKey === key ? dynamicCss.value : cssCache.get(key) ?? dynamicCss.value;
-      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', scrollKey: key, scrollY: builder.previewScroll.get(key) ?? 0, cssPending: cssKey !== key && !cssCache.has(key), outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, canCopyNode: builder.canCopyNode.value, canPasteNode: builder.canPasteNode.value, canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css, themeCss: workspaceThemeCss(builder.document.value), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
+      frame.value?.contentWindow?.postMessage({ channel: 'zaux-studio', type: 'state', scrollKey: key, scrollY: builder.previewScroll.get(key) ?? 0, cssPending: cssKey !== key && !cssCache.has(key), outlineVisibilityRequest: ++visibilityRequest, instances: JSON.parse(JSON.stringify(builder.previewInstances.value)), selectedNodeId: builder.nodeId.value, selectedInstanceId: builder.mode.value === 'library' ? 'library' : builder.instanceId.value, selectedRows: builder.outlineBulk.value ? JSON.parse(JSON.stringify(builder.outlineSelection.value)) : [], editable: !builder.previewOnly.value, readonly: builder.workspaceView.value === 'dev', canCopyNode: builder.canCopyNode.value && builder.workspaceView.value !== 'dev', canPasteNode: builder.canPasteNode.value && builder.workspaceView.value !== 'dev', canDuplicateNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canDeleteNode: (builder.outlineBulk.value || builder.canCopyNode.value) && builder.canEditRemote.value, canvasDark: builder.canvasDark.value, language: builder.language.value, css, themeCss: workspaceThemeCss(builder.document.value), styles: JSON.parse(JSON.stringify(builder.document.value.styles)) }, window.location.origin);
     }
     // Lightweight message: hover-driven highlightNodeCSS calls must not resend the whole state.
     function sendInspect() {
@@ -143,12 +143,14 @@ export default defineComponent({
         builder.hiddenOutlineNodes.value = new Set(message.hidden);
       }
       if (!builder.previewOnly.value && message.instanceId === (builder.mode.value === 'library' ? 'library' : builder.instanceId.value) && message.nodeId === builder.nodeId.value) {
-        if (message.type === 'copy-node') builder.copySelectedNode();
-        if (message.type === 'cut-node') builder.cutSelectedNode();
-        if (message.type === 'paste-node') builder.pasteNode();
+        // Dev mode is read-only: clipboard and structure actions are ignored there.
+        const editing = builder.workspaceView.value !== 'dev';
+        if (editing && message.type === 'copy-node') builder.copySelectedNode();
+        if (editing && message.type === 'cut-node') builder.cutSelectedNode();
+        if (editing && message.type === 'paste-node') builder.pasteNode();
         // With a multi-selection, duplicate and delete act on every selected row.
-        if (message.type === 'duplicate-node') builder.outlineBulk.value ? builder.duplicateOutlineSelection() : builder.duplicateNode();
-        if (message.type === 'delete-node') builder.outlineBulk.value ? builder.deleteOutlineSelection() : builder.deleteNode();
+        if (editing && message.type === 'duplicate-node') builder.outlineBulk.value ? builder.duplicateOutlineSelection() : builder.duplicateNode();
+        if (editing && message.type === 'delete-node') builder.outlineBulk.value ? builder.deleteOutlineSelection() : builder.deleteNode();
         if (message.type === 'node-menu' && !builder.modal.value) builder.nodeMenu.runShortcut(message.action);
         if (message.type === 'deselect-node' && !builder.modal.value) builder.deselectNode();
       }
@@ -164,7 +166,7 @@ export default defineComponent({
         else builder.selectInstance(message.instanceId, message.nodeId);
         if (message.revealOutline) builder.revealOutline(message.instanceId, message.nodeId);
       }
-      if (message.type === 'drop' && !builder.previewOnly.value) {
+      if (message.type === 'drop' && !builder.previewOnly.value && builder.canEditRemote.value) {
         // Dragging a node of the multi-selection moves the whole selection, as in the outline.
         const payload = message.payload?.kind === 'node' && builder.inOutlineBulk(message.payload.instanceId, message.payload.id)
           ? builder.outlineDragPayload(message.payload) : message.payload;
@@ -179,7 +181,7 @@ export default defineComponent({
         if (token === generation) { dynamicCss.value = result.css; cssKey = key; cssCache.set(key, result.css); sendState(); }
       } catch { if (token === generation) builder.error.value = 'zx_builder_css_error'; }
     }
-    watch([() => builder.document.value.componentThemes, () => builder.document.value.projectStyles, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
+    watch([() => builder.document.value.componentThemes, () => builder.document.value.projectStyles, builder.previewInstances, builder.nodeId, builder.instanceId, builder.outlineSelection, builder.previewOnly, builder.canCopyNode, builder.canPasteNode, builder.canEditRemote, builder.workspaceView, builder.canvasDark, builder.language, () => builder.document.value.styles], sendState, { deep: true });
     watch([builder.previewInstances, () => builder.document.value.styles.uiSettings], () => { clearTimeout(timer); timer = setTimeout(compileCss, scrollKey() === cssKey ? 450 : 0); }, { deep: true });
     watch([builder.cssInspect, builder.cssInspectProperties, builder.cssHighlight], sendInspect, { deep: true });
     watch(() => builder.revealTarget.value, (target) => {

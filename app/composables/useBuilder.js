@@ -37,6 +37,8 @@ import { createGlobalDesigner } from './globalDesigner.js';
 import { createGlobalLinks } from './globalLinks.js';
 
 const key = Symbol('zaux-builder');
+// Layout shortcuts allowed in Dev mode: viewing, navigation and export only.
+const DEV_LAYOUT_ACTIONS = ['toggle-panels', 'zoom-in', 'zoom-out', 'zoom-fit', 'zoom-reset', 'toggle-css-inspect', 'toggle-preview', 'tab-layers', 'export-component'];
 export function useBuilder() { return inject(key); }
 // designer: the Component designer, an isolated workspace whose library is the shared global library.
 export function createBuilder({ projectId = null, designer = false, designerComponentId = null } = {}) {
@@ -314,7 +316,10 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   const remoteSaveStatus = ref('local');
   const remoteConflict = ref(false);
   const remoteErrorDetail = ref('');
-  const canEditRemote = computed(() => !activeRemoteProject.value || ['owner', 'editor'].includes(activeRemoteProject.value.role));
+  // Role check only: remote saves and project actions follow it.
+  const remoteWritable = computed(() => !activeRemoteProject.value || ['owner', 'editor'].includes(activeRemoteProject.value.role));
+  // Edit gate for every workspace change: Dev mode is a read-only view of the same canvas.
+  const canEditRemote = computed(() => remoteWritable.value && workspaceView.value !== 'dev');
   const remoteProjectBusy = ref(false);
   let remoteSavePromise;
   let remoteTimer;
@@ -645,7 +650,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (force) pendingRemoteSave = true;
     if (remoteSavePromise) await remoteSavePromise;
     if (remoteProjectBusy.value && !duringMutation) return;
-    if (!pendingRemoteSave || !activeRemoteProject.value || remoteConflict.value || !auth.user.value || !canEditRemote.value) return;
+    if (!pendingRemoteSave || !activeRemoteProject.value || remoteConflict.value || !auth.user.value || !remoteWritable.value) return;
     const project = { ...activeRemoteProject.value };
     pendingRemoteSave = false; remoteSaveStatus.value = 'saving';
     remoteSavePromise = (async () => {
@@ -664,7 +669,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   async function changeRemoteProject(action, id, name) {
     const project = activeRemoteProject.value;
     if (remoteProjectBusy.value || !project || project.id !== id) return false;
-    if (!auth.user.value || !canEditRemote.value || (action === 'delete' && project.role !== 'owner')) {
+    if (!auth.user.value || !remoteWritable.value || (action === 'delete' && project.role !== 'owner')) {
       error.value = 'zx_builder_project_readonly'; return false;
     }
     if (action === 'rename' && (!name?.trim() || name.trim().length > 100)) return false;
@@ -718,7 +723,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     scheduleRemoteSave();
   }
   function commit(change) {
-    if (!canEditRemote.value) { error.value = 'zx_builder_project_readonly'; return; }
+    if (!canEditRemote.value) { error.value = workspaceView.value === 'dev' ? 'zx_builder_dev_readonly' : 'zx_builder_project_readonly'; return; }
     const before = clone(document.value);
     try {
       change(document.value);
@@ -1015,35 +1020,27 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     if (!canEditRemote.value || outlineBulk.value || !canCopyNode.value || !name.trim()) return false;
     const definition = createDefinition(name.trim(), kind);
     const replace = kind === 'zvp' || canReplaceNodeWithZvc.value;
-    let instance = null;
-    let reference = null;
     commit(workspace => {
       const snapshot = snapshotNode(selectedNode.value, activeDefinition.value, mode.value === 'library' ? {} : activeInstance.value?.data ?? {}, workspace.library);
       definition.tree.push(materializeNode(snapshot, definition, workspace.library));
       appendLibraryDefinition(workspace, definition);
       if (!replace) return;
       if (kind === 'zvp') {
-        reference = createNode(definition.exportName, {});
         const location = locateNode(activeDefinition.value.tree, selectedNode.value.id);
-        location.list.splice(location.index, 1, reference);
+        location.list.splice(location.index, 1, createNode(definition.exportName, {}));
         return;
       }
-      instance = createInstance(definition);
+      const instance = createInstance(definition);
       // copyDefinition derives the name again; keep the library export identity.
       instance.definition.exportName = definition.exportName;
       replaceFreeRoot(activeTemplate.value, activeInstance.value.id, selectedNode.value.id, instance);
     });
     if (error.value) return false;
-    libraryKind.value = kind; libraryCategory.value = 'project'; librarySearch.value = '';
-    if (instance) {
-      selectInstance(instance.id, instance.definition.tree[0]?.id ?? null);
-      revealOutline(instance.id, nodeId.value); reveal(instance.id, nodeId.value);
-    }
-    if (reference) {
-      nodeId.value = reference.id;
-      revealOutline(instanceId.value, reference.id);
-      if (mode.value === 'template') reveal(instanceId.value, reference.id);
-    }
+    // Open the new library definition for editing, with its root selected, as explicit feedback.
+    selectLibrary(definition.id);
+    nodeId.value = definition.tree[0]?.id ?? null;
+    previewOnly.value = false; sidebarCollapsed.value = false; leftTab.value = 'layers';
+    revealOutline(null, nodeId.value);
     return true;
   }
   function elementNode(name) {
@@ -1336,10 +1333,12 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     }
     const menuAction = !modal.value && !previewOnly.value && workspaceView.value === 'design' ? nodeMenuShortcut(event) : null;
     if (menuAction) { event.preventDefault(); if (!event.repeat) nodeMenu.runShortcut(menuAction); return; }
-    const layoutAction = !modal.value && workspaceView.value === 'design' ? layoutShortcut(event) : null;
+    const layoutAction = !modal.value && (workspaceView.value === 'design' || workspaceView.value === 'dev') ? layoutShortcut(event) : null;
+    // Dev mode keeps view and export shortcuts; panels that insert content stay closed.
+    if (layoutAction && workspaceView.value === 'dev' && !DEV_LAYOUT_ACTIONS.includes(layoutAction)) return;
     if (layoutAction) { event.preventDefault(); if (!event.repeat) runLayoutShortcut(layoutAction); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.isContentEditable || modal.value) return;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && workspaceView.value !== 'dev') { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (designer) globalDesigner.flush(); else flushSave(); }
     if (event.key === 'Escape') { deselectNode(); previewOnly.value = false; }
   }

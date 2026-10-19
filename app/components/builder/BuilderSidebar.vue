@@ -10,7 +10,7 @@
 			:aria-label="translate('zx_builder_left_panel')"
 		>
 			<button
-				v-for="tab in tabs"
+				v-for="tab in visibleTabs"
 				:key="tab.id"
 				type="button"
 				role="tab"
@@ -52,6 +52,7 @@
 							{{ translate("zx_builder_outline") }}
 						</h3>
 						<div class="flex shrink-0 items-center [&>.zb-button]:!w-[26px] [&>.zb-button]:!min-w-[26px] [&>.zb-button]:!p-0.5">
+							<template v-if="!devMode">
 							<BuilderButton variant="alt1" size="xs" icon="copy" iconOnly :label="translate('zx_builder_copy_node') + ' (Ctrl C)'" :disabled="!canCopyNode" @click="copySelectedNode()" />
 							<BuilderButton variant="alt1" size="xs" icon="document-add" iconOnly :label="translate('zx_builder_paste_node') + ' (Ctrl V)'" :disabled="!canPasteNode" @click="pasteNode()" />
 							<BuilderButton v-if="mode === 'library' && !designer" variant="alt1" size="xs" icon="loop" iconOnly
@@ -62,6 +63,7 @@
 								:label="translate('zx_builder_reset_instances') + ': ' + translate('zx_builder_reset_instances_hint')"
 								:disabled="!canEditRemote || !activeDefinition"
 								@click="modal = { type: 'reset-instances', name: activeDefinition.name }" />
+							</template>
 							<BuilderButton variant="alt1" size="xs" icon="dropdown-open" iconOnly :label="translate('zx_builder_expand_all')" :disabled="!collapsedOutline.size" @click="expandAllOutline()" />
 							<BuilderButton variant="alt1" size="xs" icon="dropdown-close" iconOnly :label="translate('zx_builder_collapse_all')" @click="collapseAllOutline()" />
 							<BuilderButton variant="alt1" size="xs" icon="help" iconOnly :label="translate('zx_builder_outline_help')"
@@ -76,12 +78,12 @@
 						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_sync_instances_hint') }}</p>
 						<p v-if="mode === 'library' && !designer">{{ translate('zx_builder_reset_instances_hint') }}</p>
 					</div>
-					<button v-if="clipboardNodeName" type="button" class="mb-1 flex w-full min-w-0 items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-accent/50 px-1 py-0.5 text-left text-[10px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
+					<button v-if="clipboardNodeName && !devMode" type="button" class="mb-1 flex w-full min-w-0 items-center gap-1 rounded-xxs border-slim border-dashed border-zaux-accent/50 px-1 py-0.5 text-left text-[10px] text-zaux-accent cursor-grab" :draggable="canEditRemote" :disabled="!canEditRemote" :title="translate('zx_builder_drag_copied_node')" @dragstart="drag($event, { kind: 'clipboard' })" @click="pasteNode()">
 						<span aria-hidden="true">⠿</span><span class="truncate">{{ translate('zx_builder_copied_node') }}: {{ clipboardNodeName }}</span>
 					</button>
 					<div v-if="outlineSelection.length > 1" class="mb-1 flex items-center gap-1 rounded-xxs bg-zaux-accent/10 px-1 py-0.5 text-[10px]" role="status">
 						<span class="flex-1">{{ outlineSelection.length }} {{ translate('zx_builder_outline_selected') }}</span>
-						<BuilderButton v-if="outlineGroupRange" size="xs" variant="alt1" :disabled="!canEditRemote" :label="translate('zx_builder_group_zvc')"
+						<BuilderButton v-if="outlineGroupRange && !devMode" size="xs" variant="alt1" :disabled="!canEditRemote" :label="translate('zx_builder_group_zvc')"
 							@click="modal = { type: 'group-zvc', ...outlineGroupRange }" />
 					</div>
 				</div>
@@ -202,11 +204,12 @@
 								:aria-controls="menuId"
 								@mousedown.shift.prevent
 								@click="revealInstance(instance.id, $event)"
-								@dblclick="modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name }"
+								@dblclick="canEditRemote && (modal = { type: 'rename', kind: 'instance', id: instance.id, name: instance.name })"
 							>
 								<span aria-hidden="true" class="text-[10px] text-zaux-accent">◆</span><span class="truncate">{{ instance.name }}</span>
 							</button>
 							<div
+								v-if="!devMode"
 								class="zb-instance-tools flex shrink-0 items-center gap-[1px] opacity-0 group-hover/instance:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 [&>.zb-button]:!min-w-[24px] [&>.zb-button]:!w-[24px] [&>.zb-button]:!p-0.5"
 								:class="{ '!opacity-100': instanceId === instance.id }"
 							>
@@ -260,7 +263,7 @@
 							/>
 						</template></template></article
 					>
-					<div class="relative mt-1 rounded-xxs border-slim border-dashed border-zaux-light-grey px-1 py-1 text-center text-[10px] text-zaux-dark-grey"
+					<div v-if="!devMode" class="relative mt-1 rounded-xxs border-slim border-dashed border-zaux-light-grey px-1 py-1 text-center text-[10px] text-zaux-dark-grey"
 						data-zb-outline-drop="instance"
 						@dragover="outlineDrag.over($event, null, null, true)"
 						@dragleave="outlineDrag.leave"
@@ -563,15 +566,20 @@ export default defineComponent({
 			if (event.target.closest(OUTLINE_INTERACTIVE)) return;
 			builder.deselectNode();
 		}
+		// Dev mode is read-only: only the structure (templates and outline) is shown.
+		const devMode = computed(() => builder.workspaceView.value === "dev");
+		const visibleTabs = computed(() => devMode.value ? TABS.filter((tab) => tab.id === "layers") : TABS);
+		watch(devMode, (dev) => { if (dev) builder.leftTab.value = "layers"; }, { immediate: true });
 		function tabKeydown(event) {
 			if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
 			event.preventDefault();
-			const index = TABS.findIndex((tab) => tab.id === builder.leftTab.value);
+			const tabs = visibleTabs.value;
+			const index = tabs.findIndex((tab) => tab.id === builder.leftTab.value);
 			const next = event.key === "Home" ? 0
-				: event.key === "End" ? TABS.length - 1
-					: (index + (event.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
-			builder.leftTab.value = TABS[next].id;
-			event.currentTarget.parentElement.querySelector("#zb-left-tab-" + TABS[next].id)?.focus();
+				: event.key === "End" ? tabs.length - 1
+					: (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+			builder.leftTab.value = tabs[next].id;
+			event.currentTarget.parentElement.querySelector("#zb-left-tab-" + tabs[next].id)?.focus();
 		}
 		// Spring-loaded tabs: hovering a tab while dragging a builder item opens it.
 		let springTimer;
@@ -695,7 +703,8 @@ export default defineComponent({
 
 		return {
 			...builder,
-			tabs: TABS,
+			visibleTabs,
+			devMode,
 			tabKeydown,
 			outlineBlankClick,
 			springTab,

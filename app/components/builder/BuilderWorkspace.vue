@@ -4,7 +4,7 @@
 		class="zb-app flex h-dvh flex-col overflow-hidden bg-zaux-light font-builder text-[13px] text-zaux-dark max-[900px]:h-auto max-[900px]:min-h-dvh max-[900px]:overflow-auto"
 		:class="{ 'zb-app--preview': previewOnly }"
 	>
-		<BuilderHeader v-show="!previewOnly || !previewHeaderHidden || workspaceView !== 'design'" />
+		<BuilderHeader v-show="!previewOnly || !previewHeaderHidden || (workspaceView !== 'design' && workspaceView !== 'dev')" />
 		<div
 			v-if="recovery !== null || incoming || error || remoteConflict || saveStatus === 'global_conflict'"
 			class="zb-notice flex items-center gap-2 bg-utility-warning/20 px-3 py-1.5 text-[11px] text-zaux-dark [&>span]:flex-1 [&_button]:underline"
@@ -46,7 +46,8 @@
 				</button></template
 			>
 		</div>
-		<BuilderDesignView v-show="workspaceView === 'design'" />
+		<!-- Dev mode reuses the design canvas read-only, with the Dev panel in place of the Inspector. -->
+		<BuilderDesignView v-show="workspaceView === 'design' || workspaceView === 'dev'" />
 		<BuilderThemeEditor v-if="themesOpened" v-show="workspaceView === 'themes'" />
 		<BuilderZauxVersionDialog v-if="modal?.type === 'zaux-version'" :key="modal.key ?? modal.id" />
 		<BuilderGlobalPublishDialog v-else-if="modal?.type === 'global-publish'" />

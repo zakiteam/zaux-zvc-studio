@@ -40,6 +40,11 @@
 			>
 				JavaScript</button
 			><button
+				:class="{ active: codeMode === 'php' }"
+				@click="codeMode = 'php'"
+			>
+				PHP</button
+			><button
 				:class="{ active: codeMode === 'css' }"
 				@click="codeMode = 'css'"
 			>
@@ -81,6 +86,23 @@
 				:label="translate('zx_builder_download_js')"
 				@click="openExport({ scope: 'component', format: 'js' })"
 		/></template>
+		<template v-else-if="codeMode === 'php'"
+			><p
+				class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_php_hint") }}
+			</p>
+			<p v-if="php.error" role="alert" class="mb-2 text-[11px] text-utility-error">{{ translate(php.error) }}</p>
+			<BuilderCodeEditor
+				v-else
+				language="php"
+				:modelValue="php.source"
+				readonly
+				rows="26"
+				:label="php.entry || 'ZVC PHP'" /><BuilderButton
+				:label="translate('zx_builder_download_php')"
+				@click="openExport({ scope: 'component', format: 'php' })"
+		/></template>
 		<template v-else
 			><p
 				class="zb-help !mb-2 !mt-1.5 text-[11px] leading-[1.65] text-zaux-dark-grey"
@@ -107,6 +129,7 @@ import { defineComponent, computed, ref, watch } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { parseJson, validateDefinition } from "../../../../domain/validation.js";
 import { sourceCode } from "../../../services/source-zvc.js";
+import { phpComponentExport } from "../../../../domain/php/index.js";
 import { applyCompactDefinition, compactDefinition } from "../../../../domain/compact-definition.js";
 import { findNode } from "../../../../domain/nodes.js";
 export default defineComponent({
@@ -122,6 +145,16 @@ export default defineComponent({
 				? sourceCode(builder.activeDefinition.value)
 				: "",
 		);
+		// PHP counterpart of the JS entry file; computed only while the PHP view is open.
+		const php = computed(() => {
+			if (codeMode.value !== "php" || !builder.activeDefinition.value) return { source: "", entry: "", error: "" };
+			try {
+				const result = phpComponentExport(builder.activeDefinition.value);
+				return { source: result.files[result.main.entry] ?? "", entry: result.main.entry, error: "" };
+			} catch (exception) {
+				return { source: "", entry: "", error: exception.message?.startsWith("zx_") ? exception.message : "zx_builder_php_error" };
+			}
+		});
 		watch(
 			builder.activeDefinition,
 			(value) => {
@@ -169,7 +202,7 @@ export default defineComponent({
 				reportError(exception);
 			}
 		}
-		return { ...builder, definitionDraft, compactDraft, codeMode, source, applyDefinition, applyCompact };
+		return { ...builder, definitionDraft, compactDraft, codeMode, source, php, applyDefinition, applyCompact };
 	},
 });
 </script>

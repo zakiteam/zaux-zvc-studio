@@ -33,12 +33,14 @@ const MODES = {
 	design: { icon: "selection", label: "zx_builder_design_mode" },
 	tokens: { icon: "customize", label: "zx_builder_style_settings" },
 	themes: { icon: "interface", label: "zx_builder_theme_editor" },
+	// Read-only developer view: code extraction (JSON/JS/Vue/PHP), no layout editing.
+	dev: { icon: "tech", label: "zx_builder_dev_mode" },
 };
 
 export default defineComponent({
 	props: {
 		// Mode ids, or objects overriding a built-in mode: { id, icon?, label? }.
-		modes: { type: Array, default: () => ["design", "tokens", "themes"] },
+		modes: { type: Array, default: () => ["design", "tokens", "themes", "dev"] },
 		showLabels: { type: Boolean, default: false },
 		showActiveLabel: { type: Boolean, default: false },
 	},
@@ -52,7 +54,7 @@ export default defineComponent({
 				.map((mode) => ({ ...MODES[mode.id], ...mode })),
 		);
 		const activeMode = computed(() => {
-			if (builder.workspaceView.value === "themes") return "themes";
+			if (["themes", "dev"].includes(builder.workspaceView.value)) return builder.workspaceView.value;
 			return builder.stylesOpen.value ? "tokens" : "design";
 		});
 		const activeItem = computed(() =>
@@ -60,7 +62,7 @@ export default defineComponent({
 		);
 		function activate(item) {
 			builder.stylesOpen.value = item.id === "tokens";
-			builder.workspaceView.value = item.id === "themes" ? "themes" : "design";
+			builder.workspaceView.value = ["themes", "dev"].includes(item.id) ? item.id : "design";
 			if (item.id === "tokens") builder.previewOnly.value = false;
 			emit("change", item.id);
 		}

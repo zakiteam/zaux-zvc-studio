@@ -48,7 +48,7 @@
                 <Icon iconName="visibility-off" size="text-icon-xxs" aria-hidden="true" />
               </span>
               <small v-if="node.children.length">{{ node.children.length }}</small></button>
-            <div class="zb-tree-actions flex shrink-0 items-center gap-[1px] opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 [&>.zb-button]:!min-w-[24px] [&>.zb-button]:!w-[24px] [&>.zb-button]:!p-0.5" :class="{ '!opacity-100': outlineSelected(instance, node.id) }">
+            <div v-if="workspaceView !== 'dev'" class="zb-tree-actions flex shrink-0 items-center gap-[1px] opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 [&>.zb-button]:!min-w-[24px] [&>.zb-button]:!w-[24px] [&>.zb-button]:!p-0.5" :class="{ '!opacity-100': outlineSelected(instance, node.id) }">
               <BuilderButton variant="alt1" icon="duplicate" iconOnly :label="translate('zx_builder_duplicate') + ': ' + node.name" @click.stop="duplicateHere(node.id)" />
               <BuilderButton variant="alt1" icon="delete" iconOnly :label="translate('zx_builder_delete') + ': ' + node.name" @click.stop="deleteHere(node.id)" />
             </div>

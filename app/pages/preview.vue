@@ -1,5 +1,5 @@
 <template>
-  <div ref="stageRoot" class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable, 'opacity-0': restoring }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @mousedown.capture="preventShiftSelect" @click.capture="select" @contextmenu="contextMenu" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
+  <div ref="stageRoot" class="zb-stage relative min-h-screen [&.zb-stage--editing_[data-zb-node]]:cursor-grab [&.zb-stage--readonly_[data-zb-node]]:!cursor-pointer [&.zb-stage--editing_[data-zb-node]:hover]:outline [&.zb-stage--editing_[data-zb-node]:hover]:outline-[1px] [&.zb-stage--editing_[data-zb-node]:hover]:outline-dashed [&.zb-stage--editing_[data-zb-node]:hover]:outline-zaux-accent/50" :class="{ 'zb-stage--editing': state.editable, 'zb-stage--readonly': state.editable && state.readonly, 'opacity-0': restoring }" :style="state.themePreview ? { padding: '32px', background: state.background, minHeight: '100vh' } : {}" @mousedown.capture="preventShiftSelect" @click.capture="select" @contextmenu="contextMenu" @submit.prevent @dragstart="startDrag" @dragover="dragOver" @dragleave="dragLeave" @drop.prevent="drop">
     <p v-if="fontErrors.length" role="alert" class="bg-utility-error/10 p-2 font-builder text-[12px] text-utility-error">{{ translate('zx_builder_fonts_load_error') }}</p>
     <component :is="'style'">{{ state.css }} {{ state.themeCss }} {{ componentCss }}</component>
     <div v-if="!state.clean && !state.instances.length" class="zb-stage-empty flex min-h-[300px] flex-col items-center justify-center gap-2 border-slim border-dashed border-zaux-light-grey bg-zaux-light px-3 py-8 text-center font-builder [&>h1]:text-[30px] [&>h2]:text-[30px] [&>h1]:leading-[1.25] [&>h2]:leading-[1.25] [&>p]:max-w-[300px] [&>p]:text-[13px] [&>p]:leading-[1.8] [&>p]:text-zaux-dark-grey"><div class="zb-empty-symbol grid h-[45px] w-[45px] place-items-center rounded-s bg-zaux-accent/10 text-[28px] text-zaux-accent">+</div><h1>{{ translate('zx_builder_empty_template') }}</h1><p>{{ translate('zx_builder_empty_hint') }}</p></div>
@@ -9,15 +9,15 @@
     </section>
     <PreviewCssInspector v-if="!state.clean" :enabled="inspect.enabled" :highlight="inspect.highlight" :properties="inspect.properties"
       :selectedInstanceId="state.selectedInstanceId" :selectedNodeId="state.selectedNodeId" :revision="renderRevision" :nameOf="nodeName" />
-    <div v-if="selection && state.editable" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick border-zaux-accent" :style="selection.style" />
-    <template v-if="state.editable"><div v-for="box in selectionBoxes" :key="box.key" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick border-zaux-accent" :style="box.style" /></template>
-    <div v-if="selection && state.editable && hovering" ref="selectionToolbar" data-zb-toolbar class="fixed z-[901] flex items-center gap-1 max-w-[calc(100vw-8px)] rounded-xxs bg-zaux-accent px-1 py-0.5 font-builder text-[10px] text-zaux-white" :style="selection.toolbarStyle" @mouseenter="onHoverEnter" @mouseleave="onHoverLeave">
+    <div v-if="selection && state.editable" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick" :class="selectionTones[selection.kind].border" :style="selection.style" />
+    <template v-if="state.editable"><div v-for="box in selectionBoxes" :key="box.key" class="zb-selection-box pointer-events-none absolute z-[900] box-border border-thick" :class="selectionTones[box.kind].border" :style="box.style" /></template>
+    <div v-if="selection && state.editable && hovering" ref="selectionToolbar" data-zb-toolbar class="fixed z-[901] flex items-center gap-1 max-w-[calc(100vw-8px)] rounded-xxs px-1 py-0.5 font-builder text-[10px] text-zaux-white" :style="selection.toolbarStyle" @mouseenter="onHoverEnter" @mouseleave="onHoverLeave" :class="selectionTones[selection.kind].background">
       <span class="min-w-0 truncate">{{ bulk ? translate('zx_builder_selection_count', { count: state.selectedRows.length }) : selection.name }}</span>
       <button v-if="state.selectedNodeId && !bulk" type="button" class="shrink-0 rounded-xxs px-1 hover:bg-white/20 focus-visible:outline" :title="translate('zx_builder_parent')" :aria-label="translate('zx_builder_parent')" @click.stop="parentAction()"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 10.5V2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.5 6L6 2.5L9.5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button v-if="state.canCopyNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline" @click.stop="nodeAction('copy-node')">{{ translate('zx_builder_copy_node') }}</button>
       <button v-if="state.canPasteNode" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline" @click.stop="nodeAction('paste-node')">{{ translate('zx_builder_paste_node') }}</button>
-      <button v-if="state.canCopyNode || bulk" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDuplicateNode" @click.stop="nodeAction('duplicate-node')">{{ translate('zx_builder_duplicate') }}</button>
-      <button v-if="state.canCopyNode || bulk" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDeleteNode" @click.stop="nodeAction('delete-node')">{{ translate('zx_builder_delete') }}</button>
+      <button v-if="(state.canCopyNode || bulk) && !state.readonly" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDuplicateNode" @click.stop="nodeAction('duplicate-node')">{{ translate('zx_builder_duplicate') }}</button>
+      <button v-if="(state.canCopyNode || bulk) && !state.readonly" type="button" class="px-1 shrink-0 rounded-xxs hover:bg-white/20 focus-visible:outline disabled:opacity-50" :disabled="!state.canDeleteNode" @click.stop="nodeAction('delete-node')">{{ translate('zx_builder_delete') }}</button>
     </div>
     <div v-if="dropMarker && state.editable" class="zb-drop-marker pointer-events-none absolute z-[1000] bg-zaux-accent [&.zb-drop-marker--inside]:border-thick [&.zb-drop-marker--inside]:border-zaux-accent [&.zb-drop-marker--inside]:bg-zaux-accent/10 [&>span]:absolute [&>span]:left-0.5 [&>span]:top-0.5 [&>span]:bg-zaux-accent [&>span]:px-1 [&>span]:py-0.5 [&>span]:font-builder [&>span]:text-[10px] [&>span]:text-zaux-white" :class="{ 'zb-drop-marker--inside': dropMarker.position === 'inside' }" :style="dropMarker.style"><span>{{ translate(`zx_builder_${dropMarker.position}`) }}</span></div>
   </div>
@@ -37,6 +37,13 @@ import { createOutlineVisibility } from '../services/outline-visibility.js';
 import { builderHistoryShortcut, nodeClipboardShortcut, nodeDeleteShortcut, nodeDeselectShortcut, layoutShortcut, nodeMenuShortcut } from '../services/node-shortcuts.js';
 // Authored Zaux overlays (OffCanvas, ZModal) keep role="dialog" in the DOM and must not block shortcuts.
 const AUTHORED = { authored: true };
+// Whole components (ZVC), partial occurrences (ZVP) and Vue component nodes use the --zb-color-selection-* tones of editor.css.
+const selectionTones = {
+  node: { border: 'border-zaux-accent', background: 'bg-zaux-accent' },
+  zvc: { border: 'border-[rgb(var(--zb-color-selection-zvc))]', background: 'bg-[rgb(var(--zb-color-selection-zvc))]' },
+  zvp: { border: 'border-[rgb(var(--zb-color-selection-zvp))]', background: 'bg-[rgb(var(--zb-color-selection-zvp))]' },
+  vue: { border: 'border-[rgb(var(--zb-color-selection-vue))]', background: 'bg-[rgb(var(--zb-color-selection-vue))]' }
+};
 export default defineComponent({
   setup() {
     useHead({ link: [{ rel: 'stylesheet', href: '/assets/font/main/stylesheet.css' }] });
@@ -264,6 +271,14 @@ export default defineComponent({
       if (!row.nodeId) return section;
       return section?.querySelector(`[data-zb-node="${CSS.escape(row.nodeId)}"]`) ?? document.querySelector(`[data-zb-node="${CSS.escape(row.nodeId)}"]`);
     }
+    // A row without node is the whole instance; a node named after a partial export is a ZVP occurrence;
+    // other capitalised names are Vue components, lowercase names native HTML elements.
+    function selectionKind(row) {
+      const definition = state.value.instances.find(item => item.id === row.instanceId)?.definition;
+      if (!row.nodeId) return definition?.kind === 'zvp' ? 'zvp' : 'zvc';
+      const name = findNode(definition?.tree ?? [], row.nodeId)?.name ?? '';
+      return /^ZVP[A-Za-z0-9_]+$/.test(name) ? 'zvp' : /^[A-Z]/.test(name) ? 'vue' : 'node';
+    }
     // The active row keeps the main box and toolbar; the other selected rows get plain boxes.
     function measureSelectionBoxes() {
       const rows = state.value.editable && bulk.value ? state.value.selectedRows : [];
@@ -271,7 +286,7 @@ export default defineComponent({
         .filter(row => row.instanceId !== state.value.selectedInstanceId || (row.nodeId ?? null) !== (state.value.selectedNodeId ?? null))
         .map(row => {
           const rect = selectedElement(row)?.getBoundingClientRect();
-          return rect ? { key: JSON.stringify([row.instanceId, row.nodeId ?? null]), style: { top: `${rect.top + window.scrollY}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` } } : null;
+          return rect ? { key: JSON.stringify([row.instanceId, row.nodeId ?? null]), kind: selectionKind(row), style: { top: `${rect.top + window.scrollY}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` } } : null;
         })
         .filter(Boolean);
     }
@@ -285,7 +300,8 @@ export default defineComponent({
       const rect = element.getBoundingClientRect();
       const instance = state.value.instances.find(item => item.id === state.value.selectedInstanceId);
       const name = id && instance ? findNode(instance.definition.tree, id)?.name : instance?.name;
-      selection.value = { name, toolbarStyle: selection.value?.toolbarStyle ?? { visibility: 'hidden' }, style: { top: `${rect.top + window.scrollY}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` } };
+      const kind = selectionKind({ instanceId: state.value.selectedInstanceId, nodeId: id });
+      selection.value = { name, kind, toolbarStyle: selection.value?.toolbarStyle ?? { visibility: 'hidden' }, style: { top: `${rect.top + window.scrollY}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` } };
       await nextTick();
       if (!selection.value || !selectionToolbar.value) return;
       const toolbar = selectionToolbar.value.getBoundingClientRect();
@@ -294,7 +310,8 @@ export default defineComponent({
       selection.value.toolbarStyle = { left: `${left}px`, top: `${top}px` };
     }
     function startDrag(event) {
-      if (!state.value.editable) { event.preventDefault(); return; }
+      // Dev mode (readonly) selects and inspects, but never moves nodes.
+      if (!state.value.editable || state.value.readonly) { event.preventDefault(); return; }
       const target = context(event.target);
       if (!target.node) return;
       event.stopPropagation();
@@ -330,7 +347,7 @@ export default defineComponent({
       dragFrame = null; dragPoint = null; dropMarker.value = null;
     }
     function dragOver(event) {
-      if (!state.value.editable || !event.dataTransfer.types.includes('application/x-zaux-builder')) return;
+      if (!state.value.editable || state.value.readonly || !event.dataTransfer.types.includes('application/x-zaux-builder')) return;
       event.preventDefault();
       dragPoint = { element: event.target, stage: event.currentTarget, x: event.clientX, y: event.clientY };
       scheduleDropMarker();
@@ -339,7 +356,7 @@ export default defineComponent({
       if (!event.currentTarget.contains(event.relatedTarget)) clearDrag();
     }
     function drop(event) {
-      if (!state.value.editable) { clearDrag(); return; }
+      if (!state.value.editable || state.value.readonly) { clearDrag(); return; }
       try {
         const payload = JSON.parse(event.dataTransfer.getData('application/x-zaux-builder'));
         // Resolve the actual release point even if the last animation frame is pending.
@@ -391,7 +408,7 @@ export default defineComponent({
       observer?.disconnect();
       document.body.classList.remove('zb-preview-body');
     });
-    return { ...translation, stageRoot, restoring, inspect, renderRevision, nodeName, renderFailure, fontErrors, state, bulk, selectionBoxes, preventShiftSelect, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, contextMenu, startDrag, dragOver, dragLeave, drop };
+    return { ...translation, selectionTones, stageRoot, restoring, inspect, renderRevision, nodeName, renderFailure, fontErrors, state, bulk, selectionBoxes, preventShiftSelect, selection, selectionToolbar, hovering, nodeAction, parentAction, onHoverEnter, onHoverLeave, dropMarker, componentCss, select, contextMenu, startDrag, dragOver, dragLeave, drop };
   }
 });
 </script>

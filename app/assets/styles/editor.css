@@ -4,6 +4,14 @@
   body.zb-resizing { cursor: col-resize !important; user-select: none; }
   @media (max-width: 900px) { :where(.zb-app) .zb-resize-handle { display: none; } }
 
+/* Canvas selection of whole components (ZVC), partials (ZVP) and Vue component nodes; HTML elements keep the Zaux accent.
+   Studio-only tokens: not part of the Zaux design tokens, so the token editor does not list them. */
+:root {
+  --zb-color-selection-zvc: 124 58 237;
+  --zb-color-selection-zvp: 13 148 136;
+  --zb-color-selection-vue: 37 99 235;
+}
+
 /* Studio owns both palettes in light and dark mode; /preview has no theme attribute. */
 html[data-studio-theme="light"] {
   color-scheme: light;

@@ -2,6 +2,9 @@ import { computed } from 'vue';
 import { ancestorIds } from '../../domain/nodes.js';
 import { nodeMenuShortcutLabel } from '../services/node-shortcuts.js';
 
+// Dev mode is read-only: the menu keeps selection, outline folding and export.
+const DEV_MENU_ITEMS = ['select-zvc', 'select-parent', 'expand-branch', 'collapse-inner', 'export-runtime', 'export-js', 'export-php'];
+
 // Right-click menu shared by the canvas and the outline. Right-click selects the target first,
 // so items and actions read the current selection and reuse the builder's selection-based API.
 // One instance lives in useBuilder (builder.nodeMenu); keyboard shortcuts run the same items.
@@ -65,6 +68,10 @@ export function useNodeContextMenu(builder) {
         { id: 'reset-soft', icon: 'refresh', label: t('zx_builder_reset_zvc_soft'), disabled: !editable || !source },
         { id: 'detach', icon: 'hyperlink-remove', label: t('zx_builder_detach_instance'), disabled: !editable || !!zvc.definition.sourceKey || !zvc.definition.tree.length },
       ] : [],
+      // "ZVC from code": the same conversion as the source info card, for the instance or the edited definition.
+      builder.isSource.value && single && (zvc || library) ? [
+        { id: 'convert-visual', icon: 'edit', label: t('zx_builder_convert_visual'), disabled: !editable },
+      ] : [],
       // The ZVC root row itself: the same duplicate/delete as its outline row buttons.
       zvc && single && !node ? [
         { id: 'duplicate-zvc', icon: 'duplicate', label: t('zx_builder_duplicate_zvc'), disabled: !editable },
@@ -94,11 +101,13 @@ export function useNodeContextMenu(builder) {
       library || single ? [
         { id: 'export-runtime', icon: 'download', label: t('zx_builder_export_zaux_json'), disabled: !definition },
         { id: 'export-js', icon: 'download', label: t('zx_builder_export_component_js'), disabled: !definition },
+        { id: 'export-php', icon: 'download', label: t('zx_builder_export_component_php'), disabled: !definition },
       ] : [],
     ];
+    const dev = builder.workspaceView.value === 'dev';
     // A separator line opens every group after the first visible one.
     return groups
-      .map(group => group.filter(item => !item.hidden))
+      .map(group => group.filter(item => !item.hidden && (!dev || DEV_MENU_ITEMS.includes(item.id))))
       .filter(group => group.length)
       .flatMap((group, index) => group.map((item, position) => ({
         ...item,
@@ -137,6 +146,7 @@ export function useNodeContextMenu(builder) {
     if (item.id === 'reset-hard') reset('hard');
     if (item.id === 'reset-soft') reset('soft');
     if (item.id === 'detach') builder.detachInstance(zvc.id);
+    if (item.id === 'convert-visual') builder.convertToVisual();
     if (item.id === 'duplicate-zvc') builder.duplicate('instance', zvc.id);
     if (item.id === 'delete-zvc') builder.remove('instance', zvc.id);
     if (item.id === 'copy-node') builder.copySelectedNode();
@@ -148,6 +158,7 @@ export function useNodeContextMenu(builder) {
     if (item.id === 'delete-node') builder.outlineBulk.value ? builder.deleteOutlineSelection() : builder.deleteNode();
     if (item.id === 'export-runtime') builder.openExport({ scope: 'component', format: 'runtime' });
     if (item.id === 'export-js') builder.openExport({ scope: 'component', format: 'js' });
+    if (item.id === 'export-php') builder.openExport({ scope: 'component', format: 'php' });
   }
   // Keyboard path: runs the action only when the menu would offer it enabled for the current selection.
   function runShortcut(id) {

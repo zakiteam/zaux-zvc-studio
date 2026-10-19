@@ -61,7 +61,7 @@
 						<BuilderThumbnailControls />
 					</template>
 				</BuilderDropdown>
-				<template v-if="workspaceView === 'design'">
+				<template v-if="workspaceView === 'design' || workspaceView === 'dev'">
 					<span class="shrink-0 text-[12px] text-zaux-light-grey" aria-hidden="true">/</span>
 					<button
 						type="button"
@@ -101,6 +101,7 @@
 					>{{ translate("zx_builder_" + saveStatus) }}</span
 				>
 				<BuilderButton
+					v-show="workspaceView !== 'dev'"
 					icon="undo"
 					iconOnly
 					size="xs"
@@ -110,6 +111,7 @@
 					@click="undo"
 				/>
 				<BuilderButton
+					v-show="workspaceView !== 'dev'"
 					icon="redo"
 					iconOnly
 					size="xs"

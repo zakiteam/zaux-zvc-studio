@@ -81,3 +81,12 @@
 - Opening a project whose last-edit release differs from the builder's asks whether to continue accepting the risks; declining returns to the hub.
 - The same check applies when inserting global ZVC/ZVPs.
 - Implementation choices (not user-specified): projects without a signature count as a mismatch; a duplicated project gets the running release as its creation version and keeps the original last-edit version; the global check also compares the project's last-edit release; an approval is remembered for the rest of the editor session.
+
+## 2026-10-16 - Dev mode and PHP export (user)
+
+- A fourth mode, **Dev mode**, next to Design mode, Design tokens and Theme editor: simplified, read-only view to extract JSON/JS/Vue code of the components on the page; no layout editing.
+- Correction (same day): Dev mode keeps the canvas, element selection and template navigation; it only removes design options and shows export/details useful for front-end/back-end assembly.
+- A Zaux JSON → PHP converter lays the base for using ZVCs/ZVPs as PHP functions in a monolithic back-end (WordPress) together with ACF.
+- The PHP structure will change over time: keep it easy to change (profile + model + printer + emitters), not hard-coded.
+- Implementation choices (not user-specified): PHP functions return the Zaux runtime node (front-end renders it with ComponentsRenderer); ACF local field groups and readers are generated per component; native JS ZVPs export as snapshots; Dev mode reuses the design selection and blocks edits through the existing `canEditRemote` gate.
+- Clarification (same day): PHP is only an export format, the counterpart of the JS ZVC/ZVP export, available from the context menu and code views; its composition must be easy to retouch (no spec yet). For now each function returns a piece of JSON (the runtime node). ACF generation dropped until specified.

@@ -44,7 +44,8 @@
     <!-- Canvas appearance and interaction mode. -->
     <div class="flex min-w-0 flex-1 basis-0 justify-end">
       <div class="flex min-w-0 items-center gap-0.5 rounded-xs border-slim border-zaux-light-grey bg-zaux-white p-0.25 shadow-sm">
-        <BuilderStyleSelect color class="w-[150px] min-w-0 max-[1400px]:w-[110px]"
+        <!-- Design setting: hidden in the read-only Dev mode. -->
+        <BuilderStyleSelect v-if="workspaceView !== 'dev'" color class="w-[150px] min-w-0 max-[1400px]:w-[110px]"
           :modelValue="document.styles.bodyBackground ?? ''" :options="bodyColors"
           :label="translate('zx_builder_body_background')" :disabled="!canEditRemote"
           :title="translate('zx_builder_body_background')"

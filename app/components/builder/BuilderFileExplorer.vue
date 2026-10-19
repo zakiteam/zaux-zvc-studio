@@ -65,6 +65,7 @@
 				if (file.endsWith(".css")) return "css";
 				if (file.endsWith(".html")) return "html";
 				if (file.endsWith(".json")) return "json";
+				if (file.endsWith(".php")) return "php";
 				return "javascript";
 			});
 			watch(

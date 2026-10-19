@@ -10,7 +10,8 @@
 		<Teleport :to="expandedHost || 'body'" :disabled="!expanded">
 			<div :class="{ 'zb-code-expanded flex h-full min-h-0 flex-col': fillMode }" @keydown="editorKeydown" @keyup="editorKeydown" class="min-w-0 overflow-hidden rounded-xxs border-slim border-zaux-light-grey focus-within:outline focus-within:outline-2 focus-within:outline-zaux-accent">
 				<div class="flex items-center justify-end gap-1 p-1 shrink-0 border-b-slim border-zaux-light-grey bg-zaux-white">
-					<BuilderButton size="xs" variant="secondary" icon="sort"
+					<!-- Prettier has no PHP parser in the bundle: PHP sources are read-only exports. -->
+					<BuilderButton v-if="language !== 'php'" size="xs" variant="secondary" icon="sort"
 						:label="translate('zx_builder_format_code')"
 						:disabled="disabled || formatting || !modelValue.trim()"
 						:aria-busy="formatting"
@@ -128,7 +129,7 @@
 						? html()
 						: props.language === "css"
 							? css()
-							: props.language === "javascript"
+							: props.language === "javascript" || props.language === "php"
 								? javascript()
 								: json(),
 					EditorState.readOnly.of(locked),

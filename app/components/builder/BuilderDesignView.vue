@@ -66,7 +66,14 @@
 			/>
 			<BuilderInspector
 				id="zb-inspector-panel"
-				v-show="!stylesOpen && !inspectorCollapsed"
+				v-show="!stylesOpen && !inspectorCollapsed && workspaceView !== 'dev'"
+				:width="rightWidth"
+			/>
+			<!-- Dev mode: details and exports of the selection instead of design controls. -->
+			<BuilderDevPanel
+				v-if="devOpened"
+				id="zb-dev-panel"
+				v-show="workspaceView === 'dev' && !inspectorCollapsed"
 				:width="rightWidth"
 			/>
 			<BuilderButton
@@ -78,7 +85,7 @@
 				size="xs"
 				:label="translate(inspectorCollapsed ? 'zx_builder_show_inspector' : 'zx_builder_hide_inspector') + ' (Ctrl \\)'"
 				:aria-expanded="!inspectorCollapsed"
-				aria-controls="zb-inspector-panel"
+				:aria-controls="workspaceView === 'dev' ? 'zb-dev-panel' : 'zb-inspector-panel'"
 				@click="inspectorCollapsed = !inspectorCollapsed"
 			/>
 		</div>
@@ -102,6 +109,9 @@ export default defineComponent({
 		const leftWidth = ref(LIMITS.left[2]);
 		const rightWidth = ref(LIMITS.right[2]);
 		const tokensBoard = computed(() => builder.stylesOpen.value && builder.tokensView.value === "board" && !builder.previewOnly.value);
+		// The Dev panel mounts on first use of Dev mode and stays mounted with its local state.
+		const devOpened = ref(builder.workspaceView.value === "dev");
+		watch(builder.workspaceView, (view) => { if (view === "dev") devOpened.value = true; });
 		let saveTimer;
 		function resizePanel(side, delta) {
 			const target = side === "left" ? leftWidth : rightWidth;
@@ -130,6 +140,7 @@ export default defineComponent({
 			leftWidth,
 			rightWidth,
 			tokensBoard,
+			devOpened,
 			resizePanel,
 		};
 	},

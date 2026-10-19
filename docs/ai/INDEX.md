@@ -14,6 +14,7 @@ Project session notes belong in `docs/ai/memory/`. Record concrete changes, chec
 
 6. [Property decorators](../property-decorators.md): component/prop registry, dynamic options and Inspector wiring.
 7. [Global components](../global-components.md): Component designer, shared library, version check, linked copies and Soft/Hard reset.
+8. [Dev mode and PHP export](../php-export.md): read-only developer view and the PHP counterpart of the JS export (profile templates).
 
 ## Repository skills
 

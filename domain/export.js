@@ -270,6 +270,65 @@ export function vueComponent(definition) {
   return source;
 }
 
+// ── Single element (node) exports, used by Dev mode ───────────────────────
+// Compact node with its $bind/$spread markers, as in the simple Zaux format.
+export function nodeDocument(node) {
+  return exportTree([node])[0];
+}
+// The element as rendered: values resolved with the component data and ZVP
+// references expanded, found through the editable runtime markers. Studio
+// markers are removed from the result.
+export function nodeRuntime(definition, data, nodeId) {
+  const marked = runtimeNodes(definition, data, true);
+  function find(value) {
+    if (Array.isArray(value)) {
+      for (const item of value) { const found = find(item); if (found) return found; }
+      return null;
+    }
+    if (!value || typeof value !== 'object') return null;
+    if (value.props?.['data-zb-node'] === nodeId) return value;
+    for (const item of Object.values(value)) { const found = find(item); if (found) return found; }
+    return null;
+  }
+  function strip(value) {
+    if (Array.isArray(value)) return value.map(strip);
+    if (!value || typeof value !== 'object') return value;
+    const marker = Object.hasOwn(value, 'data-zb-node');
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key]) => key !== 'data-zb-node' && !(marker && key === 'draggable'))
+      .map(([key, item]) => [key, strip(item)]));
+  }
+  const found = find(marked);
+  return found ? strip(found) : null;
+}
+// Vue template markup of one element; $bind markers stay prop references.
+export function vueNodeMarkup(node) {
+  return vueNode(nodeDocument(node), 0);
+}
+// Field keys an element and its children read, through $bind / $spread markers.
+export function nodeBindings(node) {
+  const keys = new Set();
+  (function walk(value) {
+    if (isBinding(value)) { keys.add(value.$bind); return; }
+    if (Array.isArray(value)) { value.forEach(walk); return; }
+    if (!value || typeof value !== 'object') return;
+    const spread = spreadKey(value);
+    if (spread !== null) keys.add(spread);
+    Object.values(value).forEach(walk);
+  })(nodeDocument(node));
+  return [...keys];
+}
+// Copy of a definition whose defaults carry an instance configuration, so
+// exports of a placed component reproduce what the page shows.
+export function definitionWithData(definition, data = {}) {
+  const result = clone(definition);
+  if (result.sourceKey) result.defaults = { ...result.defaults, ...clone(data) };
+  result.fields.forEach(field => {
+    if (Object.hasOwn(data, field.key)) field.default = clone(data[field.key]);
+  });
+  return result;
+}
+
 export function templateRuntime(template) {
   return template.instances.flatMap(instance =>
     runtimeNodes(instance.definition, instance.data).map(node => ({

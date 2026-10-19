@@ -62,6 +62,7 @@
 				<select class="px-2 py-1 border-none bg-zaux-light" v-model="scope" :aria-label="translate('zx_builder_export')">
 					<!-- The Component designer exports single components only. -->
 					<option v-if="!designer" value="starter">{{ translate("zx_builder_starter_package") }}</option>
+					<option v-if="!designer" value="php-starter">{{ translate("zx_builder_php_package") }}</option>
 					<option v-if="!designer" value="workspace">
 						{{ translate("zx_builder_workspace") }}
 					</option>
@@ -84,11 +85,15 @@
 						{{ translate("zx_builder_json_runtime") }}
 					</option>
 					<option value="js">JavaScript</option>
+					<option value="php">PHP</option>
 					<option v-if="scope === 'component'" value="vue">Vue SFC</option>
 				</select>
 			</div>
 			<p v-if="scope === 'starter'" class="mb-2 !text-[12px] text-zaux-dark-grey">
 				{{ translate('zx_builder_starter_hint') }}
+			</p>
+			<p v-if="scope === 'php-starter'" class="mb-2 !text-[12px] text-zaux-dark-grey">
+				{{ translate('zx_builder_php_package_hint') }}
 			</p>
 			<p v-if="packageResult.error" role="alert" class="mb-2 !text-[12px] !text-utility-error">
 				{{ translate(packageResult.error) }}
@@ -118,12 +123,37 @@
 			>
 				{{ translate("zx_builder_vue_hint") }}
 			</p>
+			<p
+				v-if="format === 'php' && ['component', 'template'].includes(scope)"
+				class="zb-help !mb-2 !mt-1.5 !text-[11px] !leading-[1.65] text-zaux-dark-grey"
+			>
+				{{ translate("zx_builder_php_hint") }}
+			</p>
+			<!-- PHP support files are opt-in, as in the PHP package options. -->
+			<div v-if="format === 'php' && ['component', 'template'].includes(scope)" class="mb-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[12px]">
+				<label class="flex cursor-pointer items-center gap-1">
+					<input v-model="phpSelection.phpHelpers" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_php_include_helpers") }} <code class="text-[10px] text-zaux-dark-grey">zvc-helper.php</code>
+				</label>
+				<label class="flex cursor-pointer items-center gap-1">
+					<input v-model="phpSelection.phpReadme" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_php_include_readme") }} <code class="text-[10px] text-zaux-dark-grey">README.md</code>
+				</label>
+			</div>
 			<BuilderStarterOptions
 				v-if="scope === 'starter'"
 				class="mb-1.5"
 				v-model="starterSelection"
 				:workspace="document"
 				:availability="starterAvailability"
+				:files="jsFiles"
+			/>
+			<BuilderStarterOptions
+				v-if="scope === 'php-starter'"
+				class="mb-1.5"
+				variant="php"
+				v-model="phpSelection"
+				:workspace="document"
 				:files="jsFiles"
 			/>
 			<BuilderFileExplorer
@@ -299,7 +329,7 @@
 					v-if="isPackage"
 					size="xs"
 					variant="primary"
-					:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : 'zx_builder_download_js')"
+					:label="translate(scope === 'starter' ? 'zx_builder_download_starter' : isPhp ? 'zx_builder_download_php' : 'zx_builder_download_js')"
 					:disabled="saving || !Object.keys(jsFiles).length || starterEmpty"
 					@click="downloadJs"
 				/><BuilderButton
@@ -350,8 +380,6 @@ import {
 	watch,
 	useId,
 } from "vue";
-import { presetCss } from '../../../domain/styles.js';
-import { componentThemesCss, projectStylesCss } from '../../../domain/component-themes.js';
 import { useBuilder } from "../../composables/useBuilder.js";
 import {
 	documentEnvelope,
@@ -361,12 +389,12 @@ import {
     parsePartialDocument,
 	parseSimpleComponentDocument,
 	vueComponent,
+	definitionWithData,
 } from "../../../domain/export.js";
+import { phpComponentExport, phpProjectExport, phpTemplateExport } from "../../../domain/php/index.js";
 import { createDefinition } from "../../../domain/workspace.js";
-import { projectStarterFiles, projectStarterStyleAvailability } from "../../services/starter-export.js";
+import { componentPackageFiles, projectStarterFiles, projectStarterStyleAvailability } from "../../services/starter-export.js";
 import { starterSelectionParts } from "../../../domain/starter-export.js";
-import { fontFiles } from "../../../domain/fonts.js";
-import { filesForDefinition } from "../../services/source-zvc.js";
 import { clone, runtimeRoot, createNode } from "../../../domain/nodes.js";
 import { downloadText, downloadZip } from "../../services/files.js";
 export default defineComponent({
@@ -381,18 +409,33 @@ export default defineComponent({
 		const groupCandidates = computed(() => freeGroupCandidates(builder.activeTemplate.value, builder.modal.value.instanceId));
 		const scope = ref(builder.modal.value.scope ?? (builder.designer ? "component" : "workspace"));
 		const format = ref(builder.modal.value.format ?? "json");
-		const isPackage = computed(() => scope.value === 'starter' || (['component', 'template'].includes(scope.value) && format.value === 'js'));
+		const isPackage = computed(() => ['starter', 'php-starter'].includes(scope.value) || (['component', 'template'].includes(scope.value) && ['js', 'php'].includes(format.value)));
+		const isPhp = computed(() => scope.value === 'php-starter' || (['component', 'template'].includes(scope.value) && format.value === 'php'));
+		// PHP package selection, also holding the opt-in support files used by every PHP export.
+		const phpSelection = ref({ excludedDefinitions: [], excludedTemplates: [], phpHelpers: false, phpReadme: false });
 		// Starter package contents: everything except the Studio part by default.
 		const starterSelection = ref({ excludedDefinitions: [], excludedTemplates: [], studio: false });
 		const starterAvailability = computed(() => scope.value === 'starter' ? projectStarterStyleAvailability(builder.document.value) : {});
 		const packageResult = computed(() => {
+			// PHP counterpart of the JS export (domain/php), for the component or the template.
+			if (isPhp.value) {
+				const options = { helpers: phpSelection.value.phpHelpers === true, readme: phpSelection.value.phpReadme === true };
+				try {
+					if (scope.value === 'php-starter') {
+						const parts = starterSelectionParts(builder.document.value, phpSelection.value);
+						return { files: phpProjectExport(builder.document.value, { ...options, definitionIds: parts.definitionIds, templateIds: parts.templateIds }).files, error: '' };
+					}
+					if (scope.value === 'template') return { files: phpTemplateExport(builder.activeTemplate.value, options).files, error: '' };
+					return { files: definition.value ? phpComponentExport(definition.value, options).files : {}, error: '' };
+				} catch (error) { return { files: {}, error: error.message?.startsWith('zx_') ? error.message : 'zx_builder_php_error' }; }
+			}
 			if (scope.value !== 'starter' && !(scope.value === 'template' && format.value === 'js')) return { files: {}, error: '' };
 			try { return { files: projectStarterFiles(builder.document.value, scope.value === 'template' ? builder.activeTemplate.value.id : undefined, scope.value === 'starter' ? starterSelectionParts(builder.document.value, starterSelection.value) : undefined), error: '' }; }
 			catch (error) { return { files: {}, error: error.message.startsWith('zx_') ? error.message : 'zx_builder_starter_error' }; }
 		});
 		// The README alone is not a useful package.
-		const starterEmpty = computed(() => scope.value === 'starter' && !packageResult.value.error
-			&& Object.keys(packageResult.value.files).every(path => path === 'README.md'));
+		const starterEmpty = computed(() => ['starter', 'php-starter'].includes(scope.value) && !packageResult.value.error
+			&& Object.keys(packageResult.value.files).every(path => ['README.md', 'zvc-helper.php'].includes(path)));
 		const selectedFile = ref("");
 		const localError = ref("");
 		const localErrorDetail = ref("");
@@ -498,32 +541,14 @@ export default defineComponent({
 		);
 		const definition = computed(() => {
 			if (!builder.activeDefinition.value) return null;
-			const result = clone(builder.activeDefinition.value);
-			if (builder.mode.value === "template" && result.sourceKey)
-				result.defaults = {
-					...result.defaults,
-					...clone(builder.activeInstance.value.data),
-				};
-			if (builder.mode.value === "template")
-				result.fields.forEach((field) => {
-					if (Object.hasOwn(builder.activeInstance.value.data, field.key))
-						field.default = clone(builder.activeInstance.value.data[field.key]);
-				});
-			return result;
+			return builder.mode.value === "template"
+				? definitionWithData(builder.activeDefinition.value, builder.activeInstance.value.data)
+				: clone(builder.activeDefinition.value);
 		});
 		const jsFiles = computed(() => {
-			if (scope.value === 'starter' || scope.value === 'template') return packageResult.value.files;
+			if (scope.value === 'starter' || scope.value === 'template' || isPhp.value) return packageResult.value.files;
 			try {
-				const themeCss = componentThemesCss(builder.document.value.componentThemes);
-				const projectCss = projectStylesCss(builder.document.value.projectStyles);
-				const bodyCss = presetCss({ cssVars: [], bodyBackground: builder.document.value.styles?.bodyBackground });
-				return definition.value ? {
-					...filesForDefinition(definition.value),
-					...fontFiles(builder.document.value.styles?.fonts),
-					...(themeCss ? { 'component-themes.css': themeCss } : {}),
-					...(projectCss ? { 'project-styles.css': projectCss } : {}),
-					...(bodyCss ? { 'body-background.css': bodyCss } : {})
-				} : {};
+				return definition.value ? componentPackageFiles(builder.document.value, definition.value) : {};
 			} catch {
 				return {};
 			}
@@ -657,7 +682,8 @@ export default defineComponent({
 			saving.value = true;
 			localError.value = '';
 			try {
-				const filename = scope.value === 'starter' ? 'zaux-project-starter.zip' : scope.value === 'template' ? 'zaux-template.zip' : `${definition.value.exportName}.zip`;
+				const suffix = isPhp.value ? '-php' : '';
+				const filename = scope.value === 'starter' ? 'zaux-project-starter.zip' : scope.value === 'php-starter' ? 'zaux-php-package.zip' : scope.value === 'template' ? `zaux-template${suffix}.zip` : `${definition.value.exportName}${suffix}.zip`;
 				await downloadZip(filename, jsFiles.value);
 			} catch {
 				localError.value = "zx_builder_storage_error";
@@ -708,6 +734,8 @@ export default defineComponent({
 			format,
 			selectedFile,
 			starterSelection,
+			phpSelection,
+			isPhp,
 			starterAvailability,
 			starterEmpty,
 			localError,

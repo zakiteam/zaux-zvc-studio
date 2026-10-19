@@ -23,6 +23,7 @@
 					:class="group.selected ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-light text-zaux-dark-grey'"
 				>{{ translate(group.title) }} {{ group.selected }}/{{ group.total }}</li>
 				<li
+					v-if="variant !== 'php'"
 					class="rounded-full px-0.75 text-[9px] font-semibold"
 					:class="modelValue.studio === true ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-light text-zaux-dark-grey'"
 				>{{ translate("zx_builder_starter_section_studio") }} {{ modelValue.studio === true ? "✓" : "–" }}</li>
@@ -104,7 +105,7 @@
 								<input
 									type="checkbox"
 									class="!w-auto shrink-0 accent-zaux-accent"
-									:checked="item.available && modelValue[item.key] !== false"
+									:checked="item.available && optionChecked(item)"
 									:disabled="!item.available"
 									@change="update({ [item.key]: $event.target.checked })"
 								/>
@@ -118,7 +119,7 @@
 				</div>
 				<p v-if="group.hint" class="border-t-slim border-zaux-light-grey px-1 py-0.75 text-[10px] leading-[1.55] text-zaux-dark-grey">{{ translate(group.hint) }}</p>
 			</div>
-			<div class="flex min-w-0 flex-col rounded-xxs border-slim border-zaux-light-grey bg-zaux-light/40">
+			<div v-if="variant !== 'php'" class="flex min-w-0 flex-col rounded-xxs border-slim border-zaux-light-grey bg-zaux-light/40">
 				<h3 class="m-0 border-b-slim border-zaux-light-grey px-1 py-0.75 text-[10px] font-semibold uppercase tracking-wider text-zaux-dark-grey">
 					{{ translate("zx_builder_starter_section_studio") }}
 				</h3>
@@ -152,6 +153,11 @@
 		{ key: "uiConfig", label: "zx_builder_starter_style_ui_config", path: "style/ui.config.js" },
 		{ key: "fonts", label: "zx_builder_starter_style_fonts", path: "fonts.html, fonts.json" },
 	];
+	// PHP package: support files are opt-in (unchecked unless set to true).
+	const PHP_OPTIONS = [
+		{ key: "phpHelpers", label: "zx_builder_php_include_helpers", path: "zvc-helper.php", optIn: true },
+		{ key: "phpReadme", label: "zx_builder_php_include_readme", path: "README.md", optIn: true },
+	];
 
 	// Content selection for the "Zaux starter package" export, shown above the
 	// file explorer as a wrapping grid of cards. The selection is plain JSON:
@@ -163,6 +169,8 @@
 			modelValue: { type: Object, required: true },
 			availability: { type: Object, default: () => ({}) },
 			files: { type: Object, default: () => ({}) },
+			// "js": Zaux starter package; "php": PHP package (no styles or Studio part).
+			variant: { type: String, default: "js" },
 		},
 		emits: ["update:modelValue"],
 		setup(props, { emit }) {
@@ -204,18 +212,24 @@
 			}
 			const groups = computed(() => {
 				const library = props.workspace.library;
-				const options = STYLE_OPTIONS.map((option) => ({ ...option, available: props.availability[option.key] !== false }));
+				const php = props.variant === "php";
+				const options = php
+					? PHP_OPTIONS.map((option) => ({ ...option, available: true }))
+					: STYLE_OPTIONS.map((option) => ({ ...option, available: props.availability[option.key] !== false }));
 				return [
 					listGroup("zvc", "zx_builder_starter_section_zvc", library.filter((definition) => definition.kind !== "zvp"), excludedDefinitions.value, "excludedDefinitions"),
 					listGroup("zvp", "zx_builder_starter_section_zvp", library.filter((definition) => definition.kind === "zvp"), excludedDefinitions.value, "excludedDefinitions"),
 					listGroup("templates", "zx_builder_starter_section_templates", props.workspace.templates.map((template) => ({ id: template.id, name: template.name })), excludedTemplates.value, "excludedTemplates"),
 					{
-						id: "styles", title: "zx_builder_starter_section_styles", options,
+						id: php ? "php" : "styles", title: php ? "zx_builder_php_section_files" : "zx_builder_starter_section_styles", options,
 						total: options.filter((option) => option.available).length,
-						selected: options.filter((option) => option.available && props.modelValue[option.key] !== false).length,
+						selected: options.filter((option) => option.available && optionChecked(option)).length,
 					},
 				];
 			});
+			function optionChecked(option) {
+				return option.optIn ? props.modelValue[option.key] === true : props.modelValue[option.key] !== false;
+			}
 			function setIds(group, ids, include) {
 				const excluded = new Set(props.modelValue[group.key] ?? []);
 				ids.forEach((id) => (include ? excluded.delete(id) : excluded.add(id)));
@@ -239,7 +253,7 @@
 				return bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 			});
 			return {
-				translate, iconSet, iconHref, query, open, bodyId, groups, update, setItem, setAll, selectProjectOnly,
+				translate, iconSet, iconHref, query, open, bodyId, groups, update, setItem, setAll, selectProjectOnly, optionChecked,
 				fileCount, fileSize,
 			};
 		},
