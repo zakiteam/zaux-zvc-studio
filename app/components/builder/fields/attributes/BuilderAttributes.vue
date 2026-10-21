@@ -28,7 +28,7 @@
 						<span class="min-w-0 flex-1">
 							<span class="flex min-w-0 items-center gap-1">
 								<span class="truncate text-[11px] font-medium">{{ hookLabel(hook.key) }}</span>
-								<span v-if="hook.count" class="shrink-0 rounded-full bg-zaux-accent/15 px-0.75 text-[9px] font-semibold text-zaux-accent">{{ hook.count }}</span>
+								<span v-if="hook.count" class="shrink-0 rounded-xxs bg-zaux-accent/15 px-0.75 text-[9px] font-semibold text-zaux-accent">{{ hook.count }}</span>
 							</span>
 							<span class="flex min-w-0 items-center gap-1 text-[9px] text-zaux-dark-grey">
 								<code class="font-mono">{{ hook.key }}</code>

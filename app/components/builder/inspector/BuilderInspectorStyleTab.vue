@@ -26,7 +26,7 @@
 					</div>
 				</div>
 				<p class="mt-1 flex h-[14px] min-w-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wide text-zaux-dark-grey" aria-hidden="true">
-					<span class="h-[5px] w-[5px] shrink-0 rounded-full transition-colors"
+					<span class="h-[5px] w-[5px] shrink-0 rounded-xxs transition-colors"
 						:class="captionShortcut && captionShortcut === activeShortcut ? 'bg-zaux-accent' : 'bg-zaux-light-grey'" />
 					<span class="min-w-0 truncate">{{ captionLabel }}</span>
 				</p>

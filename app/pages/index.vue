@@ -9,7 +9,7 @@
         </div>
         <BuilderInput v-model="search" type="search" :label="translate('zx_builder_hub_search')" :placeholder="translate('zx_builder_hub_search')"
           class="w-[280px] [&_*]:!py-1 max-w-full !bg-zaux-white max-[700px]:w-full max-[700px]:order-last" />
-        <BuilderButton variant="light1" icon="refresh" iconOnly :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
+        <BuilderButton class="!h-4 !py-0" variant="light1" icon="refresh" iconOnly :label="translate('zx_builder_hub_refresh')" :disabled="loading || busy" @click="loadProjects" />
         <BuilderButton size="xs" variant="primary" icon="add" :label="translate('zx_builder_new_project')" :disabled="busy" @click="openCreate" />
       </div>
       <div class="flex flex-wrap items-center gap-1 px-3 pb-1 max-[700px]:px-1.5">

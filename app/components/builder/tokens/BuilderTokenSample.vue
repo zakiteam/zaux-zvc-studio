@@ -13,7 +13,7 @@
       <span v-else-if="kind === 'shadows'" class="zb-project-swatch block h-[56%] max-h-[48px] w-[56%] max-w-[64px] rounded-[6px]"
         :style="{ boxShadow: value, backgroundColor: '#ffffff' }" />
       <span v-else-if="kind === 'blur'" class="relative block h-[66%] max-h-[56px] w-[66%] max-w-[72px]">
-        <span class="absolute inset-0 rounded-full" :style="{ filter: `blur(${value})`, background: 'conic-gradient(#ff5f6d, #ffc371, #47cf73, #3e8bff, #ff5f6d)' }" />
+        <span class="absolute inset-0 rounded-xxs" :style="{ filter: `blur(${value})`, background: 'conic-gradient(#ff5f6d, #ffc371, #47cf73, #3e8bff, #ff5f6d)' }" />
       </span>
       <span v-else-if="kind === 'borders'" class="block h-[56%] max-h-[48px] w-[56%] max-w-[64px] rounded-[4px] border-solid"
         :style="{ borderWidth: value, borderColor: '#363636', backgroundColor: '#ffffff' }" />

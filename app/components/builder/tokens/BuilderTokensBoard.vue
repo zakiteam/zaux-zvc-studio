@@ -29,7 +29,7 @@
                 <span class="block h-[64px] border-b-slim border-zaux-light-grey"><BuilderTokenSample :group="group.id" :value="valueOf(variable)" /></span>
                 <span class="flex items-center gap-0.5 px-1 pt-0.5">
                   <span class="min-w-0 flex-1 truncate text-[12px] font-semibold">{{ shortName(group, variable) }}</span>
-                  <span v-if="isModified(variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
+                  <span v-if="isModified(variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
                 </span>
                 <span class="block truncate px-1 pb-0.5 font-mono text-[10px] uppercase text-zaux-dark-grey">{{ colorLabel(valueOf(variable)) }}</span>
               </button>
@@ -50,14 +50,14 @@
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center gap-0.5">
                     <span class="truncate text-[13px] font-semibold">{{ translate('zx_builder_tokens_font_role_' + card.role) }}</span>
-                    <span v-if="isModified(card.variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
+                    <span v-if="isModified(card.variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
                   </span>
                   <span class="block truncate font-mono text-[10px] text-zaux-dark-grey">{{ card.variable.name }}</span>
                   <span class="block truncate font-mono text-[11px]" :title="card.value">{{ card.value }}</span>
                 </span>
                 <span class="shrink-0 text-right">
                   <span class="block text-[10px] text-zaux-dark-grey">{{ card.styles.length ? translate('zx_builder_tokens_type_styles', { count: card.styles.length }) : translate('zx_builder_tokens_type_main') }}</span>
-                  <span v-if="!card.loaded" class="mt-0.5 inline-block rounded-full bg-utility-warning/20 px-1 text-[10px] font-semibold">{{ translate('zx_builder_tokens_font_not_loaded') }}</span>
+                  <span v-if="!card.loaded" class="mt-0.5 inline-block rounded-xxs bg-utility-warning/20 px-1 text-[10px] font-semibold">{{ translate('zx_builder_tokens_font_not_loaded') }}</span>
                 </span>
               </button>
               <BuilderTypeSpecimen :family="card.value" :styles="card.specimen" :fonts="fonts" :sample="translate('zx_builder_fonts_sample')"
@@ -78,7 +78,7 @@
               <span class="block h-[88px] border-b-slim border-zaux-light-grey"><BuilderTokenSample :group="group.id" :value="valueOf(variable)" /></span>
               <span class="flex items-center gap-0.5 px-1 pt-0.5">
                 <span class="min-w-0 flex-1 truncate text-[12px] font-semibold">{{ shortName(group, variable) }}</span>
-                <span v-if="isModified(variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
+                <span v-if="isModified(variable)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-zaux-accent" :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
               </span>
               <span class="block truncate px-1 pb-0.5 font-mono text-[10px] text-zaux-dark-grey" :title="valueOf(variable)">{{ valueOf(variable) }}</span>
             </button>

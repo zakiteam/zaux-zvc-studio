@@ -129,11 +129,11 @@
 			>
 				{{ translate("zx_builder_php_hint") }}
 			</p>
-			<!-- PHP support files are opt-in, as in the PHP package options. -->
+			<!-- ACF bridges are included unless unchecked, the README is opt-in, as in the PHP package options. -->
 			<div v-if="format === 'php' && ['component', 'template'].includes(scope)" class="mb-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[12px]">
 				<label class="flex cursor-pointer items-center gap-1">
-					<input v-model="phpSelection.phpHelpers" type="checkbox" class="!w-auto accent-zaux-accent" />
-					{{ translate("zx_builder_php_include_helpers") }} <code class="text-[10px] text-zaux-dark-grey">zvc-helper.php</code>
+					<input v-model="phpSelection.phpAcf" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_php_include_acf") }} <code class="text-[10px] text-zaux-dark-grey">&lt;Name&gt;.acf.php</code>
 				</label>
 				<label class="flex cursor-pointer items-center gap-1">
 					<input v-model="phpSelection.phpReadme" type="checkbox" class="!w-auto accent-zaux-accent" />
@@ -325,6 +325,10 @@
 					:extraProps="{ actionIcon: false }"
 					:label="translate('zx_builder_copy')"
 					@click="copy"
+				/><BuilderPhpThemeWrite
+					v-if="isPhp"
+					:files="jsFiles"
+					:disabled="saving || starterEmpty"
 				/><BuilderButton
 					v-if="isPackage"
 					size="xs"
@@ -392,6 +396,7 @@ import {
 	definitionWithData,
 } from "../../../domain/export.js";
 import { phpComponentExport, phpProjectExport, phpTemplateExport } from "../../../domain/php/index.js";
+import { phpExportOptions } from "../../services/php-export.js";
 import { createDefinition } from "../../../domain/workspace.js";
 import { componentPackageFiles, projectStarterFiles, projectStarterStyleAvailability } from "../../services/starter-export.js";
 import { starterSelectionParts } from "../../../domain/starter-export.js";
@@ -411,15 +416,15 @@ export default defineComponent({
 		const format = ref(builder.modal.value.format ?? "json");
 		const isPackage = computed(() => ['starter', 'php-starter'].includes(scope.value) || (['component', 'template'].includes(scope.value) && ['js', 'php'].includes(format.value)));
 		const isPhp = computed(() => scope.value === 'php-starter' || (['component', 'template'].includes(scope.value) && format.value === 'php'));
-		// PHP package selection, also holding the opt-in support files used by every PHP export.
-		const phpSelection = ref({ excludedDefinitions: [], excludedTemplates: [], phpHelpers: false, phpReadme: false });
+		// PHP package selection, also holding the opt-in README used by every PHP export.
+		const phpSelection = ref({ excludedDefinitions: [], excludedTemplates: [], phpReadme: false, phpAcf: true });
 		// Starter package contents: everything except the Studio part by default.
 		const starterSelection = ref({ excludedDefinitions: [], excludedTemplates: [], studio: false });
 		const starterAvailability = computed(() => scope.value === 'starter' ? projectStarterStyleAvailability(builder.document.value) : {});
 		const packageResult = computed(() => {
 			// PHP counterpart of the JS export (domain/php), for the component or the template.
 			if (isPhp.value) {
-				const options = { helpers: phpSelection.value.phpHelpers === true, readme: phpSelection.value.phpReadme === true };
+				const options = phpExportOptions({ readme: phpSelection.value.phpReadme === true, acf: phpSelection.value.phpAcf !== false });
 				try {
 					if (scope.value === 'php-starter') {
 						const parts = starterSelectionParts(builder.document.value, phpSelection.value);
@@ -435,7 +440,7 @@ export default defineComponent({
 		});
 		// The README alone is not a useful package.
 		const starterEmpty = computed(() => ['starter', 'php-starter'].includes(scope.value) && !packageResult.value.error
-			&& Object.keys(packageResult.value.files).every(path => ['README.md', 'zvc-helper.php'].includes(path)));
+			&& Object.keys(packageResult.value.files).every(path => path === 'README.md'));
 		const selectedFile = ref("");
 		const localError = ref("");
 		const localErrorDetail = ref("");

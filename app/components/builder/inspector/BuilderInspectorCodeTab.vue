@@ -130,6 +130,7 @@ import { useBuilder } from "../../../composables/useBuilder.js";
 import { parseJson, validateDefinition } from "../../../../domain/validation.js";
 import { sourceCode } from "../../../services/source-zvc.js";
 import { phpComponentExport } from "../../../../domain/php/index.js";
+import { phpExportOptions } from "../../../services/php-export.js";
 import { applyCompactDefinition, compactDefinition } from "../../../../domain/compact-definition.js";
 import { findNode } from "../../../../domain/nodes.js";
 export default defineComponent({
@@ -149,7 +150,7 @@ export default defineComponent({
 		const php = computed(() => {
 			if (codeMode.value !== "php" || !builder.activeDefinition.value) return { source: "", entry: "", error: "" };
 			try {
-				const result = phpComponentExport(builder.activeDefinition.value);
+				const result = phpComponentExport(builder.activeDefinition.value, phpExportOptions({ acf: false }));
 				return { source: result.files[result.main.entry] ?? "", entry: result.main.entry, error: "" };
 			} catch (exception) {
 				return { source: "", entry: "", error: exception.message?.startsWith("zx_") ? exception.message : "zx_builder_php_error" };

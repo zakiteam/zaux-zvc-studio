@@ -13,7 +13,7 @@
   >
     <!-- Masked so the icon follows the text color (theme, hover, active accent). -->
     <span aria-hidden="true" class="block h-[16px] w-[16px]" :style="iconStyle" />
-    <span v-if="set" aria-hidden="true" class="absolute right-[3px] top-[3px] h-[5px] w-[5px] rounded-full bg-zaux-accent" />
+    <span v-if="set" aria-hidden="true" class="absolute right-[3px] top-[3px] h-[5px] w-[5px] rounded-xxs bg-zaux-accent" />
   </button>
 </template>
 <script>

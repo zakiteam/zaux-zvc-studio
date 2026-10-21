@@ -2,7 +2,7 @@
   <div class="flex h-[32px] min-w-0 flex-1 items-center rounded-xxs bg-zaux-light ring-1 ring-inset ring-zaux-light-grey focus-within:ring-zaux-accent"
     :class="{ 'ring-zaux-accent/50': modelValue !== '', 'opacity-50': disabled }">
     <span class="flex w-[32px] shrink-0 items-center justify-center" :title="displayValue || translate('zx_builder_theme_inherited')">
-      <span class="zb-project-swatch relative block h-[16px] w-[16px] overflow-hidden rounded-full border-slim border-zaux-dark-grey/40"
+      <span class="zb-project-swatch relative block h-[16px] w-[16px] overflow-hidden rounded-xxs border-slim border-zaux-dark-grey/40"
         :style="swatchVariables" role="img" :aria-label="translate('zx_builder_theme_color_sample') + ': ' + (displayValue || translate('zx_builder_theme_inherited'))">
         <span class="absolute inset-0" style="background: repeating-conic-gradient(#c4c4c4 0% 25%, #fff 0% 50%) 0 / 6px 6px" />
         <!-- Only one layer is a valid color: RGB channels or a complete CSS color. -->

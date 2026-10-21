@@ -4,7 +4,7 @@
     <div class="flex min-w-0 flex-1 basis-0 items-center max-[1200px]:basis-full">
       <div v-if="mode === 'library'" role="status" :title="translate('zx_builder_library_notice')"
         class="flex min-w-0 items-center gap-1 rounded-xs border-slim border-zaux-light-grey bg-zaux-white py-0.5 pl-1 pr-1 text-[11px] shadow-sm">
-        <span aria-hidden="true" class="h-[8px] w-[8px] shrink-0 rounded-full bg-utility-notice" />
+        <span aria-hidden="true" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-utility-notice" />
         <span class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-zaux-dark-grey">{{ activeDefinition?.kind === 'zvp' ? 'ZVP' : 'ZVC' }}</span>
         <span class="min-w-0 truncate font-semibold">{{ activeDefinition?.name }}</span>
         <BuilderButton v-if="backToTemplate" size="xs" variant="alt1" icon="back" :extraProps="{ actionIcon: false }"

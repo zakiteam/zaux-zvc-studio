@@ -1,9 +1,19 @@
 import { isBinding, spreadKey, withoutSpread } from '../nodes.js';
 
 // JSON -> PHP literal printer. Values stay literal (false, 0, '' and null are
-// preserved); only explicit $bind / $spread markers become helper calls that
-// read `$data`, mirroring `resolveValue` in domain/nodes.js. No input is
-// evaluated: user strings are always emitted as single-quoted PHP strings.
+// preserved); only explicit $bind / $spread markers become reads of `$data`
+// through the expressions of the profile (`$gv('key')` in zaux-wp-core),
+// mirroring `resolveValue` in domain/nodes.js. No input is evaluated: user
+// strings are always emitted as quoted PHP strings.
+
+// Expressions created by the emitter, never by persisted data: a function
+// call (partial ZVP calls, `__()` labels) or a fixed piece of code (`$params`).
+export class PhpCall {
+  constructor(fn, args = []) { this.fn = fn; this.args = args; }
+}
+export class PhpCode {
+  constructor(code) { this.code = code; }
+}
 
 // Strings with control characters use escaped double quotes, so generated
 // sources never contain raw line breaks inside literals (emitters re-indent
@@ -17,20 +27,22 @@ export function phpString(value) {
     .replace(/[\x00-\x1f\x7f]/g, char => ESCAPES[char] ?? '\\x' + char.charCodeAt(0).toString(16).padStart(2, '0')) + '"';
 }
 
-// `context`: { profile, data = '$data', bindings = true }.
+// `context`: { profile, bindings = true }. With bindings false (data files)
+// markers stay literal arrays.
 export function phpValue(value, context, depth = 0) {
   const { profile } = context;
-  const data = context.data ?? '$data';
   const pad = level => profile.indent.repeat(level);
-  if (context.bindings !== false && isBinding(value)) return `${profile.helpers.getValue}(${data}, ${phpString(value.$bind)})`;
+  if (value instanceof PhpCode) return value.code;
+  if (value instanceof PhpCall) return `${value.fn}(${value.args.map(arg => phpValue(arg, context, depth)).join(', ')})`;
+  if (context.bindings !== false && isBinding(value)) return profile.expressions.bind(phpString(value.$bind));
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null';
   if (typeof value === 'string') return phpString(value);
-  const spread = context.bindings !== false ? spreadKey(value) : null;
+  const spread = context.bindings !== false && !Array.isArray(value) ? spreadKey(value) : null;
   if (spread !== null) {
-    const base = phpValue(withoutSpread(value), context, depth);
-    return `${profile.helpers.spread}(${data}, ${phpString(spread)}, ${base})`;
+    const rest = withoutSpread(value);
+    return profile.expressions.spread(phpString(spread), Object.keys(rest).length ? phpValue(rest, context, depth) : null);
   }
   const list = Array.isArray(value);
   const entries = list

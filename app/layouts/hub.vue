@@ -16,6 +16,12 @@
           <Icon iconName="visualization-grid" size="text-icon-xxs" :class="{ 'text-zaux-accent': $route.path === '/components' }" aria-hidden="true" />
           {{ translate('zx_builder_global_designer') }}
         </NuxtLink>
+        <!-- PHP conversion of an uploaded components/virtual folder (ZIP). -->
+        <NuxtLink to="/php-converter" :aria-current="$route.path === '/php-converter' ? 'page' : undefined" class="flex items-center gap-1 rounded-xxs px-1 py-0.75 text-[12px]"
+          :class="$route.path === '/php-converter' ? 'bg-zaux-light font-semibold text-zaux-dark' : 'text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark'">
+          <Icon iconName="document-archive" size="text-icon-xxs" :class="{ 'text-zaux-accent': $route.path === '/php-converter' }" aria-hidden="true" />
+          {{ translate('zx_builder_php_convert') }}
+        </NuxtLink>
         <NuxtLink to="/editor/local" class="flex items-center gap-1 rounded-xxs px-1 py-0.75 text-[12px] text-zaux-dark-grey hover:bg-zaux-light hover:text-zaux-dark">
           <Icon iconName="tech" size="text-icon-xxs" aria-hidden="true" />
           {{ translate('zx_builder_hub_local') }}
@@ -26,7 +32,7 @@
         </button>
       </nav>
       <div class="mt-auto flex items-center gap-1 border-t-slim border-zaux-light-grey p-1">
-        <span aria-hidden="true" class="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-full bg-zaux-accent/15 text-[11px] font-semibold uppercase text-zaux-accent">{{ initial }}</span>
+        <span aria-hidden="true" class="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-xxs bg-zaux-accent/15 text-[11px] font-semibold uppercase text-zaux-accent">{{ initial }}</span>
         <div class="flex-1 min-w-0">
           <p class="truncate text-[11px]" :title="user?.email">{{ user?.email }}</p>
           <p class="text-[10px] text-zaux-dark-grey">{{ translate('zx_builder_hub_zaux_version', { version: zauxProjectVersion }) }}</p>

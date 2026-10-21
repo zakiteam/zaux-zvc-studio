@@ -17,6 +17,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     mediaStorageDir: '',
     mediaPublicBaseUrl: '',
+    // Server only: GitHub token of the PHP conversion repository browsing
+    // (NUXT_REPO_BROWSING_GITHUB_TOKEN, or ZAUX_REPO_BROWSING_GITHUB_TOKEN read by server/utils/github.js).
+    repoBrowsingGithubToken: '',
     public: {
       tailwindAssistance: true,
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,

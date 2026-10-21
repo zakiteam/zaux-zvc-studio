@@ -22,7 +22,7 @@
       <template v-for="row in details.rows" :key="row.name">
         <dt class="opacity-60">{{ row.label }}</dt>
         <dd class="flex min-w-0 items-center gap-0.5 font-mono">
-          <span v-if="row.swatch" class="h-[8px] w-[8px] shrink-0 rounded-full border-slim border-zaux-white/40" :style="{ background: row.swatch }" />
+          <span v-if="row.swatch" class="h-[8px] w-[8px] shrink-0 rounded-xxs border-slim border-zaux-white/40" :style="{ background: row.swatch }" />
           <span class="min-w-0 truncate">{{ row.value }}</span>
         </dd>
       </template>

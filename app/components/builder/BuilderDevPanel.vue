@@ -76,11 +76,11 @@
             :variant="item.id === format ? 'primary' : 'secondary'" :aria-pressed="item.id === format" @click="format = item.id" />
         </div>
         <p class="mb-1 text-[10px] leading-[1.6] text-zaux-dark-grey">{{ formatHint }}</p>
-        <!-- PHP support files are opt-in, as in the export dialog. -->
+        <!-- ACF bridges are included unless unchecked, the README is opt-in, as in the export dialog. -->
         <div v-if="format === 'php' && scope !== 'element'" class="mb-1 flex flex-col gap-0.25 text-[11px]">
           <label class="flex cursor-pointer items-center gap-1">
-            <input v-model="phpOptions.helpers" type="checkbox" class="!w-auto accent-zaux-accent" />
-            {{ translate('zx_builder_php_include_helpers') }} <code class="text-[10px] text-zaux-dark-grey">zvc-helper.php</code>
+            <input v-model="phpOptions.acf" type="checkbox" class="!w-auto accent-zaux-accent" />
+            {{ translate('zx_builder_php_include_acf') }} <code class="text-[10px] text-zaux-dark-grey">&lt;Name&gt;.acf.php</code>
           </label>
           <label class="flex cursor-pointer items-center gap-1">
             <input v-model="phpOptions.readme" type="checkbox" class="!w-auto accent-zaux-accent" />
@@ -94,6 +94,7 @@
           <div class="mt-1 flex flex-wrap items-center justify-end gap-1">
             <span class="mr-auto text-[11px] text-zaux-dark-grey" role="status">{{ copied ? translate('zx_builder_copied') : '' }}</span>
             <BuilderButton size="xs" icon="copy" :extraProps="{ actionIcon: false }" :label="translate('zx_builder_copy')" :disabled="!copyText" @click="copy" />
+            <BuilderPhpThemeWrite v-if="format === 'php' && output.files" :files="output.files" :disabled="busy" />
             <BuilderButton size="xs" variant="primary" icon="download" :extraProps="{ actionIcon: false }"
               :label="translate(output.files ? 'zx_builder_dev_download_zip' : 'zx_builder_dev_download')" :disabled="busy || !copyText" @click="download" />
           </div>
@@ -112,6 +113,7 @@ import { computed, defineComponent, ref, watch } from 'vue';
 import { useBuilder } from '../../composables/useBuilder.js';
 import { definitionWithData, documentEnvelope, nodeBindings, nodeDocument, nodeRuntime, templateRuntime, vueComponent, vueNodeMarkup } from '../../../domain/export.js';
 import { phpComponentExport, phpNodeSnippet, phpTemplateExport } from '../../../domain/php/index.js';
+import { phpExportOptions } from '../../services/php-export.js';
 import { activeDefinitionOnly } from '../../../domain/variants.js';
 import { clone, dataFor, runtimeRoot } from '../../../domain/nodes.js';
 import { componentPackageFiles, projectStarterFiles } from '../../services/starter-export.js';
@@ -164,7 +166,7 @@ export default defineComponent({
     const selectedFile = ref('');
     const copied = ref(false);
     const busy = ref(false);
-    const phpOptions = ref({ helpers: false, readme: false });
+    const phpOptions = ref({ readme: false, acf: true });
 
     // The selected ZVC/ZVP: library definition or template instance, with the data it renders with.
     const component = computed(() => {
@@ -279,7 +281,7 @@ export default defineComponent({
           if (format.value === 'json') return { text: json(documentEnvelope('component', definition)), language: 'json', filename: `${base}.json` };
           if (format.value === 'vue') return { text: vueComponent(definition), language: 'vue', filename: `${base.replace(/^ZV[CP]/, '')}.vue` };
           if (format.value === 'js') return { files: componentPackageFiles(builder.document.value, definition), filename: `${base}.zip` };
-          const php = phpComponentExport(definition, phpOptions.value);
+          const php = phpComponentExport(definition, phpExportOptions(phpOptions.value));
           return { files: php.files, main: php.main?.entry, php, filename: `${base}-php.zip` };
         }
         const template = page.value;
@@ -287,7 +289,7 @@ export default defineComponent({
         if (format.value === 'runtime') return { text: json(templateRuntime(template)), language: 'json', filename: `${base}.runtime.json` };
         if (format.value === 'json') return { text: json(documentEnvelope('template', template)), language: 'json', filename: `${base}.json` };
         if (format.value === 'js') return { files: projectStarterFiles(builder.document.value, template.id), filename: `${base}.zip` };
-        const php = phpTemplateExport(template, phpOptions.value);
+        const php = phpTemplateExport(template, phpExportOptions(phpOptions.value));
         return { files: php.files, main: php.pages[0]?.path, filename: `${base}-php.zip` };
       } catch (error) {
         return { text: '', error: errorKey(error) };
@@ -315,7 +317,8 @@ export default defineComponent({
       if (scope.value !== 'component' || output.value.error || !output.value.files) return '';
       if (format.value === 'php' && output.value.php?.main) {
         const { fn, entry } = output.value.php.main;
-        return `require_once '${entry}';\n\n$node = ${fn}([/* field values */]);\necho json_encode($node);`;
+        // zaux-wp-core autoloads the component: no require.
+        return `// ${entry}\n$components = [\n    ${fn}([ /* field values */ ]),\n];\n\nZauxComponentsHelper::printComponentsList( $components );`;
       }
       if (format.value === 'js') {
         const entry = Object.keys(output.value.files).find(file => !file.includes('/') && /\.zv[cp]\.js$/.test(file));

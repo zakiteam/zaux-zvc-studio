@@ -19,12 +19,12 @@
 				<li
 					v-for="group in groups"
 					:key="group.id"
-					class="rounded-full px-0.75 text-[9px] font-semibold"
+					class="rounded-xxs px-0.75 text-[9px] font-semibold"
 					:class="group.selected ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-light text-zaux-dark-grey'"
 				>{{ translate(group.title) }} {{ group.selected }}/{{ group.total }}</li>
 				<li
 					v-if="variant !== 'php'"
-					class="rounded-full px-0.75 text-[9px] font-semibold"
+					class="rounded-xxs px-0.75 text-[9px] font-semibold"
 					:class="modelValue.studio === true ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-light text-zaux-dark-grey'"
 				>{{ translate("zx_builder_starter_section_studio") }} {{ modelValue.studio === true ? "✓" : "–" }}</li>
 			</ul>
@@ -54,7 +54,7 @@
 					<h3 class="m-0 flex min-w-0 flex-1 items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-zaux-dark-grey">
 						<span class="truncate">{{ translate(group.title) }}</span>
 						<span
-							class="shrink-0 rounded-full px-0.75 text-[9px] normal-case tracking-normal"
+							class="shrink-0 rounded-xxs px-0.75 text-[9px] normal-case tracking-normal"
 							:class="group.selected ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-white text-zaux-dark-grey'"
 						>{{ group.selected }}/{{ group.total }}</span>
 					</h3>
@@ -81,11 +81,11 @@
 									</span>
 									<span
 										v-if="item.imported"
-										class="shrink-0 rounded-full bg-zaux-white px-0.75 text-[9px] text-zaux-dark-grey"
+										class="shrink-0 rounded-xxs bg-zaux-white px-0.75 text-[9px] text-zaux-dark-grey"
 									>{{ translate("zx_builder_starter_badge_imported") }}</span>
 									<span
 										v-if="!item.checked && item.viaTemplate"
-										class="shrink-0 rounded-full bg-zaux-accent/15 px-0.75 text-[9px] text-zaux-accent"
+										class="shrink-0 rounded-xxs bg-zaux-accent/15 px-0.75 text-[9px] text-zaux-accent"
 										:title="translate('zx_builder_starter_template_hint')"
 									>{{ translate("zx_builder_starter_badge_template") }}</span>
 								</label>
@@ -153,9 +153,11 @@
 		{ key: "uiConfig", label: "zx_builder_starter_style_ui_config", path: "style/ui.config.js" },
 		{ key: "fonts", label: "zx_builder_starter_style_fonts", path: "fonts.html, fonts.json" },
 	];
-	// PHP package: support files are opt-in (unchecked unless set to true).
+	// PHP package: ACF bridges are included unless unchecked, the README is
+	// opt-in (unchecked unless set to true). The runtime helpers come from the
+	// zaux-wp-core theme, so there is no helper file.
 	const PHP_OPTIONS = [
-		{ key: "phpHelpers", label: "zx_builder_php_include_helpers", path: "zvc-helper.php", optIn: true },
+		{ key: "phpAcf", label: "zx_builder_php_include_acf", path: "<Name>.acf.php" },
 		{ key: "phpReadme", label: "zx_builder_php_include_readme", path: "README.md", optIn: true },
 	];
 

@@ -22,7 +22,7 @@
 					<svg v-if="modelValue" class="h-[16px] w-[16px]" viewBox="0 0 24 24" fill="currentColor" focusable="false"><use :href="href(modelValue)" /></svg>
 				</span>
 				<span class="min-w-0 flex-1 truncate" :class="{ 'text-zaux-dark-grey': !modelValue }">{{ currentLabel }}</span>
-				<span v-if="modelValue && !known" class="shrink-0 rounded-full bg-utility-warning/20 px-1 text-[9px] font-semibold">{{ translate('zx_builder_icon_not_in_set') }}</span>
+				<span v-if="modelValue && !known" class="shrink-0 rounded-xxs bg-utility-warning/20 px-1 text-[9px] font-semibold">{{ translate('zx_builder_icon_not_in_set') }}</span>
 				<svg class="h-[12px] w-[12px] shrink-0 transition-transform" :class="{ 'rotate-180': open }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><use :href="href('dropdown-bottom')" /></svg>
 			</button>
 		</template>

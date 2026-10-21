@@ -32,9 +32,9 @@
             <span class="block truncate text-[12px]" :class="isActiveComponent(entry.id) ? 'font-semibold text-zaux-accent' : ''">{{ entry.id }}</span>
             <span class="block truncate font-mono text-[10px] text-zaux-dark-grey">{{ entry.componentClass }}</span>
           </span>
-          <span v-if="hasDraft(entry.id)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-utility-warning"
+          <span v-if="hasDraft(entry.id)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-utility-warning"
             :title="translate('zx_builder_theme_unsaved')" :aria-label="translate('zx_builder_theme_unsaved')" />
-          <span v-if="isModified(entry.id)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-full bg-zaux-accent"
+          <span v-if="isModified(entry.id)" role="img" class="h-[8px] w-[8px] shrink-0 rounded-xxs bg-zaux-accent"
             :title="translate('zx_builder_theme_modified')" :aria-label="translate('zx_builder_theme_modified')" />
         </button>
         <p v-if="!filteredCatalog.length" class="p-2 text-[11px] text-zaux-dark-grey">{{ translate('zx_builder_theme_no_results') }}</p>

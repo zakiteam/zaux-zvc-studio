@@ -13,7 +13,7 @@
 					<span class="truncate">{{ title }}</span>
 					<span
 						v-if="count"
-						class="shrink-0 rounded-full px-0.75 text-[9px] font-semibold normal-case tracking-normal"
+						class="shrink-0 rounded-xxs px-0.75 text-[9px] font-semibold normal-case tracking-normal"
 						:class="accent ? 'bg-zaux-accent/15 text-zaux-accent' : 'bg-zaux-light text-zaux-dark-grey'"
 					>{{ count }}</span>
 				</button>

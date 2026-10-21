@@ -40,7 +40,7 @@
 					<div class="min-w-0 flex-1">
 						<p class="flex min-w-0 items-center gap-1 text-[11px] font-medium">
 							<span class="truncate">{{ hookLabel(contentSlot.key) }}</span>
-							<span v-if="contentSlot.items?.length" class="shrink-0 rounded-full bg-zaux-accent/15 px-0.75 text-[9px] font-semibold text-zaux-accent">{{ contentSlot.items.length }}</span>
+							<span v-if="contentSlot.items?.length" class="shrink-0 rounded-xxs bg-zaux-accent/15 px-0.75 text-[9px] font-semibold text-zaux-accent">{{ contentSlot.items.length }}</span>
 						</p>
 						<code class="block truncate font-mono text-[9px] text-zaux-dark-grey">{{ contentSlot.key }}</code>
 					</div>

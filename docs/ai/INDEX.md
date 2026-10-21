@@ -14,7 +14,7 @@ Project session notes belong in `docs/ai/memory/`. Record concrete changes, chec
 
 6. [Property decorators](../property-decorators.md): component/prop registry, dynamic options and Inspector wiring.
 7. [Global components](../global-components.md): Component designer, shared library, version check, linked copies and Soft/Hard reset.
-8. [Dev mode and PHP export](../php-export.md): read-only developer view and the PHP counterpart of the JS export (profile templates).
+8. [Dev mode and PHP export](../php-export.md): read-only developer view, PHP export for zaux-wp-core themes (profile templates) and the hub PHP conversion of uploaded `components/virtual` ZIPs.
 
 ## Repository skills
 
@@ -22,5 +22,6 @@ Create and maintain project skills under `.agents/skills/` (see `AGENTS.md`).
 
 - [Builder work](../../.agents/skills/zaux-builder-work/SKILL.md)
 - [Palette properties](../../.agents/skills/zaux-palette-props/SKILL.md)
+- [PHP export](../../.agents/skills/zaux-php-export/SKILL.md)
 - [Property decorators](../../.agents/skills/zaux-property-decorators/SKILL.md)
 - [Theme preview properties](../../.agents/skills/zaux-theme-preview-props/SKILL.md)

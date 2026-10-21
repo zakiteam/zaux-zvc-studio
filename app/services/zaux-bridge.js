@@ -7,7 +7,7 @@ export function isBridgeSupported() {
   return typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
 }
 
-async function ensureWritePermission(handle) {
+export async function ensureWritePermission(handle) {
   try {
     const options = { mode: 'readwrite' };
     if ((await handle.queryPermission(options)) === 'granted') return true;

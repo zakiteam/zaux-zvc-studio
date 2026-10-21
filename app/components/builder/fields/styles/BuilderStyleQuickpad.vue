@@ -22,7 +22,7 @@
       </div>
       <!-- Caption: the hovered/focused tab, otherwise the open one (as in the Inspector quickpad). -->
       <p class="m-0 mt-1 flex h-[14px] min-w-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wide text-zaux-dark-grey" aria-hidden="true">
-        <span class="h-[5px] w-[5px] shrink-0 rounded-full transition-colors"
+        <span class="h-[5px] w-[5px] shrink-0 rounded-xxs transition-colors"
           :class="captionTab && captionTab.id === active ? 'bg-zaux-accent' : 'bg-zaux-light-grey'" />
         <span class="min-w-0 truncate">{{ captionTab ? tabLabel(captionTab) : translate('zx_builder_quick_style_controls') }}</span>
       </p>

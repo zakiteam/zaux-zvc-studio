@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import { createError, getHeader, setHeader } from 'h3';
+import { createError, getHeader } from 'h3';
 import { useRuntimeConfig } from '#imports';
+import { studioSession } from './session.js';
 import { isAbsolute, join } from 'node:path';
 
 export const mediaColumns = 'id, scope, project_id, owner_id, storage_key, name, bytes, width, height, created_at, archived_at';
@@ -23,21 +23,8 @@ export function mediaRecord(event, asset) {
   const extension = asset.storage_key.split('.').pop();
   return { ...asset, url: baseUrl + '/' + asset.storage_key, thumbnailUrl: baseUrl + '/' + asset.id + '-thumb.' + (extension === 'svg' ? 'png' : extension) };
 }
-export async function mediaSession(event) {
-  setHeader(event, 'Cache-Control', 'no-store');
-  const config = useRuntimeConfig(event);
-  const authorization = getHeader(event, 'authorization');
-  if (!authorization?.startsWith('Bearer ')) throw mediaError(401, 'unauthorized');
-  if (!config.public.supabaseUrl || !config.public.supabasePublishableKey) throw mediaError(503, 'unconfigured');
-  const client = createClient(config.public.supabaseUrl, config.public.supabasePublishableKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-  });
-  const { data, error } = await client.auth.getUser(authorization.slice(7));
-  if (error || !data.user) throw mediaError(401, 'unauthorized');
-  const { data: profile, error: profileError } = await client.from('profiles').select('active').eq('id', data.user.id).single();
-  if (profileError || !profile?.active) throw mediaError(403, 'unauthorized');
-  return { client, user: data.user };
+export function mediaSession(event) {
+  return studioSession(event, mediaError);
 }
 export async function mediaScope(client, scope, projectId, write = false) {
   if (!['project', 'global'].includes(scope)) throw mediaError(400);
