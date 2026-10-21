@@ -279,13 +279,24 @@ export default defineComponent({
       const name = findNode(definition?.tree ?? [], row.nodeId)?.name ?? '';
       return /^ZVP[A-Za-z0-9_]+$/.test(name) ? 'zvp' : /^[A-Z]/.test(name) ? 'vue' : 'node';
     }
+    // Repeater wrappers (slot-renderer) use display: contents and have no box of their own:
+    // measure the union of their rendered entries instead.
+    function boxOf(element) {
+      if (!element.hasAttribute('data-zb-repeater') || getComputedStyle(element).display !== 'contents') return element.getBoundingClientRect();
+      const rects = [...element.children].map(boxOf).filter(rect => rect.width || rect.height);
+      if (!rects.length) return element.getBoundingClientRect();
+      const left = Math.min(...rects.map(rect => rect.left));
+      const top = Math.min(...rects.map(rect => rect.top));
+      return new DOMRect(left, top, Math.max(...rects.map(rect => rect.right)) - left, Math.max(...rects.map(rect => rect.bottom)) - top);
+    }
     // The active row keeps the main box and toolbar; the other selected rows get plain boxes.
     function measureSelectionBoxes() {
       const rows = state.value.editable && bulk.value ? state.value.selectedRows : [];
       selectionBoxes.value = rows
         .filter(row => row.instanceId !== state.value.selectedInstanceId || (row.nodeId ?? null) !== (state.value.selectedNodeId ?? null))
         .map(row => {
-          const rect = selectedElement(row)?.getBoundingClientRect();
+          const element = selectedElement(row);
+          const rect = element ? boxOf(element) : null;
           return rect ? { key: JSON.stringify([row.instanceId, row.nodeId ?? null]), kind: selectionKind(row), style: { top: `${rect.top + window.scrollY}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` } } : null;
         })
         .filter(Boolean);
@@ -297,7 +308,7 @@ export default defineComponent({
       const element = document.querySelector(selector);
       if (!element || !state.value.editable) { selection.value = null; return; }
       bindHover(element);
-      const rect = element.getBoundingClientRect();
+      const rect = boxOf(element);
       const instance = state.value.instances.find(item => item.id === state.value.selectedInstanceId);
       const name = id && instance ? findNode(instance.definition.tree, id)?.name : instance?.name;
       const kind = selectionKind({ instanceId: state.value.selectedInstanceId, nodeId: id });
@@ -324,9 +335,11 @@ export default defineComponent({
     }
     function dropTarget(point) {
       const target = context(point.element);
-      const rect = (target.element ?? target.section ?? point.stage).getBoundingClientRect();
+      const rect = boxOf(target.element ?? target.section ?? point.stage);
       const fraction = rect.height ? (point.y - rect.top) / rect.height : 1;
-      const position = target.node && containers.includes(target.node.name) && fraction > .25 && fraction < .75 ? 'inside' : fraction < .5 ? 'before' : 'after';
+      // A Repeater (ComponentsRenderer) takes dropped components as entries.
+      const inside = target.node && (containers.includes(target.node.name) || target.node.name === 'ComponentsRenderer');
+      const position = inside && fraction > .25 && fraction < .75 ? 'inside' : fraction < .5 ? 'before' : 'after';
       return { instanceId: target.instanceId, nodeId: target.node?.id ?? null, position, style: { top: `${window.scrollY + rect.top + (position === 'after' ? rect.height : 0)}px`, left: `${window.scrollX + rect.left}px`, width: `${rect.width}px`, height: position === 'inside' ? `${rect.height}px` : '3px' } };
     }
     function scheduleDropMarker() {

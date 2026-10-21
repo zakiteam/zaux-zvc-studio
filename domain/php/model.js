@@ -37,7 +37,9 @@ export function phpModel(definition) {
       label: field.label ?? field.key,
       type: field.type,
       ...(Object.hasOwn(field, 'default') ? { default: field.default } : {}),
-      ...(field.options ? { options: field.options } : {})
+      ...(field.options ? { options: field.options } : {}),
+      // Component fields: list mode and repeater whitelist (params.mode / params.allowed).
+      ...(field.params ? { params: field.params } : {})
     })),
     defaults: dataFor(active),
     nodes: bound ?? (snapshot ? runtimeNodes(active) : compactNodes(active.tree ?? [])),

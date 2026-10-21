@@ -18,98 +18,54 @@
 		</div>
 
 		<template v-if="mode === 'form'">
-			<div
-				v-for="(cta, index) in ctas"
-				:key="index"
-				class="flex flex-col gap-1 rounded-xxs border-slim border-zaux-light p-2"
+			<BuilderSortableList
+				:items="ctas"
+				:label="label || translate('zx_builder_buttongroup')"
+				collapsible
+				card
+				removeLabel="zx_builder_cta_remove"
+				:itemLabel="(item, index) => item.label || String(index + 1)"
+				@change="setCTAs"
 			>
-				<div class="flex items-center gap-0.5">
-					<button
-						type="button"
-						class="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-xxs text-[10px] text-zaux-dark-grey hover:bg-zaux-light focus-visible:outline focus-visible:outline-1 focus-visible:outline-zaux-accent"
-						:aria-expanded="!collapsed.has(index)"
-						:aria-label="translate(collapsed.has(index) ? 'zx_builder_expand' : 'zx_builder_collapse')"
-						@click="toggleCollapse(index)"
-					>
-						<span aria-hidden="true">{{ collapsed.has(index) ? "▸" : "▾" }}</span>
-					</button>
-					<span class="min-w-0 flex-1 truncate text-[11px] font-medium">{{ cta.label || (index + 1) }}</span>
-					<div class="flex shrink-0 gap-0.5">
-						<BuilderButton
-							size="xs"
-							variant="secondary"
-							icon="chevron-up"
-							iconOnly
-							:label="translate('zx_builder_move_up')"
-							:disabled="index === 0"
-							@click="moveCTA(index, -1)"
-						/>
-						<BuilderButton
-							size="xs"
-							variant="secondary"
-							icon="chevron-down"
-							iconOnly
-							:label="translate('zx_builder_move_down')"
-							:disabled="index === ctas.length - 1"
-							@click="moveCTA(index, 1)"
-						/>
-						<BuilderButton
-							size="xs"
-							variant="secondary"
-							icon="duplicate"
-							iconOnly
-							:label="translate('zx_builder_duplicate')"
-							@click="duplicateCTA(index)"
-						/>
-						<BuilderButton
-							size="xs"
-							variant="secondary"
-							icon="delete"
-							iconOnly
-							:label="translate('zx_builder_cta_remove')"
-							@click="removeCTA(index)"
-						/>
-					</div>
-				</div>
-				<template v-if="!collapsed.has(index)">
+				<template #body="{ item }">
 					<BuilderInput
 						type="text"
 						:label="translate('zx_builder_cta_label')"
-						v-model="cta.label"
+						v-model="item.label"
 					/>
 					<BuilderInput
 						type="text"
 						:label="translate('zx_builder_cta_href')"
-						v-model="cta.href"
+						v-model="item.href"
 					/>
 					<div class="grid grid-cols-2 gap-1">
 						<BuilderInput
 							type="select"
 							:label="translate('zx_builder_cta_theme')"
 							:options="themeOptions"
-							v-model="cta.theme"
+							v-model="item.theme"
 						/>
 						<BuilderInput
 							type="select"
 							:label="translate('zx_builder_cta_size')"
 							:options="sizeOptions"
-							v-model="cta.size"
+							v-model="item.size"
 						/>
 					</div>
 					<div class="grid grid-cols-2 gap-1">
 						<BuilderIconPicker
 							allowEmpty
 							:label="translate('zx_builder_cta_icon')"
-							v-model="cta.iconName"
+							v-model="item.iconName"
 						/>
 						<BuilderIconPicker
 							allowEmpty
 							:label="translate('zx_builder_cta_action_icon')"
-							v-model="cta.actionIconName"
+							v-model="item.actionIconName"
 						/>
 					</div>
 				</template>
-			</div>
+			</BuilderSortableList>
 			<div class="flex flex-wrap justify-end gap-0.5">
 				<BuilderButton
 					size="xs"
@@ -186,7 +142,6 @@
 			const ctas = ref([]);
 			const jsonDraft = ref("");
 			const invalid = ref(false);
-			const collapsed = ref(new Set());
 
 			function stringifyCtas(value) {
 				return JSON.stringify(Array.isArray(value) ? value : [], null, 2);
@@ -245,32 +200,12 @@
 				ctas.value.push(makeCta());
 			}
 
+			function setCTAs(list) {
+				ctas.value = list;
+			}
+
 			function clearCTAs() {
 				ctas.value = [];
-			}
-
-			function removeCTA(index) {
-				ctas.value.splice(index, 1);
-			}
-
-			function duplicateCTA(index) {
-				const source = ctas.value[index];
-				if (!source) return;
-				ctas.value.splice(index + 1, 0, { ...source });
-			}
-
-			function moveCTA(index, direction) {
-				const target = index + direction;
-				if (target < 0 || target >= ctas.value.length) return;
-				const copy = [...ctas.value];
-				const [item] = copy.splice(index, 1);
-				copy.splice(target, 0, item);
-				ctas.value = copy;
-			}
-
-			function toggleCollapse(index) {
-				if (collapsed.value.has(index)) collapsed.value.delete(index);
-				else collapsed.value.add(index);
 			}
 
 			return {
@@ -285,11 +220,7 @@
 				applyJson,
 				addCTA,
 				clearCTAs,
-				removeCTA,
-				duplicateCTA,
-				moveCTA,
-				toggleCollapse,
-				collapsed,
+				setCTAs,
 			};
 		},
 	});

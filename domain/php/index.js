@@ -1,6 +1,6 @@
 import { phpModel, phpPageModel } from './model.js';
 import { phpProfile } from './profile.js';
-import { emitComponent, emitPage, emitReadme } from './emit.js';
+import { emitComponent, emitPage, emitReadme, repeaterKeys } from './emit.js';
 import { phpValue } from './printer.js';
 import { validateWorkspace } from '../validation.js';
 
@@ -54,7 +54,7 @@ function createAssembler(options = {}) {
     placed.set(signature, unit);
     try {
       const partials = model.partials.map(partial => ({ exportName: partial.exportName, fn: place(partial).fn }));
-      if (main || model.kind !== 'zvp' || withPartials) Object.assign(files, emitComponent({ model, name, fn: unit.fn, dir, partials }, profile, { acf }).files);
+      if (main || model.kind !== 'zvp' || withPartials) Object.assign(files, emitComponent({ model, name, fn: unit.fn, dir, partials }, profile, { acf, unitOf: place }).files);
     } catch (error) {
       // Partials already written stay valid for the other components.
       placed.delete(signature);
@@ -70,7 +70,7 @@ function createAssembler(options = {}) {
       if (instance.free) return instance.nodes.map(node => ({ label: instance.name, node }));
       const unit = place(instance.model);
       const partials = instance.model.partials.map(partial => ({ exportName: partial.exportName, fn: place(partial).fn }));
-      return [{ label: instance.name, fn: unit.fn, data: instance.data, partials }];
+      return [{ label: instance.name, fn: unit.fn, data: instance.data, partials, repeaters: repeaterKeys(instance.model) }];
     });
     const name = uniqueName(profile.naming.page(model), pageNames);
     const result = { name, path: profile.paths.page(name) };

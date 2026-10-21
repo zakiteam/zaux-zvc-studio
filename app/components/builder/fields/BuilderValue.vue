@@ -1,7 +1,7 @@
 <template>
 	<div class="zb-value">
 		<BuilderMediaInput v-if="type === 'media'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
-		<BuilderComponentInput v-else-if="type === 'component'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
+		<BuilderComponentInput v-else-if="type === 'component'" :modelValue="modelValue" :label="label" :disabled="disabled" :allowed="params?.allowed ?? null" @update:modelValue="$emit('update:modelValue', $event)" />
 		<BuilderImageInput v-else-if="image || type === 'image'" :modelValue="modelValue" :label="label" :disabled="disabled" @update:modelValue="$emit('update:modelValue', $event)" />
 		<BuilderButtonInput
 			v-else-if="type === 'button'"
@@ -154,6 +154,8 @@ export default defineComponent({
 		type: { default: "text" },
 		label: String,
 		options: { default: () => [] },
+		// Field params (component fields: repeater `allowed` names).
+		params: { type: Object, default: null },
 	},
 	emits: ["update:modelValue"],
 	setup(props, { emit }) {

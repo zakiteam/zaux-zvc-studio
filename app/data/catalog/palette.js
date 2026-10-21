@@ -35,6 +35,11 @@ export default [
       contentSlots: { content: { type: 'component', name: 'Paragraph', props: { contentHTML: '<p>' + t('zx_builder_scroll_sentinel_sample') + '</p>', size: 'm' } } }
     })
   },
+  {
+    // Repeater: entries ({ name, props, children }) filled from the Inspector or by dropping
+    // components on it in the canvas; bind `components` to a list component field (domain/repeater.js).
+    name: 'ComponentsRenderer', label: 'Repeater', props: { components: [] }
+  },
   ...contentComponents,
   ...formComponents,
   ...Object.entries(sliderControls).map(([name, config]) => ({ name, props: config.props })),

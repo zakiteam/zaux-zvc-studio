@@ -63,7 +63,8 @@ Generated for ZVCs only (ZVPs never become layouts), in the format of `zaux-wp-p
 | `media` | `image` (url) | url → `{ type: img, props: { src } }` over the default media |
 | `button` | `group`: `link`, `theme` (select of ZButton themes), `iconName` (select of `ZauxUIHelper::getIconSetAsList()`) | → ZButton props over the default CTA; no link → default |
 | `buttongroup` | `repeater` of the same sub fields | → list of ZButton props, rows without link skipped |
-| `json`, `component`, `css-editor`, others | none (listed in the file header) | keep the defaults |
+| `component` in list mode (repeater) | accepted ZVPs (`params.allowed`, else the ZVPs of the default entries; Vue/HTML entries excluded): one → `repeater` with the ZVP sub fields, several → `flexible_content` with one layout per ZVP (name = ZVP name lowercase) | rows → `{ type, name, props }` entries through one `$entry<Name>` closure per ZVP (its field maps over its defaults, recursive); no accepted ZVP → none |
+| `json`, single `component`, `css-editor`, others | none (listed in the file header) | keep the defaults |
 
 Field conditions (`showIf`) are not converted: ACF conditional logic needs the generated field keys, which depend on the flexible content field name.
 
@@ -113,3 +114,9 @@ Every PHP export can also be written straight into a folder of a zaux-wp-project
 Semantics mirror the JS runtime: `array_merge(defaults, $data)`, exact key then dot path (`getValue`), `$spread` merges an array field over the fallback props (`array_replace`), empty JSON objects as `(object) []` so `wp_json_encode` keeps `{}`. Equal copies share one component; different copies with the same export name get a numeric suffix (instances are independent copies). Native (JavaScript) ZVC/ZVPs have no markers because their tree comes from `buildNode(data)`: `bindings.js` renders the module with sentinel field values, turns intact sentinels into `$bind` and spread object fields into `$spread`, and keeps the result only if, resolved with the real data, it equals the real render exactly. Fields used in conditions, concatenations or transformations stay literal; the JS logic itself is not translated (noted in the file header). Without the module the stored projection (ZVC) or a runtime snapshot (ZVP) is used.
 
 Not generated: flexible content declarations (`zaux_acf_flexible_fields`), ACF conditional logic, overrides, server-side HTML rendering. Integer-like keys become PHP integer keys.
+
+### Repeater fields
+
+A `component` field in list mode with a plain key (`repeaterKeys` in `emit.js`) keeps JSON entries `{ type, name, props }` in the defaults file, the page data and the ACF rows, so the files show which components the field expects (meta fields also carry `params.allowed`). When the component has ZVP dependencies, its function resolves the entries after the defaults merge (`profile.templates.entries`): a `$resolve` closure turns each ZVP entry into the `ZVP<Name>($props, $params)` call wrapped like `shape.partial`, as `resolvePartials` does in JavaScript; other entries stay as they are. Other references keep becoming calls (`withPartialCalls`). The ACF mapping is `acf.fields.component` plus `acf.entry` (closure template); nested repeaters of a ZVP are handled recursively (depth 4, no cycles).
+
+Theme contract: `ZauxACFHelper::prepareFields` of zaux-wp-core adds stable keys to `sub_fields` recursively and, since the 2026-10-21 fix (zaux-wp-core CHANGELOG, Unreleased), to the `layouts` of a nested `flexible_content` (`{field key}_{layout}`, then `{layout key}_{sub_field}`). Older theme copies need that fix for flexible content repeaters.

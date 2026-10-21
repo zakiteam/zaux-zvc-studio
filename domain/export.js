@@ -1,4 +1,4 @@
-import { clone, createNode, isBinding, runtimeNodes, spreadKey, uid, withoutSpread } from './nodes.js';
+import { clone, createNode, dataFor, isBinding, runtimeNodes, spreadKey, uid, withoutSpread } from './nodes.js';
 import { sourceTree } from './source-zvc.js';
 import { validateDefinition, validateWorkspace, parseJson } from './validation.js';
 import { createDefinition } from './workspace.js';
@@ -108,7 +108,48 @@ export function parseDocument(text) {
 // JSON values become JS literals; only explicit $bind markers become gv calls
 // and a $spread marker spreads its field last, so the field value wins.
 // No input code is evaluated, and user-provided strings remain quoted strings.
+// A ZVP reference turned into a direct call of the imported partial: in the node
+// tree the call is the node itself; inside props (slides, content slots...) it is
+// wrapped in ComponentsRenderer, as resolvePartials does, so renderers that pass
+// only name/props to <component> keep the whole tree.
+class PartialCall {
+  constructor(id, props, wrap) { this.id = id; this.props = props; this.wrap = wrap; }
+}
+function withPartialCalls(value, calls, inTree = false) {
+  if (Array.isArray(value)) return value.map(item => withPartialCalls(item, calls, inTree));
+  if (!value || typeof value !== 'object' || isBinding(value)) return value;
+  const partial = typeof value.name === 'string' && value.props && typeof value.props === 'object' && !Array.isArray(value.props) ? calls.get(value.name) : null;
+  if (partial) return new PartialCall(partial.id, withPartialCalls(value.props, calls), !inTree);
+  if (inTree) {
+    const node = { name: value.name, props: withPartialCalls(value.props, calls) };
+    if (value.children) node.children = withPartialCalls(value.children, calls, true);
+    return node;
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, withPartialCalls(item, calls)]));
+}
+// Export names of the partials a definition uses (tree and data).
+function usedPartials(definition, calls) {
+  const used = new Set();
+  function visit(value) {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (!value || typeof value !== 'object') return;
+    if (typeof value.name === 'string' && calls.has(value.name) && value.props && typeof value.props === 'object') used.add(value.name);
+    Object.values(value).forEach(visit);
+  }
+  visit(definition.tree);
+  visit(dataFor(definition));
+  // Repeater whitelists: entries may arrive with the data even when the defaults have none.
+  for (const field of definition.fields) {
+    for (const name of field.params?.allowed ?? []) if (calls.has(name)) used.add(name);
+  }
+  return used;
+}
+
 function jsValue(value, depth = 0) {
+  if (value instanceof PartialCall) {
+    const call = `${value.id}.buildNode(${jsValue(value.props, depth)}, params)`;
+    return value.wrap ? `{ type: "component", name: "ComponentsRenderer", props: { components: [${call}] } }` : call;
+  }
   if (isBinding(value)) return `gv(${JSON.stringify(value.$bind)})`;
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   const spread = spreadKey(value);
@@ -122,15 +163,36 @@ function jsValue(value, depth = 0) {
 function exportTree(tree) {
   return tree.map(node => ({ name: node.name, props: node.props, ...(node.children.length ? { children: exportTree(node.children) } : {}) }));
 }
-export function componentFiles(definition) {
+// options.calls: Map of partial export name -> { id, path }: the ZVPs are imported
+// from `path` and called directly (`ZVPName.buildNode(props, params)`) where the
+// tree references them. Component fields can hold ZVP entries as JSON data
+// (repeaters): a small resolver turns them into nodes after the defaults merge.
+// Without calls, references stay { name, props } nodes (resolved by the caller).
+export function componentFiles(definition, { calls = null } = {}) {
   validateDefinition(definition);
   const name = definition.exportName.replace(/^ZV[CP]/, '');
   const defaults = Object.fromEntries(definition.fields.map(field => [field.key, field.default ?? null]));
   const partial = definition.kind === 'zvp';
   const meta = { builder: true, label: definition.name, [partial ? 'ZVPName' : 'ZVCName']: definition.exportName, meta: { version: 1 }, fields: definition.fields };
-  const tree = exportTree(definition.tree);
+  const used = calls ? usedPartials(definition, calls) : new Set();
+  const direct = new Map([...(calls ?? [])].filter(([key]) => used.has(key)));
+  const tree = withPartialCalls(exportTree(definition.tree), direct, true);
   const root = partial && tree.length === 1 ? tree[0] : { name: 'ComponentsRenderer', props: { components: tree } };
-  const source = `import ZVCHelper from "@zx_core/common/helpers/zvc.helper";\nimport meta from "./${name}.meta.js";\nimport defaults from "./data/${name}.defaults.js";\n\nexport default {\n  ...meta,\n  buildNode(data = {}, params = {}) {\n    data = { ...defaults, ...data };\n    const gv = (path) => ZVCHelper.getValue(data, path);\n    const nodeObject = {\n${partial ? '' : '      meta: { ZVCName: meta.ZVCName },\n'}      node: ${jsValue(root, 3)}\n    };\n    return ZVCHelper.renderNode(nodeObject, data, params${partial ? '' : ', meta'});\n  }\n};\n`;
+  const imports = [...direct.values()].map(item => `import ${item.id} from ${JSON.stringify(item.path)};`);
+  const entryKeys = direct.size ? definition.fields.filter(field => field.type === 'component').map(field => field.key) : [];
+  const resolver = entryKeys.length ? `
+// ZVP entries of component fields ({ name, props } data, e.g. repeaters) => ZVP nodes
+const partials = { ${[...direct].map(([key, item]) => `${JSON.stringify(key)}: ${item.id}`).join(', ')} };
+function resolveEntries(value, params) {
+  if (Array.isArray(value)) return value.map((item) => resolveEntries(item, params));
+  if (!value || typeof value !== "object") return value;
+  const partial = typeof value.name === "string" && value.props && typeof value.props === "object" ? partials[value.name] : null;
+  if (partial) return { type: "component", name: "ComponentsRenderer", props: { components: [partial.buildNode(resolveEntries(value.props, params), params)] } };
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resolveEntries(item, params)]));
+}
+` : '';
+  const resolveData = entryKeys.length ? `    for (const key of ${JSON.stringify(entryKeys)}) data[key] = resolveEntries(data[key], params);\n` : '';
+  const source = `import ZVCHelper from "@zx_core/common/helpers/zvc.helper";\nimport meta from "./${name}.meta.js";\nimport defaults from "./data/${name}.defaults.js";\n${imports.length ? `\n//Partials\n${imports.join('\n')}\n` : ''}${resolver}\nexport default {\n  ...meta,\n  buildNode(data = {}, params = {}) {\n    data = { ...defaults, ...data };\n${resolveData}    const gv = (path) => ZVCHelper.getValue(data, path);\n    const nodeObject = {\n${partial ? '' : '      meta: { ZVCName: meta.ZVCName },\n'}      node: ${jsValue(root, 3)}\n    };\n    return ZVCHelper.renderNode(nodeObject, data, params${partial ? '' : ', meta'});\n  }\n};\n`;
   const files = {
     [`${name}.${partial ? 'zvp' : 'zvc'}.js`]: source,
     [`${name}.meta.js`]: `export default ${JSON.stringify(meta, null, 2)};\n`,

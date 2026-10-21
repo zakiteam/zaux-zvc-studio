@@ -66,6 +66,11 @@ export function validateDefinition(definition, depth = 0) {
     requireValue(!field.key.split('.').some(key => ['__proto__', 'prototype', 'constructor'].includes(key)));
     requireValue(FIELD_TYPES.includes(field.type) && typeof field.label === 'string');
     if (field.type === 'select') requireValue(Array.isArray(field.options));
+    // Repeater (component list) whitelist: component names only.
+    if (field.params?.allowed !== undefined) {
+      requireValue(Array.isArray(field.params.allowed) && field.params.allowed.length <= 200
+        && field.params.allowed.every(name => typeof name === 'string' && name.length <= 200));
+    }
     keys.add(field.key);
   }
   const ids = new Set();

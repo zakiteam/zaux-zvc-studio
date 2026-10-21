@@ -157,8 +157,52 @@ if ( $data[${x.k}] === null ) {
         uses: ['cta'],
         map: `//Repeater rows => ZButton props. Rows without a link are skipped, an empty repeater means no CTAs
 $data[${x.k}] = array_values( array_filter( array_map( $cta, is_array( $data[${x.k}] ?? null ) ? $data[${x.k}] : [] ) ) );`
-      })
+      }),
+      // Repeater (component field in list mode): only ZVP entries have ACF fields (Vue/HTML
+      // entries keep the defaults). x.entries(field) lists the accepted ZVPs, each with its
+      // entry closure (acf.entry) and sub fields: one ZVP => repeater, several => flexible content.
+      // Rows become { type, name, props } entries, resolved by the component function.
+      component: (field, x) => {
+        if (field.params?.mode !== 'array') return null;
+        const entries = x.entries(field);
+        if (!entries.length) return null;
+        const rows = `is_array( $data[${x.k}] ?? null ) ? $data[${x.k}] : []`;
+        if (entries.length === 1) {
+          const [entry] = entries;
+          return {
+            field: { type: 'repeater', layout: 'block', button_label: x.t('Add item'), sub_fields: entry.subFields },
+            uses: [entry.closure],
+            map: `//Repeater rows => ${entry.exportName} entries, an empty repeater means no entries
+$data[${x.k}] = array_values( array_map( ${entry.closure}, ${rows} ) );`
+          };
+        }
+        const closures = entries.map(entry => entry.closure).join(', ');
+        return {
+          field: {
+            type: 'flexible_content', button_label: x.t('Add item'),
+            layouts: entries.map(entry => ({ name: entry.layout, label: entry.label, display: 'block', sub_fields: entry.subFields }))
+          },
+          uses: entries.map(entry => entry.closure),
+          map: `//Flexible content rows => entries of the layout component (unknown layouts are skipped), an empty field means no entries
+$data[${x.k}] = array_values( array_filter( array_map( function( $row ) use ( ${closures} ){
+    $entries = [ ${entries.map(entry => `"${entry.layout}" => ${entry.closure}`).join(', ')} ];
+    $layout = $row["acf_fc_layout"] ?? "";
+    unset( $row["acf_fc_layout"] );
+    return isset( $entries[ $layout ] ) ? $entries[ $layout ]( $row ) : null;
+}, ${rows} ) ) );`
+        };
+      }
     },
+    // Entry closure of a ZVP accepted by a repeater field: one ACF row (its own sub fields)
+    // => { type, name, props } entry, with the maps of the ZVP fields over its defaults.
+    entry: e => `//${e.exportName} rows => entries over the ${e.exportName} defaults
+${e.closure} = function( $data )${e.use.length ? ` use ( ${e.use.join(', ')} )` : ''}{
+
+    $defaults = ZauxComponentsHelper::getDefaults(${e.name});
+${e.maps.length ? '\n' + e.indent(e.maps.join('\n\n'), 1) + '\n' : ''}
+    return [ "type" => "component", "name" => ${e.entryName}, "props" => $data ];
+
+};`,
     // Sub fields of one CTA (button and buttongroup fields).
     ctaFields: x => [
       { name: 'link', label: x.t('Link'), type: 'link', return_format: 'array' },
@@ -229,7 +273,7 @@ ${p.comment([
     function ${p.fn}($data = [], $params = []){
 
 ${p.kind === 'zvc' ? `        $meta = ZauxComponentsHelper::getMeta(${p.string(p.name)});\n` : ''}        $data = array_merge(ZauxComponentsHelper::getDefaults(${p.string(p.name)}), $data);
-        $gv = function ($path) use ($data) {
+${p.entries ? '\n' + p.indent(p.entries, 2) + '\n\n' : ''}        $gv = function ($path) use ($data) {
             return ZauxComponentsHelper::getValue($data, $path);
         };
 
@@ -244,6 +288,26 @@ ${p.kind === 'zvc' ? `            "meta" => [
 
     };
 `,
+
+    // Repeater values are JSON entries ({ type, name, props }) in the defaults, the page data
+    // and the ACF rows: ZVP entries become calls of their function, wrapped like shape.partial,
+    // as resolvePartials does in JavaScript. Other entries (Vue/HTML) stay as they are.
+    entries: p => `//Repeater entries (${p.keys.join(', ')}): ZVP entries => ZVP calls
+$calls = ${p.data(p.calls, 0)};
+$resolve = function( $value ) use ( &$resolve, $calls, $params ){
+    if ( ! is_array( $value ) ) {
+        return $value;
+    }
+    if ( is_string( $value["name"] ?? null ) && isset( $calls[ $value["name"] ] ) && is_array( $value["props"] ?? null ) ) {
+        return [ "type" => "component", "name" => "ComponentsRenderer", "props" => [ "components" => [ call_user_func( $calls[ $value["name"] ], $resolve( $value["props"] ), $params ) ] ] ];
+    }
+    return array_map( $resolve, $value );
+};
+foreach ( ${p.data(p.keys, 0)} as $key ) {
+    if ( isset( $data[ $key ] ) ) {
+        $data[ $key ] = $resolve( $data[ $key ] );
+    }
+}`,
 
     // Metadata and defaults files: plain `return` of a PHP array.
     meta: p => `<?php

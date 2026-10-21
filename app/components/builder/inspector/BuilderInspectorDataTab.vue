@@ -37,6 +37,7 @@
           			:image="isImageField(field.key, fieldValue(field))"
 					:type="fieldInputType(field)"
 					:options="field.options"
+					:params="field.params"
 					:modelValue="fieldValue(field)"
 					@update:modelValue="setFieldValue(field, $event)"
 				/><button

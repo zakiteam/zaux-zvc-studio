@@ -97,9 +97,75 @@ export default {
 `;
   return files;
 }
-function ownFilesForDefinition(definition) {
+// IDs, labels and provenance do not make two partial copies different.
+function partialSignature(definition) {
+  const tree = nodes => nodes.map(node => ({ name: node.name, props: node.props, children: tree(node.children ?? []) }));
+  return JSON.stringify({
+    exportName: definition.exportName, sourceKey: definition.sourceKey, fields: definition.fields, defaults: definition.defaults, css: definition.css,
+    tree: definition.sourceKey ? undefined : tree(definition.tree ?? []),
+    partials: (definition.partials ?? []).map(partial => partialSignature(activeDefinitionOnly(partial)))
+  });
+}
+// Import path between two package folders ("name/", "_partials/name/"), without ".js".
+function relativeImport(from, to) {
+  const a = from.split('/').filter(Boolean);
+  const b = to.split('/').filter(Boolean);
+  let common = 0;
+  while (common < a.length && common < b.length - 1 && a[common] === b[common]) common++;
+  return '../'.repeat(a.length - common) + b.slice(common).join('/').replace(/\.js$/, '');
+}
+
+// JavaScript package of one ZVC/ZVP in the Zaux layout: `<name>/` for the component and
+// `_partials/<name>/` for every ZVP it uses, nested ones included (flattened, equal copies
+// shared, names unique). Visual components import their partials and call them directly
+// (componentFiles `calls`); native sources keep their own files (filesForDefinition).
+// options.partials false skips the _partials/ files (imports stay, the destination project
+// must provide them); options.styles false skips the style/ CSS files.
+export function componentPackage(definition, { partials = true, styles = true } = {}) {
+  const files = {};
+  const names = new Set();
+  const placed = new Map();
+  function uniqueName(raw) {
+    const base = raw.replace(/[^A-Za-z0-9_]/g, '') || 'Component';
+    let name = base;
+    for (let suffix = 2; names.has(name.toLowerCase()); suffix++) name = base + suffix;
+    names.add(name.toLowerCase());
+    return name;
+  }
+  // isPartial: a dependency (skipped without options.partials); a selected ZVP is the main unit.
+  function place(source, isPartial) {
+    const active = activeDefinitionOnly(source);
+    const signature = isPartial ? partialSignature(active) : null;
+    if (signature && placed.has(signature)) return placed.get(signature);
+    const name = uniqueName(active.exportName.replace(/^ZV[CP]/, ''));
+    const prefix = active.kind === 'zvp' ? 'ZVP' : 'ZVC';
+    const folder = (active.kind === 'zvp' ? '_partials/' : '') + name.toLowerCase() + '/';
+    const entry = active.sourceKey ? active.sourceKey.split('/').at(-1) : `${name}.${active.kind === 'zvp' ? 'zvp' : 'zvc'}.js`;
+    const unit = { id: prefix + name, folder, entry };
+    if (signature) placed.set(signature, unit);
+    let own;
+    if (active.sourceKey) own = filesForDefinition(active);
+    else {
+      const calls = new Map((active.partials ?? []).map(partial => {
+        const child = place(partial, true);
+        return [partial.exportName, { id: child.id, path: relativeImport(folder, child.folder + child.entry) }];
+      }));
+      own = ownFilesForDefinition({ ...active, exportName: unit.id }, { calls });
+    }
+    if (isPartial && !partials) return unit;
+    for (const [path, content] of Object.entries(own)) {
+      if (!styles && path.startsWith('style/')) continue;
+      files[folder + path] = content;
+    }
+    return unit;
+  }
+  const main = place(definition, false);
+  // The selected component first (export preview), then its partials.
+  return Object.fromEntries(Object.entries(files).sort(([a], [b]) => Number(b.startsWith(main.folder)) - Number(a.startsWith(main.folder))));
+}
+function ownFilesForDefinition(definition, options = {}) {
   if (!definition.sourceKey) {
-    const files = componentFiles(definition);
+    const files = componentFiles(definition, options);
     function needsSlots(nodes) {
       return nodes.some(node => ['OffCanvasTrigger', 'ZModalTrigger', 'Accordion', 'OffCanvas', 'ZModal'].includes(node.name) || needsSlots(node.children));
     }

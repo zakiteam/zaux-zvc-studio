@@ -26,7 +26,7 @@
         <option v-for="binding in bindings" :key="binding.key" :value="binding.key">{{ binding.label }}</option>
       </select>
       <p v-if="isBinding(getValue(values, field.key))" class="text-[11px]">{{ getValue(values, field.key).$bind }}</p>
-      <BuilderValue v-else :disabled="!canEdit" :label="field.label" :type="fieldInputType(field)" :options="optionsFor(field)"
+      <BuilderValue v-else :disabled="!canEdit" :label="field.label" :type="fieldInputType(field)" :options="optionsFor(field)" :params="field.params"
         :image="isImageField(field.key, getValue(values, field.key))" :modelValue="getValue(values, field.key)"
         @update:modelValue="$emit('change', { ...modelValue, [field.key]: $event })" />
     </div>

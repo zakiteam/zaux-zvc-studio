@@ -21,7 +21,9 @@ import { zauxProjectVersion } from '../../integrations/zaux/version.js';
 import { ancestorIds, clone, uid, createNode, dataFor, findNode, locateNode, copyNode, insertNode, moveNode, wrapNode as wrapTreeNode } from '../../domain/nodes.js';
 import { validateWorkspace, validateDefinition, parseJson } from '../../domain/validation.js';
 import { loadWorkspace, saveWorkspace, STORAGE_KEY } from '../services/storage.js';
-import { catalog, catalogNode, containers } from '../services/catalog.js';
+import { catalog, catalogNode, containers, componentDescriptor } from '../services/catalog.js';
+import { contentSlotValue } from '../../domain/content-slots.js';
+import { appendRepeaterEntry, createRepeaterField, entryAllowed, isRepeaterNode, REPEATER_PROP } from '../../domain/repeater.js';
 import { descendingStyles } from '../../integrations/zaux/responsive-styles.js';
 import { viewports, simpleViewports, previewWidth, styleScopeForWidth } from '../../integrations/zaux/viewports.js';
 import { mergeSourceLibrary, refreshSourceSnapshots, visualSourceCopy, sourceAvailable } from '../services/source-zvc.js';
@@ -1081,7 +1083,43 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   // library); otherwise they become a template block (toTemplate) or follow the selected node.
   const insertionContainer = computed(() => !outlineBulk.value && !isSource.value && selectedNode.value
     && containers.includes(selectedNode.value.name) ? selectedNode.value : null);
+  // Repeater (ComponentsRenderer node) in the target definition: elements and ZVPs dropped on it
+  // or inserted while it is selected become entries of its list (domain/repeater.js), not children.
+  function repeaterTarget(targetId, targetInstanceId = instanceId.value) {
+    if (!targetId) return null;
+    const instance = mode.value === 'template' ? activeTemplate.value?.instances.find(item => item.id === targetInstanceId) : null;
+    const definition = mode.value === 'library' ? activeDefinition.value : instance?.definition;
+    const node = definition && !definition.sourceKey ? findNode(definition.tree, targetId) : null;
+    return isRepeaterNode(node) ? { definition, node, instance } : null;
+  }
+  function repeaterAccepts(target, name) {
+    const value = target.node.props?.[REPEATER_PROP];
+    const field = value?.$bind ? target.definition.fields.find(item => item.key === value.$bind) : null;
+    const known = catalog.some(entry => entry.name === name) || partialDefinitions(target.definition, document.value.library).some(item => item.exportName === name);
+    return known && (!field || entryAllowed(field, name));
+  }
+  function addRepeaterEntry(name, targetId, targetInstanceId = instanceId.value) {
+    const target = repeaterTarget(targetId, targetInstanceId);
+    if (!target || !canEditRemote.value) return false;
+    if (!repeaterAccepts(target, name)) { error.value = 'zx_builder_repeater_not_allowed'; return false; }
+    let descriptor;
+    try { descriptor = contentSlotValue([componentDescriptor(name, partialDefinitions(target.definition, document.value.library))]); }
+    catch (exception) { error.value = exception.message; return false; }
+    commit(() => appendRepeaterEntry(target.definition, target.node, descriptor, target.instance ? target.instance.data : null));
+    if (error.value) return false;
+    const outlineId = mode.value === 'library' ? 'library' : targetInstanceId;
+    selectInstance(outlineId, targetId);
+    revealOutline(outlineId, targetId);
+    return true;
+  }
+  // Creates a repeater field from the literal entries of the selected Repeater and binds it.
+  function createSelectedRepeaterField(options) {
+    if (!editableStructure() || !isRepeaterNode(selectedNode.value)) return false;
+    commit(() => createRepeaterField(activeDefinition.value, selectedNode.value, options));
+    return !error.value;
+  }
   function insertElement(name, toTemplate = false) {
+    if (!outlineBulk.value && !isSource.value && isRepeaterNode(selectedNode.value)) { addRepeaterEntry(name, nodeId.value); return; }
     const container = insertionContainer.value;
     if (!container) {
       if (toTemplate && mode.value === 'template') addTemplateElement(name);
@@ -1120,6 +1158,8 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   }
   function canDropElement(payload, targetId, position, targetInstanceId) {
     if (!canEditRemote.value || !payload || !['before', 'after', 'inside'].includes(position)) return false;
+    const repeater = position === 'inside' ? repeaterTarget(targetId, targetInstanceId) : null;
+    if (repeater) return payload.kind === 'catalog' && repeaterAccepts(repeater, payload.name);
     if (payload.kind === 'selection') return payload.scope === outlineScope.value && Array.isArray(payload.rows) && payload.rows.length <= 2500
       && payload.rows.every(row => row && typeof row.instanceId === 'string' && (row.nodeId === null || typeof row.nodeId === 'string'))
       && canMoveOutline(outlineInstances.value, payload.rows, targetId, position, targetInstanceId, mode.value === 'library', containers);
@@ -1160,6 +1200,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   function dropElement(payload, targetId, position, targetInstanceId) {
     if (!canDropElement(payload, targetId, position, targetInstanceId)) return;
     if (payload.kind === 'global') { globalLinks.dropGlobal(payload.id, { nodeId: targetId, position, instanceId: targetInstanceId }); return; }
+    if (position === 'inside' && repeaterTarget(targetId, targetInstanceId)) { addRepeaterEntry(payload.name, targetId, targetInstanceId); return; }
     if (payload.kind === 'selection') {
       let selection;
       commit(() => { selection = moveOutline(outlineInstances.value, payload.rows, targetId, position, targetInstanceId, mode.value === 'library', document.value.library); });
@@ -1458,7 +1499,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes, previewScroll, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });
   Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle, styleState });
-  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, detachPartialReference, saveNodeToLibrary });
+  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, detachPartialReference, saveNodeToLibrary, addRepeaterEntry, createSelectedRepeaterField });
   const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId: () => auth.user.value?.id });
   function openGlobalDesigner(id) { globalLinks.openGlobalDesigner(id); }
   Object.assign(api, globalLinks, { designer, reloadGlobalLibrary, globalThumbnails: globalDesigner?.thumbnails ?? ref(Object.create(null)) });

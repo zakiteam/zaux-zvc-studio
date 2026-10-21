@@ -97,6 +97,12 @@
 				:node="selectedNode"
 			/>
 
+			<BuilderRepeater
+				v-if="repeaterPanel"
+				:key="'repeater-' + selectedNode.id"
+				:node="selectedNode"
+			/>
+
 			<BuilderPartialFields
 				v-if="selectedPartial"
 				:key="selectedNode.id"
@@ -306,6 +312,7 @@ import { contentSlotConfig } from "../../../../integrations/zaux/controls/conten
 import { attributeConfig } from "../../../../integrations/zaux/controls/attribute-controls.js";
 import { propertyGroups, propertyGroup, isInternalProperty, featuredProperties } from "../../../../integrations/zaux/descriptors/property-groups.js";
 import { isPlainRecord } from "../../../../domain/slider.js";
+import { isRepeaterNode, nodeRepeaters } from "../../../../domain/repeater.js";
 export default defineComponent({
 	props: { active: Boolean },
 	emits: ["error"],
@@ -324,6 +331,9 @@ export default defineComponent({
 		const lightboxTrigger = computed(() =>
 			isLightboxTrigger(builder.selectedNode.value),
 		);
+		// Repeater element, or any node with a prop bound to a repeater field (e.g. slider slides).
+		const repeaterPanel = computed(() => !builder.selectedPartial.value && (isRepeaterNode(builder.selectedNode.value)
+			|| nodeRepeaters(builder.selectedNode.value, builder.activeDefinition.value?.fields ?? []).length > 0));
 		const overlayContent = computed(() =>
 			["ZModal", "OffCanvas"].includes(builder.selectedNode.value?.name),
 		);
@@ -547,6 +557,7 @@ export default defineComponent({
 			lightboxConfig,
 			lightboxTrigger,
 			overlayContent,
+			repeaterPanel,
 			mediaConfig,
 			contentSlotsEditor,
 			attributesEditor,

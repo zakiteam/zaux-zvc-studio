@@ -129,6 +129,21 @@
 			>
 				{{ translate("zx_builder_php_hint") }}
 			</p>
+			<!-- JavaScript package of the selected ZVC: _partials/, styles and fonts are opt-in (unchecked by default). -->
+			<div v-if="format === 'js' && scope === 'component'" class="mb-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[12px]">
+				<label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_partials_hint')">
+					<input v-model="jsOptions.partials" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_php_include_partials") }} <code class="text-[10px] text-zaux-dark-grey">_partials/</code>
+				</label>
+				<label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_styles_hint')">
+					<input v-model="jsOptions.styles" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_js_include_styles") }} <code class="text-[10px] text-zaux-dark-grey">style/, *.css</code>
+				</label>
+				<label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_fonts_hint')">
+					<input v-model="jsOptions.fonts" type="checkbox" class="!w-auto accent-zaux-accent" />
+					{{ translate("zx_builder_js_include_fonts") }} <code class="text-[10px] text-zaux-dark-grey">fonts.html, fonts.json</code>
+				</label>
+			</div>
 			<!-- ACF bridges and _partials are included unless unchecked, the README is opt-in, as in the PHP package options. -->
 			<div v-if="format === 'php' && ['component', 'template'].includes(scope)" class="mb-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[12px]">
 				<label class="flex cursor-pointer items-center gap-1">
@@ -421,6 +436,8 @@ export default defineComponent({
 		const isPackage = computed(() => ['starter', 'php-starter'].includes(scope.value) || (['component', 'template'].includes(scope.value) && ['js', 'php'].includes(format.value)));
 		const isPhp = computed(() => scope.value === 'php-starter' || (['component', 'template'].includes(scope.value) && format.value === 'php'));
 		// PHP package selection, also holding the opt-in README used by every PHP export.
+		// JavaScript package of the selected component (componentPackageFiles options).
+		const jsOptions = ref({ partials: false, styles: false, fonts: false });
 		const phpSelection = ref({ excludedDefinitions: [], excludedTemplates: [], phpReadme: false, phpAcf: true, phpPartials: true });
 		// Starter package contents: everything except the Studio part by default.
 		const starterSelection = ref({ excludedDefinitions: [], excludedTemplates: [], studio: false });
@@ -557,7 +574,7 @@ export default defineComponent({
 		const jsFiles = computed(() => {
 			if (scope.value === 'starter' || scope.value === 'template' || isPhp.value) return packageResult.value.files;
 			try {
-				return definition.value ? componentPackageFiles(builder.document.value, definition.value) : {};
+				return definition.value ? componentPackageFiles(builder.document.value, definition.value, jsOptions.value) : {};
 			} catch {
 				return {};
 			}
@@ -744,6 +761,7 @@ export default defineComponent({
 			selectedFile,
 			starterSelection,
 			phpSelection,
+			jsOptions,
 			isPhp,
 			starterAvailability,
 			starterEmpty,

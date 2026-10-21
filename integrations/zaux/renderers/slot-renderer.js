@@ -1,4 +1,8 @@
 import { defineComponent, h, resolveDynamicComponent } from 'vue';
+import { useTranslation } from '../../../app/composables/useTranslation.js';
+
+const EMPTY_REPEATER_STYLE = 'display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 8px;'
+  + ' border: 1px dashed currentColor; border-radius: 4px; opacity: .55; font: 12px/1.4 sans-serif;';
 
 // Adapt the Studio JSON tree to the actual slots of registered Zaux components.
 // Direct slot VNodes let native triggers attach their click handler to the child.
@@ -33,6 +37,14 @@ export default defineComponent({
       const trigger = ['OffCanvasTrigger', 'ZModalTrigger'].includes(node.name);
       if (trigger && !node.children?.length) {
         return h('span', { 'data-zb-node': attributes['data-zb-node'], draggable: attributes.draggable, class: 'inline-block min-h-[24px] min-w-[48px]' });
+      }
+      // Editor canvas only: a Repeater (ComponentsRenderer node) renders no element of its own, so a
+      // layout-neutral wrapper carries its node id; when empty it is a visible drop area.
+      if (node.name === 'ComponentsRenderer' && attributes['data-zb-node']) {
+        const items = Array.isArray(node.props?.components) ? node.props.components : [];
+        const wrapper = { key: index, 'data-zb-node': attributes['data-zb-node'], 'data-zb-repeater': '', draggable: attributes.draggable };
+        if (!items.length) return h('div', { ...wrapper, style: EMPTY_REPEATER_STYLE }, useTranslation().translate('zx_builder_repeater_empty'));
+        return h('div', { ...wrapper, style: 'display: contents' }, [h(component, { components: items })]);
       }
       const slot = ['Accordion', 'OffCanvas', 'ZModal'].includes(node.name) ? 'content' : 'default';
       const slots = node.children?.length ? { [slot]: children } : undefined;

@@ -11,21 +11,16 @@
 			<p class="text-[11px] font-medium">{{ selected + 1 }} · {{ entryLabel(entries[selected]) }}</p>
 		</template>
 		<template v-else-if="list">
-			<p v-if="!entries.length" class="text-[11px] text-zaux-dark-grey">{{ translate("zx_builder_component_empty") }}</p>
-			<div
-				v-for="(entry, index) in entries"
-				:key="index"
-				class="flex items-center gap-1 py-1 pl-2 pr-1 bg-zaux-light rounded-xs"
-			>
-				<button type="button" class="flex-1 min-w-0 text-left text-[11px] truncate" @click="selected = index">
-					{{ index + 1 }} · {{ entryLabel(entry) }}
-				</button>
-				<BuilderButton variant="light" size="xs" icon="edit" iconOnly :label="translate('zx_builder_overlay_edit')" :disabled="disabled" @click="selected = index" />
-				<BuilderButton variant="light" size="xs" icon="chevron-up" iconOnly :label="translate('zx_builder_move_up')" :disabled="disabled || index === 0" @click="move(index, -1)" />
-				<BuilderButton variant="light" size="xs" icon="chevron-down" iconOnly :label="translate('zx_builder_move_down')" :disabled="disabled || index === entries.length - 1" @click="move(index, 1)" />
-				<BuilderButton variant="light" size="xs" icon="copy" iconOnly :label="translate('zx_builder_duplicate')" :disabled="disabled" @click="duplicate(index)" />
-				<BuilderButton variant="light" size="xs" icon="delete" iconOnly :label="translate('zx_builder_delete')" :disabled="disabled" @click="remove(index)" />
-			</div>
+			<BuilderSortableList
+				:items="entries"
+				:label="label"
+				:disabled="disabled"
+				openable
+				:itemLabel="(entry, position) => `${position + 1} · ${entryLabel(entry)}`"
+				:emptyText="translate('zx_builder_component_empty')"
+				@open="selected = $event"
+				@change="emitValue"
+			/>
 			<BuilderDropdown
 				:label="translate('zx_builder_component_add')"
 				:items="menuItems"
@@ -89,6 +84,8 @@
 			modelValue: { default: null },
 			label: String,
 			disabled: Boolean,
+			// Repeater whitelist (field params.allowed): component names offered by the add menu.
+			allowed: { type: Array, default: null },
 		},
 		emits: ["update:modelValue"],
 		setup(props, { emit }) {
@@ -104,7 +101,22 @@
 			watch(() => entries.value.length, (length) => {
 				if (selected.value !== null && selected.value >= length) selected.value = null;
 			});
-			const menuItems = computed(() => componentMenuItems(translate, builder.selectablePartials.value));
+			const menuItems = computed(() => {
+				const items = componentMenuItems(translate, builder.selectablePartials.value);
+				if (!props.allowed?.length) return items;
+				// Keep the allowed entries plus the heading (and separator) of each group that still has some.
+				const result = [];
+				let pending = [];
+				for (const item of items) {
+					if (item.heading) pending = [...pending.filter((other) => other.separator), item];
+					else if (item.separator) pending.push(item);
+					else if (props.allowed.includes(item.id)) {
+						result.push(...pending.filter((other) => result.length || !other.separator), item);
+						pending = [];
+					}
+				}
+				return result;
+			});
 
 			// The editable descriptor of an entry: itself, or the only item of its group.
 			function single(entry) {
@@ -151,22 +163,9 @@
 				}
 			}
 			function clear() { emitValue({}); }
-			function duplicate(position) {
-				const next = [...entries.value];
-				next.splice(position + 1, 0, clone(next[position]));
-				emitValue(next);
-			}
-			function remove(position) { emitValue(entries.value.filter((_, item) => item !== position)); }
-			function move(position, delta) {
-				const target = position + delta;
-				if (target < 0 || target >= entries.value.length) return;
-				const next = [...entries.value];
-				[next[position], next[target]] = [next[target], next[position]];
-				emitValue(next);
-			}
 			return {
 				translate, selected, list, entries, index, current, menuItems, contentSlotValue, single, partialOf,
-				entryLabel, emitValue, setEntry, choose, bake, clear, duplicate, remove, move,
+				entryLabel, emitValue, setEntry, choose, bake, clear,
 			};
 		},
 	});

@@ -480,7 +480,7 @@
 							<BuilderElementThumbnail v-if="elementPreviewId(entry)" :previewId="elementPreviewId(entry)" />
 							<span class="flex min-w-0 items-center gap-0.5 px-0.5 py-0.25">
 								<span class="shrink-0 text-[11px] text-zaux-accent" aria-hidden="true">{{ containers.includes(entry.name) ? "▤" : "◇" }}</span>
-								<span class="truncate text-[11px]">{{ entry.name }}</span>
+								<span class="truncate text-[11px]" :title="entry.name">{{ entry.label ? `${entry.label} · ${entry.name}` : entry.name }}</span>
 							</span>
 						</button>
 					</div>
@@ -663,7 +663,7 @@ export default defineComponent({
 		);
 		const filtered = computed(() =>
 			[...availablePartialEntries.value, ...catalog].filter((entry) =>
-				entry.name.toLowerCase().includes(search.value.toLowerCase()),
+				`${entry.label ?? ""} ${entry.name}`.toLowerCase().includes(search.value.toLowerCase()),
 			),
 		);
 		const drag = outlineDrag.start;

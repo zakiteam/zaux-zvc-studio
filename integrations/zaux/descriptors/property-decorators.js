@@ -126,7 +126,9 @@ export const propertyDecorators = {
   SectionSplitWide: { media: { media: true } },
   // introContent renders one { type: 'component', name, props } descriptor above the
   // slides; the component field editor picks and edits it (null = no intro content).
-  SliderMultiple: { introContent: { control: 'component' } }
+  SliderMultiple: { introContent: { control: 'component' } },
+  // Repeater entries (domain/repeater.js); a bound value is edited by the Repeater panel.
+  ComponentsRenderer: { components: { control: 'component' } }
 };
 
 // String props named iconName or <something>IconName (plus the icon props of

@@ -17,14 +17,9 @@
     </template>
     <template v-else>
       <p class="text-[12px] font-medium">{{ translate('zx_builder_slider_slides') }} ({{ modelValue.length }})</p>
-      <div v-for="(slide, index) in modelValue" :key="index" class="flex flex-wrap items-center gap-1 py-1 pl-2 pr-1 bg-zaux-light rounded-xs">
-        <button type="button" class="flex-1 min-w-0 text-left truncate" @click="selected = index">{{ index + 1 }} · {{ slide?.name || translate('zx_builder_slider_slide') }}</button>
-        <BuilderButton variant="light" icon="edit" size="xs" :label="translate('zx_builder_slide_edit')" @click="selected = index" />
-        <BuilderButton variant="light" size="xs" icon="chevron-up" iconOnly :label="translate('zx_builder_move_up')" :disabled="index === 0" @click="move(index, -1)" />
-        <BuilderButton variant="light" size="xs" icon="chevron-down" iconOnly :label="translate('zx_builder_move_down')" :disabled="index === modelValue.length - 1" @click="move(index, 1)" />
-        <BuilderButton variant="light" size="xs" icon="copy" iconOnly :label="translate('zx_builder_duplicate')" @click="duplicate(index)" />
-        <BuilderButton variant="light" size="xs" icon="delete" iconOnly :label="translate('zx_builder_delete')" @click="remove(index)" />
-      </div>
+      <BuilderSortableList :items="modelValue" :label="translate('zx_builder_slider_slides')" openable
+        :itemLabel="(slide, index) => `${index + 1} · ${slide?.name || translate('zx_builder_slider_slide')}`"
+        @open="selected = $event" @change="commit" />
       <BuilderDropdown :label="translate('zx_builder_slider_add')" :items="contentItems" :filterItems="true" @select="add" />
     </template>
   </section>
@@ -65,16 +60,7 @@
         commit(props.modelValue.map((item, index) => index === selected.value ? slide : item));
       }
       function updateProps(value) { updateSlide({ ...selectedSlide.value, props: value }); }
-      function duplicate(index) { const list = clone(props.modelValue); list.splice(index + 1, 0, clone(list[index])); commit(list); }
-      function remove(index) { commit(props.modelValue.filter((_, position) => index !== position)); }
-      function move(index, delta) {
-        const target = index + delta;
-        if (target < 0 || target >= props.modelValue.length) return;
-        const list = [...props.modelValue];
-        [list[index], list[target]] = [list[target], list[index]];
-        commit(list);
-      }
-      return { translate, bindings, partial, selected, selectedSlide, definition, contentItems, isPlainRecord, add, updateSlide, updateProps, duplicate, remove, move };
+      return { translate, bindings, partial, selected, selectedSlide, definition, contentItems, isPlainRecord, add, commit, updateSlide, updateProps };
     }
   });
   

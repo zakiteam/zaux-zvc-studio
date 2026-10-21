@@ -101,26 +101,20 @@
 				</div>
 				<p v-if="contentSlot.hintKey" class="px-1.5 pb-1 text-[10px] leading-[1.5] text-utility-warning">{{ translate(contentSlot.hintKey) }}</p>
 				<p v-if="!contentSlot.items" class="px-1.5 pb-1 text-[10px] text-zaux-dark-grey">{{ translate("zx_builder_slider_unknown") }}</p>
-				<ul v-else-if="contentSlot.items.length" class="m-0 grid list-none gap-0.25 border-t-slim border-zaux-light-grey p-0.5">
-					<li
-						v-for="(item, index) in contentSlot.items"
-						:key="index"
-						class="flex min-w-0 items-center gap-0.5 rounded-xxs py-0.25 pl-1 hover:bg-zaux-light"
+				<div v-else-if="contentSlot.items.length" class="border-t-slim border-zaux-light-grey p-0.5">
+					<BuilderSortableList
+						:items="contentSlot.items"
+						:label="hookLabel(contentSlot.key)"
+						openable
+						:itemLabel="(item) => itemLabel(item)"
+						@open="select(contentSlot.key, $event)"
+						@change="(items) => commit(contentSlot.key, items)"
 					>
-						<span class="shrink-0 rounded-xxs px-0.5 text-[8px] font-semibold uppercase tracking-wider" :class="kindClass(item)">{{ kindLabel(item) }}</span>
-						<button
-							type="button"
-							class="min-w-0 flex-1 truncate py-0.5 text-left text-[11px]"
-							:title="translate('zx_builder_overlay_edit') + ': ' + itemLabel(item)"
-							@click="select(contentSlot.key, index)"
-						>{{ itemLabel(item) }}</button>
-						<BuilderButton variant="light" size="xs" icon="edit" iconOnly :label="translate('zx_builder_overlay_edit')" @click="select(contentSlot.key, index)" />
-						<BuilderButton variant="light" size="xs" icon="chevron-up" iconOnly :label="translate('zx_builder_move_up')" :disabled="index === 0" @click="move(contentSlot, index, -1)" />
-						<BuilderButton variant="light" size="xs" icon="chevron-down" iconOnly :label="translate('zx_builder_move_down')" :disabled="index === contentSlot.items.length - 1" @click="move(contentSlot, index, 1)" />
-						<BuilderButton variant="light" size="xs" icon="copy" iconOnly :label="translate('zx_builder_duplicate')" @click="duplicate(contentSlot, index)" />
-						<BuilderButton variant="light" size="xs" icon="delete" iconOnly :label="translate('zx_builder_delete')" @click="remove(contentSlot, index)" />
-					</li>
-				</ul>
+						<template #leading="{ item }">
+							<span class="shrink-0 rounded-xxs px-0.5 text-[8px] font-semibold uppercase tracking-wider" :class="kindClass(item)">{{ kindLabel(item) }}</span>
+						</template>
+					</BuilderSortableList>
+				</div>
 			</div>
 			<p v-if="otherKeys.length" class="text-[10px] text-zaux-dark-grey">
 				{{ translate("zx_builder_content_slot_other", { keys: otherKeys.join(", ") }) }}
@@ -133,7 +127,6 @@
 	import { useBuilder } from "../../../../composables/useBuilder.js";
 	import { catalog, componentDescriptor, componentLabel, componentMenuItems } from "../../../../services/catalog.js";
 	import { iconHref } from "@integration/options/icon-options.js";
-	import { clone } from "../../../../../domain/nodes.js";
 	import { isPlainRecord } from "../../../../../domain/slider.js";
 	import { contentSlotItems, setContentSlot } from "../../../../../domain/content-slots.js";
 	import { contentSlotConfig } from "../../../../../integrations/zaux/controls/content-slot-controls.js";
@@ -218,24 +211,9 @@
 				if (!slot?.items) return;
 				commit(slot.key, slot.items.map((entry, index) => index === selected.value.index ? item : entry));
 			}
-			function duplicate(slot, index) {
-				const items = [...slot.items];
-				items.splice(index + 1, 0, clone(items[index]));
-				commit(slot.key, items);
-			}
-			function remove(slot, index) {
-				commit(slot.key, slot.items.filter((_, position) => position !== index));
-			}
-			function move(slot, index, delta) {
-				const target = index + delta;
-				if (target < 0 || target >= slot.items.length) return;
-				const items = [...slot.items];
-				[items[index], items[target]] = [items[target], items[index]];
-				commit(slot.key, items);
-			}
 			return {
 				translate, iconSet: builder.iconSet, iconHref, hookLabel, selected, bindings, slots, otherKeys, selectedItem,
-				componentItems, partialItems, itemLabel, kindLabel, kindClass, select, add, updateItem, duplicate, remove, move,
+				componentItems, partialItems, itemLabel, kindLabel, kindClass, commit, select, add, updateItem,
 			};
 		},
 	});

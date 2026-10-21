@@ -3,64 +3,16 @@
 		<p class="text-[12px] font-medium">
 			{{ translate("zx_builder_overlay_content") }} ({{ children.length }})
 		</p>
-		<p
-			v-if="!children.length"
-			class="text-[11px] text-zaux-dark-grey"
-		>
-			{{ translate("zx_builder_overlay_empty") }}
-		</p>
-		<div
-			v-for="(child, index) in children"
-			:key="child.id"
-			class="flex flex-wrap items-center gap-1 py-1 pl-2 pr-1 bg-zaux-light rounded-xs"
-		>
-			<button
-				type="button"
-				class="flex-1 min-w-0 text-left truncate"
-				@click="select(index)"
-			>{{ index + 1 }} · {{ child.name }}</button>
-			<BuilderButton
-				variant="light"
-				icon="edit"
-				size="xs"
-				:label="translate('zx_builder_overlay_edit')"
-				@click="select(index)"
-			/>
-			<BuilderButton
-				variant="light"
-				size="xs"
-				icon="chevron-up"
-				iconOnly
-				:label="translate('zx_builder_move_up')"
-				:disabled="index === 0"
-				@click="move(index, -1)"
-			/>
-			<BuilderButton
-				variant="light"
-				size="xs"
-				icon="chevron-down"
-				iconOnly
-				:label="translate('zx_builder_move_down')"
-				:disabled="index === children.length - 1"
-				@click="move(index, 1)"
-			/>
-			<BuilderButton
-				variant="light"
-				size="xs"
-				icon="copy"
-				iconOnly
-				:label="translate('zx_builder_duplicate')"
-				@click="duplicate(index)"
-			/>
-			<BuilderButton
-				variant="light"
-				size="xs"
-				icon="delete"
-				iconOnly
-				:label="translate('zx_builder_delete')"
-				@click="remove(index)"
-			/>
-		</div>
+		<BuilderSortableList
+			:items="children"
+			:label="translate('zx_builder_overlay_content')"
+			openable
+			:itemKey="(child) => child.id"
+			:itemLabel="(child, index) => `${index + 1} · ${child.name}`"
+			:emptyText="translate('zx_builder_overlay_empty')"
+			@open="select"
+			@change="change"
+		/>
 		<BuilderDropdown
 			:label="translate('zx_builder_overlay_add')"
 			:items="contentItems"
@@ -109,16 +61,13 @@
 				builder.selectInstance(builder.instanceId.value, child.id);
 				builder.reveal(builder.instanceId.value, child.id);
 			}
-			function remove(index) {
-				builder.removeOverlayContent(index);
+			// Children are tree nodes: each list operation goes through the builder (one undoable commit).
+			function change(_list, op) {
+				if (op.type === "remove") builder.removeOverlayContent(op.index);
+				else if (op.type === "duplicate") builder.duplicateOverlayContent(op.index);
+				else if (op.type === "move") builder.moveOverlayContent(op.from, op.to - op.from);
 			}
-			function duplicate(index) {
-				builder.duplicateOverlayContent(index);
-			}
-			function move(index, delta) {
-				builder.moveOverlayContent(index, delta);
-			}
-			return { translate, children, contentItems, add, select, remove, duplicate, move };
+			return { translate, children, contentItems, add, select, change };
 		},
 	});
 </script>

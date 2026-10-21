@@ -104,6 +104,7 @@
 					:label="`${field.key} default`"
 					:type="fieldInputType(field)"
 					:options="field.options"
+					:params="field.params"
 					@update:modelValue="updateField(field.key, 'default', $event)"
 				/>
 			</div>
@@ -128,6 +129,28 @@
 					<option value="obj">{{ translate("zx_builder_component_mode_single") }}</option>
 					<option value="array">{{ translate("zx_builder_component_mode_list") }}</option>
 				</select>
+			</div>
+			<!-- Repeater whitelist (params.allowed): empty accepts every component. -->
+			<div
+				v-if="field.type === 'component' && field.params?.mode === 'array'"
+				class="zb-field mb-2.5 grid gap-1 [&>label]:block [&>label]:text-[11px] [&>label]:font-medium [&>label]:text-zaux-dark"
+			>
+				<label>{{ translate("zx_builder_repeater_allowed") }}</label>
+				<div class="flex flex-wrap gap-0.5">
+					<span
+						v-for="name in field.params.allowed ?? []"
+						:key="name"
+						class="inline-flex items-center gap-0.5 rounded-xxs bg-zaux-light py-0.25 pl-1 pr-0.25 text-[11px]"
+					>{{ name }}<BuilderButton variant="light" size="xs" icon="close" iconOnly :label="translate('zx_builder_delete')" @click="toggleAllowed(field.key, name)" /></span>
+					<span v-if="!(field.params.allowed ?? []).length" class="text-[11px] text-zaux-dark-grey">{{ translate("zx_builder_repeater_allowed_any") }}</span>
+				</div>
+				<BuilderDropdown
+					:label="translate('zx_builder_repeater_allowed_add')"
+					:items="allowedMenu(field)"
+					:filterItems="true"
+					@select="toggleAllowed(field.key, $event.id)"
+				/>
+				<small class="text-[10px] leading-[1.5] text-zaux-dark-grey">{{ translate("zx_builder_repeater_allowed_hint") }}</small>
 			</div>
             <label class="block mb-1 text-[11px]">{{ translate('zx_builder_field_show_if') }}</label>
             <BuilderValue type="json" :label="translate('zx_builder_field_show_if')" :modelValue="field.showIf ?? null"
@@ -198,6 +221,7 @@
 import { defineComponent, nextTick, ref } from "vue";
 import { useBuilder } from "../../../composables/useBuilder.js";
 import { FIELD_TYPES, fieldDefault, fieldInputType, moveField } from "../../../../domain/fields.js";
+import { componentMenuItems } from "../../../services/catalog.js";
 export default defineComponent({
 	setup() {
 		const builder = useBuilder();
@@ -220,6 +244,23 @@ export default defineComponent({
 				if (type === "select") field.options = [];
 				if (type !== "component") delete field.params;
 			});
+		}
+		// Repeater whitelist: adds or removes one component name from params.allowed.
+		function toggleAllowed(key, name) {
+			if (!name) return;
+			builder.updateDefinition((def) => {
+				const field = def.fields.find((field) => field.key === key);
+				const allowed = new Set(field.params?.allowed ?? []);
+				if (allowed.has(name)) allowed.delete(name);
+				else allowed.add(name);
+				field.params = { ...(field.params ?? {}), allowed: [...allowed] };
+				if (!field.params.allowed.length) delete field.params.allowed;
+			});
+		}
+		function allowedMenu(field) {
+			const allowed = field.params?.allowed ?? [];
+			return componentMenuItems(builder.translate, builder.selectablePartials.value)
+				.map((item) => item.id ? { ...item, active: allowed.includes(item.id) } : item);
 		}
 		// Mirrors Zaux's component field `params.mode`: one descriptor or a list.
 		function changeComponentMode(key, mode) {
@@ -346,6 +387,9 @@ export default defineComponent({
 			fieldError,
 			updateField,
 			changeType,
+			changeComponentMode,
+			toggleAllowed,
+			allowedMenu,
 			addField,
 			deleteField,
 			openFields,

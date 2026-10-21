@@ -76,6 +76,21 @@
             :variant="item.id === format ? 'primary' : 'secondary'" :aria-pressed="item.id === format" @click="format = item.id" />
         </div>
         <p class="mb-1 text-[10px] leading-[1.6] text-zaux-dark-grey">{{ formatHint }}</p>
+        <!-- JavaScript package of the component: _partials/, styles and fonts are opt-in, as in the export dialog. -->
+        <div v-if="format === 'js' && scope === 'component'" class="mb-1 flex flex-col gap-0.25 text-[11px]">
+          <label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_partials_hint')">
+            <input v-model="jsOptions.partials" type="checkbox" class="!w-auto accent-zaux-accent" />
+            {{ translate('zx_builder_php_include_partials') }} <code class="text-[10px] text-zaux-dark-grey">_partials/</code>
+          </label>
+          <label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_styles_hint')">
+            <input v-model="jsOptions.styles" type="checkbox" class="!w-auto accent-zaux-accent" />
+            {{ translate('zx_builder_js_include_styles') }} <code class="text-[10px] text-zaux-dark-grey">style/, *.css</code>
+          </label>
+          <label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_js_include_fonts_hint')">
+            <input v-model="jsOptions.fonts" type="checkbox" class="!w-auto accent-zaux-accent" />
+            {{ translate('zx_builder_js_include_fonts') }} <code class="text-[10px] text-zaux-dark-grey">fonts.html, fonts.json</code>
+          </label>
+        </div>
         <!-- ACF bridges and _partials are included unless unchecked, the README is opt-in, as in the export dialog. -->
         <div v-if="format === 'php' && scope !== 'element'" class="mb-1 flex flex-col gap-0.25 text-[11px]">
           <label class="flex cursor-pointer items-center gap-1">
@@ -171,6 +186,7 @@ export default defineComponent({
     const copied = ref(false);
     const busy = ref(false);
     const phpOptions = ref({ readme: false, acf: true, partials: true });
+    const jsOptions = ref({ partials: false, styles: false, fonts: false });
 
     // The selected ZVC/ZVP: library definition or template instance, with the data it renders with.
     const component = computed(() => {
@@ -284,7 +300,7 @@ export default defineComponent({
           if (format.value === 'runtime') return { text: json(runtimeRoot(definition)), language: 'json', filename: `${base}.runtime.json` };
           if (format.value === 'json') return { text: json(documentEnvelope('component', definition)), language: 'json', filename: `${base}.json` };
           if (format.value === 'vue') return { text: vueComponent(definition), language: 'vue', filename: `${base.replace(/^ZV[CP]/, '')}.vue` };
-          if (format.value === 'js') return { files: componentPackageFiles(builder.document.value, definition), filename: `${base}.zip` };
+          if (format.value === 'js') return { files: componentPackageFiles(builder.document.value, definition, jsOptions.value), filename: `${base}.zip` };
           const php = phpComponentExport(definition, phpExportOptions(phpOptions.value));
           return { files: php.files, main: php.main?.entry, php, filename: `${base}-php.zip` };
         }
@@ -363,7 +379,7 @@ export default defineComponent({
     }
 
     return {
-      translate, phpOptions, scope, scopes, target, fields, formats, format, formatHint, output, selectedFile, fileOptions,
+      translate, phpOptions, jsOptions, scope, scopes, target, fields, formats, format, formatHint, output, selectedFile, fileOptions,
       copyText, language, usage, copied, busy, openInstance, copy, download
     };
   }
