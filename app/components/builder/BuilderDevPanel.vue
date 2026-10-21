@@ -76,11 +76,15 @@
             :variant="item.id === format ? 'primary' : 'secondary'" :aria-pressed="item.id === format" @click="format = item.id" />
         </div>
         <p class="mb-1 text-[10px] leading-[1.6] text-zaux-dark-grey">{{ formatHint }}</p>
-        <!-- ACF bridges are included unless unchecked, the README is opt-in, as in the export dialog. -->
+        <!-- ACF bridges and _partials are included unless unchecked, the README is opt-in, as in the export dialog. -->
         <div v-if="format === 'php' && scope !== 'element'" class="mb-1 flex flex-col gap-0.25 text-[11px]">
           <label class="flex cursor-pointer items-center gap-1">
             <input v-model="phpOptions.acf" type="checkbox" class="!w-auto accent-zaux-accent" />
             {{ translate('zx_builder_php_include_acf') }} <code class="text-[10px] text-zaux-dark-grey">&lt;Name&gt;.acf.php</code>
+          </label>
+          <label class="flex cursor-pointer items-center gap-1" :title="translate('zx_builder_php_include_partials_hint')">
+            <input v-model="phpOptions.partials" type="checkbox" class="!w-auto accent-zaux-accent" />
+            {{ translate('zx_builder_php_include_partials') }} <code class="text-[10px] text-zaux-dark-grey">_partials/</code>
           </label>
           <label class="flex cursor-pointer items-center gap-1">
             <input v-model="phpOptions.readme" type="checkbox" class="!w-auto accent-zaux-accent" />
@@ -166,7 +170,7 @@ export default defineComponent({
     const selectedFile = ref('');
     const copied = ref(false);
     const busy = ref(false);
-    const phpOptions = ref({ readme: false, acf: true });
+    const phpOptions = ref({ readme: false, acf: true, partials: true });
 
     // The selected ZVC/ZVP: library definition or template instance, with the data it renders with.
     const component = computed(() => {

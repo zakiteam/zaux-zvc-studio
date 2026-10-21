@@ -1,6 +1,6 @@
 import { createDefinition, createInstance } from './workspace.js';
 import { snapshotNode, materializeNode } from './node-clipboard.js';
-import { clone, uid } from './nodes.js';
+import { clone, dataFor, locateNode, uid } from './nodes.js';
 
 // Reuse the instance storage envelope without making a library ZVC or a DOM wrapper.
 export function createFreeInstance(name) {
@@ -87,6 +87,29 @@ export function detachInstance(template, library, instanceId) {
   });
   template.instances.splice(index, 1, ...instances);
   return { instances, ids };
+}
+
+// "Detach instance" for a ZVP reference node: the reference becomes an editable copy of the ZVP
+// content in place, its bindings resolved to this occurrence's props (owner bindings passed as props
+// stay bindings). The ZVP's own dependencies and CSS move into the owner; the captured copy is
+// dropped when no other reference uses it. `data` is the owner's template data, if any.
+export function detachPartial(owner, library, nodeId, data = {}) {
+  const location = locateNode(owner.tree, nodeId);
+  const reference = location?.list[location.index];
+  const partial = reference && owner.partials?.find(item => item.exportName === reference.name);
+  if (owner.sourceKey || !partial || partial.sourceKey || !partial.tree.length) throw new Error('zx_builder_invalid_document');
+  const nodes = partial.tree.map(node => materializeNode(snapshotNode(node, partial, reference.props, library), owner, library));
+  location.list.splice(location.index, 1, ...nodes);
+  let used = false;
+  function visit(value) {
+    if (!value || typeof value !== 'object' || used) return;
+    if (value.name === partial.exportName && value.props && typeof value.props === 'object') used = true;
+    else Object.values(value).forEach(visit);
+  }
+  visit(owner.tree);
+  visit(dataFor(owner, data));
+  if (!used) owner.partials = owner.partials.filter(item => item !== partial);
+  return nodes;
 }
 
 function pairIds(node, copy, ids) {

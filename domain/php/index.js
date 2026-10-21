@@ -22,7 +22,10 @@ function uniqueName(base, used) {
 // options: {
 //   profile?: overrides merged into DEFAULT_PHP_PROFILE,
 //   readme?: include README.md (default false),
-//   acf?: include the ACF bridge <Name>.acf.php of each ZVC (default true)
+//   acf?: include the ACF bridge <Name>.acf.php of each ZVC (default true),
+//   partials?: include the _partials/ folder (default true). Without it ZVPs keep
+//     their name and calls but no files, for themes that already have them; the
+//     main component of a single ZVP export is still written.
 // }
 
 export { phpProfile, DEFAULT_PHP_PROFILE } from './profile.js';
@@ -31,6 +34,7 @@ export { phpModel, phpPageModel } from './model.js';
 function createAssembler(options = {}) {
   const profile = phpProfile(options.profile);
   const acf = options.acf !== false;
+  const withPartials = options.partials !== false;
   const files = {};
   // Equal models share one component; different copies that share an export
   // name get a numeric suffix (instances are independent copies). Names are
@@ -38,8 +42,8 @@ function createAssembler(options = {}) {
   const placed = new Map();
   const names = new Set();
   const pageNames = new Set();
-  // Writes a component once, with the partials it calls.
-  function place(model) {
+  // Writes a component once, with the partials it calls (ZVP files only with withPartials or as main).
+  function place(model, { main = false } = {}) {
     // Like definitionKey in domain/starter-export.js, the display name does not
     // make two implementations different.
     const signature = JSON.stringify({ ...model, label: undefined });
@@ -50,7 +54,7 @@ function createAssembler(options = {}) {
     placed.set(signature, unit);
     try {
       const partials = model.partials.map(partial => ({ exportName: partial.exportName, fn: place(partial).fn }));
-      Object.assign(files, emitComponent({ model, name, fn: unit.fn, dir, partials }, profile, { acf }).files);
+      if (main || model.kind !== 'zvp' || withPartials) Object.assign(files, emitComponent({ model, name, fn: unit.fn, dir, partials }, profile, { acf }).files);
     } catch (error) {
       // Partials already written stay valid for the other components.
       placed.delete(signature);
@@ -83,7 +87,7 @@ function createAssembler(options = {}) {
 // One ZVC/ZVP with the partials it calls, in the theme layout.
 export function phpComponentExport(definition, options) {
   const assembler = createAssembler(options);
-  const main = assembler.place(phpModel(definition));
+  const main = assembler.place(phpModel(definition), { main: true });
   return assembler.finish({ main, components: [main], pages: [] });
 }
 

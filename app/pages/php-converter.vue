@@ -60,6 +60,10 @@
           <input v-model="acf" type="checkbox" class="!w-auto accent-zaux-accent" :disabled="busy" />
           {{ translate('zx_builder_php_include_acf') }} <code class="text-[10px] text-zaux-dark-grey">&lt;Name&gt;.acf.php</code>
         </label>
+        <label class="flex w-fit cursor-pointer items-center gap-1" :title="translate('zx_builder_php_include_partials_hint')">
+          <input v-model="partials" type="checkbox" class="!w-auto accent-zaux-accent" :disabled="busy" />
+          {{ translate('zx_builder_php_include_partials') }} <code class="text-[10px] text-zaux-dark-grey">_partials/</code>
+        </label>
         <label class="flex w-fit cursor-pointer items-center gap-1">
           <input v-model="readme" type="checkbox" class="!w-auto accent-zaux-accent" :disabled="busy" />
           {{ translate('zx_builder_php_include_readme') }} <code class="text-[10px] text-zaux-dark-grey">README.md</code>
@@ -115,6 +119,7 @@ export default defineComponent({
     const folderInput = ref(null);
     const readme = ref(false);
     const acf = ref(true);
+    const partials = ref(true);
     const busy = ref(false);
     const dragging = ref(false);
     const error = ref('');
@@ -129,7 +134,7 @@ export default defineComponent({
       if (!source.value || busy.value) return;
       busy.value = true; error.value = '';
       try {
-        const next = await convertVirtualSource(source.value, phpExportOptions({ readme: readme.value, acf: acf.value }));
+        const next = await convertVirtualSource(source.value, phpExportOptions({ readme: readme.value, acf: acf.value, partials: partials.value }));
         result.value = next;
         if (!Object.hasOwn(next.files, selectedFile.value)) selectedFile.value = next.components[0]?.entry ?? Object.keys(next.files)[0] ?? '';
       } catch (exception) {
@@ -180,9 +185,9 @@ export default defineComponent({
       const base = (source.value?.name ?? '').replace(/\.zip$/i, '').replace(/[^A-Za-z0-9._-]+/g, '-') || 'components';
       await downloadZip(`${base}-php.zip`, result.value.files);
     }
-    // ACF bridges and README are part of the conversion result.
-    watch([readme, acf], () => { if (source.value) convert(); });
-    return { translate, source, mode, use, folderInput, readme, acf, busy, dragging, error, result, selectedFile, sourceName, hasFiles, count, message, convert, pick, pickFolder, pickFiles, drop, reset, download };
+    // ACF bridges, _partials and README are part of the conversion result.
+    watch([readme, acf, partials], () => { if (source.value) convert(); });
+    return { translate, source, mode, use, folderInput, readme, acf, partials, busy, dragging, error, result, selectedFile, sourceName, hasFiles, count, message, convert, pick, pickFolder, pickFiles, drop, reset, download };
   }
 });
 </script>

@@ -59,6 +59,7 @@ export function useNodeContextMenu(builder) {
         { id: 'reveal-zvp', icon: 'search', label: t('zx_builder_reveal_zvp_library'), hidden: !partialSource },
         { id: 'reset-zvp-hard', icon: 'loop', label: t('zx_builder_reset_zvp_hard'), disabled: !editable || builder.isSource.value || !partialSource, danger: true },
         { id: 'reset-zvp-soft', icon: 'refresh', label: t('zx_builder_reset_zvp_soft'), disabled: !editable || builder.isSource.value || !partialSource },
+        { id: 'detach-zvp', icon: 'hyperlink-remove', label: t('zx_builder_detach_zvp'), disabled: !editable || builder.isSource.value || !!partial.sourceKey || !partial.tree?.length },
       ] : [],
       zvc && single ? [
         { id: 'edit-library', icon: 'enter', label: t(source?.global ? 'zx_builder_global_edit' : 'zx_builder_edit_zvc_library'), hidden: !source },
@@ -146,6 +147,7 @@ export function useNodeContextMenu(builder) {
     if (item.id === 'reset-hard') reset('hard');
     if (item.id === 'reset-soft') reset('soft');
     if (item.id === 'detach') builder.detachInstance(zvc.id);
+    if (item.id === 'detach-zvp') builder.detachPartialReference(node);
     if (item.id === 'convert-visual') builder.convertToVisual();
     if (item.id === 'duplicate-zvc') builder.duplicate('instance', zvc.id);
     if (item.id === 'delete-zvc') builder.remove('instance', zvc.id);

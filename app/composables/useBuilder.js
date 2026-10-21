@@ -1,7 +1,7 @@
 import { snapshotNode, materializeNode } from '../../domain/node-clipboard.js';
 import { nodeClipboardShortcut, nodeDeleteShortcut, layoutShortcut, nodeMenuShortcut } from '../services/node-shortcuts.js';
 import { useNodeContextMenu } from './useNodeContextMenu.js';
-import { createFreeInstance, groupFreeInstances, isFreeRoot, replaceFreeRoot, detachInstance as detachTemplateInstance } from '../../domain/template-elements.js';
+import { createFreeInstance, groupFreeInstances, isFreeRoot, replaceFreeRoot, detachInstance as detachTemplateInstance, detachPartial } from '../../domain/template-elements.js';
 import { outlineKey, outlineRows, outlineRoots, canMoveOutline, moveOutline, removeOutline, duplicateOutline, snapshotOutline } from '../../domain/outline.js';
 import { activeDefinitionOnly, addVariant, selectVariant, renameVariant, removeVariant } from '../../domain/variants.js';
 import { selectPartialVariant } from '../../domain/partials.js';
@@ -1010,6 +1010,17 @@ export function createBuilder({ projectId = null, designer = false, designerComp
     revealOutline(target.id, nodeId.value);
     return true;
   }
+  // Replaces a ZVP reference with an editable copy of its content in place, selecting the first copied node.
+  function detachPartialReference(reference = selectedNode.value) {
+    if (!reference || !activeDefinition.value || isSource.value || !canEditRemote.value) return false;
+    const outlineId = mode.value === 'library' ? 'library' : instanceId.value;
+    let nodes = [];
+    commit(workspace => { nodes = detachPartial(activeDefinition.value, workspace.library, reference.id, mode.value === 'template' ? activeInstance.value?.data ?? {} : {}); });
+    if (error.value || !nodes.length) return false;
+    selectInstance(outlineId, nodes[0].id);
+    revealOutline(outlineId, nodes[0].id);
+    return true;
+  }
   // New ZVC from node replaces the node in place when it is a root of a free block (ZVC instances are
   // top-level blocks and cannot nest); everywhere else the canvas keeps the original.
   const canReplaceNodeWithZvc = computed(() => mode.value === 'template' && !designer && !!selectedNode.value
@@ -1447,7 +1458,7 @@ export function createBuilder({ projectId = null, designer = false, designerComp
   Object.assign(api, { createVariant, changeVariant, renameActiveVariant, deleteActiveVariant, changePartialVariant });
   Object.assign(api, { hiddenOutlineNodes, previewScroll, expandAllOutline, outlineBranch, setOutlineBranch, toggleOutlineBranch });
   Object.assign(api, { deselectNode, canStyleNode, nodeClasses, updateNodeStyle, setNodeClasses, quickStyle, openQuickStyle, closeQuickStyle, styleState });
-  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, saveNodeToLibrary });
+  Object.assign(api, { cutSelectedNode, resetInstance, openExport, acceptProjectZauxVersion, detachInstance, detachPartialReference, saveNodeToLibrary });
   const globalLinks = createGlobalLinks({ document, commit, error, modal, canEditRemote, instanceId, nodeId, insertInstance, insertPartial, dropElement, userId: () => auth.user.value?.id });
   function openGlobalDesigner(id) { globalLinks.openGlobalDesigner(id); }
   Object.assign(api, globalLinks, { designer, reloadGlobalLibrary, globalThumbnails: globalDesigner?.thumbnails ?? ref(Object.create(null)) });

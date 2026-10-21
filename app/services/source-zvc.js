@@ -1,7 +1,7 @@
 import { localSourceFiles } from '../../domain/source-files.js';
 import partialRendererSource from '../../integrations/zaux/renderers/partial-renderer.js?raw';
 import { registerSourceModules } from '../../domain/source-runtime.js';
-import { capturePartials } from '../../domain/partials.js';
+import { capturePartials, mergePartialAliases } from '../../domain/partials.js';
 import { clone, dataFor } from '../../domain/nodes.js';
 import { activeDefinitionOnly } from '../../domain/variants.js';
 import { definitionFromSource, refreshSource } from '../../domain/source-zvc.js';
@@ -47,6 +47,8 @@ export function refreshSourceSnapshots(workspace) {
     if (definition.sourceKey) refreshSource(definition, data, registry[definition.sourceKey]);
     capturePartials(definition, workspace.library, data);
     for (const partial of definition.partials ?? []) refresh(partial);
+    // After the nested scopes, so copies that differed only in nested aliases compare equal.
+    mergePartialAliases(definition, workspace.library, data);
   }
   for (const definition of workspace.library) {
     refresh(definition);

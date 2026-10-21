@@ -1,5 +1,5 @@
 import { clone, copyNode, dataFor, resolveValue } from './nodes.js';
-import { capturePartials } from './partials.js';
+import { capturePartials, partialLineage, samePartial } from './partials.js';
 
 // Bindings become the values visible when copying, independent of the destination data.
 export function snapshotNode(node, definition, overrides, library) {
@@ -14,20 +14,27 @@ export function snapshotNode(node, definition, overrides, library) {
 
 export function materializeNode(snapshot, definition, library) {
   const node = copyNode(snapshot.node);
-  const names = new Set([definition.exportName, ...library.map(item => item.exportName), ...(definition.partials ?? []).map(item => item.exportName)]);
   const aliases = new Map();
   const dependencies = [];
+  const captured = () => [...(definition.partials ?? []), ...dependencies];
+  // The library original of a copy does not block its name; another component with that name does.
+  const taken = (name, source) => name === definition.exportName
+    || library.some(item => item.exportName === name && item.id !== partialLineage(source))
+    || captured().some(item => item.exportName === name);
   function visit(value) {
     if (!value || typeof value !== 'object') return;
     if (typeof value.name === 'string' && value.props) {
       const source = snapshot.partials.find(item => item.exportName === value.name);
       if (source) {
         if (!aliases.has(source.exportName)) {
-          let name = source.exportName;
-          for (let suffix = 2; names.has(name); suffix++) name = source.exportName + suffix;
-          names.add(name);
+          // References to a ZVP the destination already carries reuse that copy: no ZVPName2 clones.
+          const same = captured().find(item => samePartial(item, source));
+          let name = same?.exportName ?? source.exportName;
+          if (!same) {
+            for (let suffix = 2; taken(name, source); suffix++) name = source.exportName + suffix;
+            dependencies.push({ ...clone(source), exportName: name });
+          }
           aliases.set(source.exportName, name);
-          dependencies.push({ ...clone(source), exportName: name });
         }
         value.name = aliases.get(source.exportName);
       }

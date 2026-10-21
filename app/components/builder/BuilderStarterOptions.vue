@@ -153,11 +153,12 @@
 		{ key: "uiConfig", label: "zx_builder_starter_style_ui_config", path: "style/ui.config.js" },
 		{ key: "fonts", label: "zx_builder_starter_style_fonts", path: "fonts.html, fonts.json" },
 	];
-	// PHP package: ACF bridges are included unless unchecked, the README is
+	// PHP package: ACF bridges and _partials are included unless unchecked, the README is
 	// opt-in (unchecked unless set to true). The runtime helpers come from the
 	// zaux-wp-core theme, so there is no helper file.
 	const PHP_OPTIONS = [
 		{ key: "phpAcf", label: "zx_builder_php_include_acf", path: "<Name>.acf.php" },
+		{ key: "phpPartials", label: "zx_builder_php_include_partials", path: "_partials/" },
 		{ key: "phpReadme", label: "zx_builder_php_include_readme", path: "README.md", optIn: true },
 	];
 
